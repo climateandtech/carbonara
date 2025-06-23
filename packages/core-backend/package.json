@@ -1,0 +1,16 @@
+{
+  "name": "@carbonara/core-backend",
+  "version": "1.0.0",
+  "description": "Carbonara core backend (supports both Python and TypeScript)",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspace=@carbonara/core-backend-ts",
+    "dev": "npm run dev --workspace=@carbonara/core-backend-ts",
+    "start": "npm run start --workspace=@carbonara/core-backend-ts",
+    "test": "npm run test --workspace=@carbonara/core-backend-ts",
+    "clean": "npm run clean --workspace=@carbonara/core-backend-ts"
+  },
+  "dependencies": {
+    "@carbonara/core-backend-ts": "workspace:*"
+  }
+} 
