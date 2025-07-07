@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-Carbonara
-=======
 # Carbonara - Multi-Editor Plugin Architecture
 
 A monorepo containing a multi-editor plugin architecture with JSON-RPC for seamless integration across different code editors and platforms.
@@ -53,16 +50,19 @@ carbonara/
 ## 🚀 Quick Start
 
 1. **Install dependencies:**
+
    ```bash
    npm run setup
    ```
 
 2. **Start the backend server:**
+
    ```bash
    npm run start:backend
    ```
 
 3. **Start the web UI (development):**
+
    ```bash
    npm run start:web
    ```
@@ -75,19 +75,23 @@ carbonara/
 ## 🔧 Development
 
 ### Backend Development
+
 - **Python**: Use `packages/core-backend/python/` for Python services
 - **TypeScript**: Use `packages/core-backend/typescript/` for TypeScript services
 
 ### Frontend Development
+
 - **Svelte Web UI**: Located in `apps/web-ui/`
 - **Editor Plugins**: Each editor has its own plugin in `plugins/`
 
 ### Testing
+
 ```bash
 npm run test
 ```
 
 ### Linting
+
 ```bash
 npm run lint
 ```
@@ -105,5 +109,4 @@ Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code 
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details. 
->>>>>>> e1a3ba1 (Initial)
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
