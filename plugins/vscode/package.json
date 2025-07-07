@@ -4,6 +4,12 @@
   "description": "Multi-Editor Plugin Architecture client for VS Code",
   "version": "1.0.0",
   "publisher": "carbonara",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carbonara/carbonara"
+  },
+  "license": "ISC",
+
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -24,20 +30,32 @@
   "contributes": {
     "commands": [
       {
-        "command": "carbonara.connect",
-        "title": "Connect to Carbonara Server"
+        "command": "carbonara.showMenu",
+        "title": "Show Carbonara Menu"
       },
       {
-        "command": "carbonara.disconnect",
-        "title": "Disconnect from Carbonara Server"
+        "command": "carbonara.initProject",
+        "title": "Initialize Carbonara Project"
       },
       {
-        "command": "carbonara.analyze",
-        "title": "Analyze Current File"
+        "command": "carbonara.runAssessment",
+        "title": "Run CO2 Assessment"
+      },
+      {
+        "command": "carbonara.analyzeWebsite",
+        "title": "Analyze Website"
+      },
+      {
+        "command": "carbonara.viewData",
+        "title": "View Data Lake"
       },
       {
         "command": "carbonara.showStatus",
-        "title": "Show Carbonara Status"
+        "title": "Show Project Status"
+      },
+      {
+        "command": "carbonara.openConfig",
+        "title": "Open Configuration"
       }
     ],
     "configuration": {
@@ -82,17 +100,16 @@
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish",
+    "install-extension": "code --install-extension ./carbonara-vscode-1.0.0.vsix",
     "test": "node ./out/test/runTest.js"
   },
   "dependencies": {
-    "@carbonara/rpc-client-js": "workspace:*",
-    "@carbonara/rpc-protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0",
     "@types/node": "16.x",
     "typescript": "^4.9.4",
     "@vscode/test-electron": "^2.2.0",
-    "vsce": "^2.15.0"
+    "@vscode/vsce": "^2.15.0"
   }
 } 

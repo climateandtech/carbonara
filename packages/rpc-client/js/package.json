@@ -11,7 +11,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@carbonara/rpc-protocol": "workspace:*",
+
     "ws": "^8.14.0"
   },
   "devDependencies": {

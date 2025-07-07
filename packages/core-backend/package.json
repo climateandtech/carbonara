@@ -11,6 +11,6 @@
     "clean": "npm run clean --workspace=@carbonara/core-backend-ts"
   },
   "dependencies": {
-    "@carbonara/core-backend-ts": "workspace:*"
+
   }
 } 

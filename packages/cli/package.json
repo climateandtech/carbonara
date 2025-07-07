@@ -1,0 +1,37 @@
+{
+  "name": "@carbonara/cli",
+  "version": "1.0.0",
+  "description": "Carbonara CLI tool for CO2 assessment and modular tool execution",
+  "main": "src/index.js",
+  "bin": {
+    "carbonara": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "inquirer": "^8.2.6",
+    "ora": "^6.3.1",
+    "sqlite3": "^5.1.7",
+    "zod": "^3.25.67",
+    "cypress": "^13.17.0"
+  },
+  "keywords": [
+    "cli",
+    "co2",
+    "assessment",
+    "greenframe",
+    "sustainability"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
