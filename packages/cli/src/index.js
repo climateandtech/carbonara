@@ -1076,8 +1076,8 @@ async function showData(db, projectId, config) {
           }, {});
 
           // Show CO2 Assessment data nicely
-          if (groupedData.assessment) {
-            const latestAssessment = groupedData.assessment[0];
+          if (groupedData['co2-assessment']) {
+            const latestAssessment = groupedData['co2-assessment'][0];
             let data;
             try {
               data = typeof latestAssessment.data === 'string' ? JSON.parse(latestAssessment.data) : latestAssessment.data;
@@ -1088,40 +1088,42 @@ async function showData(db, projectId, config) {
             console.log(chalk.green.bold('\n🌍 CO2 Assessment Results'));
             console.log(`   Date: ${chalk.gray(new Date(latestAssessment.timestamp).toLocaleDateString())}`);
             
-            if (data.finalScore !== undefined) {
-              const scoreColor = data.finalScore >= 70 ? 'green' : data.finalScore >= 40 ? 'yellow' : 'red';
-              console.log(`   Overall Score: ${chalk[scoreColor].bold(data.finalScore + '/100')}`);
+            if (data.impactScore !== undefined) {
+              const scoreColor = data.impactScore >= 70 ? 'red' : data.impactScore >= 40 ? 'yellow' : 'green';
+              console.log(`   Overall Score: ${chalk[scoreColor].bold(data.impactScore + '/100')} (Lower is better)`);
             }
             
-            if (data.projectScope) {
+            if (data.projectInfo) {
               console.log(chalk.cyan('\n   📊 Project Scope:'));
-              if (data.projectScope.estimatedUsers) {
-                console.log(`      Users: ${chalk.white(data.projectScope.estimatedUsers.toLocaleString())}`);
+              if (data.projectInfo.expectedUsers) {
+                console.log(`      Users: ${chalk.white(data.projectInfo.expectedUsers.toLocaleString())}`);
               }
-              if (data.projectScope.expectedTraffic) {
-                console.log(`      Traffic: ${chalk.white(data.projectScope.expectedTraffic)}`);
+              if (data.projectInfo.expectedTraffic) {
+                console.log(`      Traffic: ${chalk.white(data.projectInfo.expectedTraffic)}`);
               }
-              if (data.projectScope.projectLifespan) {
-                console.log(`      Lifespan: ${chalk.white(data.projectScope.projectLifespan)}`);
+              if (data.projectInfo.projectLifespan) {
+                console.log(`      Lifespan: ${chalk.white(data.projectInfo.projectLifespan + ' months')}`);
               }
             }
             
             if (data.infrastructure) {
               console.log(chalk.cyan('\n   🏗️  Infrastructure:'));
-              if (data.infrastructure.hostingProvider) {
-                console.log(`      Hosting: ${chalk.white(data.infrastructure.hostingProvider)}`);
+              if (data.infrastructure.hostingType) {
+                console.log(`      Hosting: ${chalk.white(data.infrastructure.hostingType)}`);
               }
               if (data.infrastructure.serverLocation) {
                 console.log(`      Location: ${chalk.white(data.infrastructure.serverLocation)}`);
               }
+              if (data.infrastructure.dataStorage) {
+                console.log(`      Storage: ${chalk.white(data.infrastructure.dataStorage)}`);
+              }
             }
             
-            if (data.categoryBreakdown) {
-              console.log(chalk.cyan('\n   📈 Score Breakdown:'));
-              Object.entries(data.categoryBreakdown).forEach(([category, score]) => {
-                const scoreColor = score >= 7 ? 'green' : score >= 4 ? 'yellow' : 'red';
-                console.log(`      ${category}: ${chalk[scoreColor](score + '/10')}`);
-              });
+            if (data.sustainabilityGoals) {
+              console.log(chalk.cyan('\n   🌱 Sustainability Goals:'));
+              console.log(`      Carbon Neutrality: ${chalk.white(data.sustainabilityGoals.carbonNeutralityTarget ? 'Yes' : 'No')}`);
+              console.log(`      Green Hosting: ${chalk.white(data.sustainabilityGoals.greenHostingRequired ? 'Yes' : 'No')}`);
+              console.log(`      Optimization Priority: ${chalk.white(data.sustainabilityGoals.optimizationPriority)}`);
             }
           }
 
