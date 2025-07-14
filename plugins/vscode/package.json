@@ -1,0 +1,98 @@
+{
+  "name": "carbonara-vscode",
+  "displayName": "Carbonara",
+  "description": "Multi-Editor Plugin Architecture client for VS Code",
+  "version": "1.0.0",
+  "publisher": "carbonara",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "rpc",
+    "plugin",
+    "multi-editor"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "carbonara.connect",
+        "title": "Connect to Carbonara Server"
+      },
+      {
+        "command": "carbonara.disconnect",
+        "title": "Disconnect from Carbonara Server"
+      },
+      {
+        "command": "carbonara.analyze",
+        "title": "Analyze Current File"
+      },
+      {
+        "command": "carbonara.showStatus",
+        "title": "Show Carbonara Status"
+      }
+    ],
+    "configuration": {
+      "title": "Carbonara",
+      "properties": {
+        "carbonara.server.host": {
+          "type": "string",
+          "default": "localhost",
+          "description": "Carbonara server host"
+        },
+        "carbonara.server.port": {
+          "type": "number",
+          "default": 3000,
+          "description": "Carbonara server port"
+        },
+        "carbonara.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically connect to server on startup"
+        },
+        "carbonara.transport": {
+          "type": "string",
+          "enum": ["websocket", "http"],
+          "default": "websocket",
+          "description": "Transport method for server communication"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "typescript",
+        "extensions": [".ts", ".tsx"]
+      },
+      {
+        "id": "javascript",
+        "extensions": [".js", ".jsx"]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish",
+    "test": "node ./out/test/runTest.js"
+  },
+  "dependencies": {
+    "@carbonara/rpc-client-js": "workspace:*",
+    "@carbonara/rpc-protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "typescript": "^4.9.4",
+    "@vscode/test-electron": "^2.2.0",
+    "vsce": "^2.15.0"
+  }
+} 

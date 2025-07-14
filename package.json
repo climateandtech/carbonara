@@ -1,0 +1,33 @@
+{
+  "name": "carbonara-monorepo",
+  "version": "1.0.0",
+  "description": "Multi-Editor Plugin Architecture with JSON-RPC for Carbonara",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "npm run clean --workspaces",
+    "setup": "npm install && npm run build",
+    "start:backend": "npm run start --workspace=packages/core-backend",
+    "start:web": "npm run dev --workspace=apps/web-ui",
+    "start:cli": "npm run start --workspace=packages/cli"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+} 

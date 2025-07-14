@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Carbonara JSON-RPC Protocol",
+  "description": "JSON-RPC 2.0 protocol specification for Carbonara multi-editor plugin architecture",
+  "definitions": {
+    "jsonrpc-request": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": { "type": "string" },
+        "params": {},
+        "id": { "oneOf": [{ "type": "string" }, { "type": "number" }] }
+      },
+      "required": ["jsonrpc", "method"],
+      "additionalProperties": false
+    },
+    "jsonrpc-response": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "result": {},
+        "error": { "$ref": "#/definitions/jsonrpc-error" },
+        "id": { "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "null" }] }
+      },
+      "required": ["jsonrpc", "id"],
+      "additionalProperties": false
+    },
+    "jsonrpc-error": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "integer" },
+        "message": { "type": "string" },
+        "data": {}
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "line": { "type": "integer", "minimum": 0 },
+        "character": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["line", "character"],
+      "additionalProperties": false
+    },
+    "range": {
+      "type": "object",
+      "properties": {
+        "start": { "$ref": "#/definitions/position" },
+        "end": { "$ref": "#/definitions/position" }
+      },
+      "required": ["start", "end"],
+      "additionalProperties": false
+    },
+    "diagnostic": {
+      "type": "object",
+      "properties": {
+        "range": { "$ref": "#/definitions/range" },
+        "message": { "type": "string" },
+        "severity": { "enum": ["error", "warning", "info", "hint"] },
+        "source": { "type": "string" },
+        "code": { "oneOf": [{ "type": "string" }, { "type": "number" }] }
+      },
+      "required": ["range", "message", "severity"],
+      "additionalProperties": false
+    }
+  },
+  "methods": {
+    "carbonara/initialize": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "clientInfo": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" }
+            },
+            "required": ["name", "version"]
+          }
+        },
+        "required": ["clientInfo"]
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "completionProvider": { "type": "boolean" },
+              "diagnosticProvider": { "type": "boolean" },
+              "refactorProvider": { "type": "boolean" },
+              "documentFormattingProvider": { "type": "boolean" }
+            }
+          }
+        },
+        "required": ["capabilities"]
+      }
+    },
+    "carbonara/analyze": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "uri": { "type": "string", "format": "uri" },
+          "content": { "type": "string" }
+        },
+        "required": ["uri"]
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/diagnostic" }
+          }
+        },
+        "required": ["diagnostics"]
+      }
+    },
+    "carbonara/getCompletions": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "uri": { "type": "string", "format": "uri" },
+          "position": { "$ref": "#/definitions/position" },
+          "context": {}
+        },
+        "required": ["uri", "position"]
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string" },
+                "kind": { "type": "integer", "minimum": 1, "maximum": 18 },
+                "detail": { "type": "string" },
+                "documentation": { "type": "string" },
+                "insertText": { "type": "string" },
+                "sortText": { "type": "string" }
+              },
+              "required": ["label", "kind"]
+            }
+          }
+        },
+        "required": ["items"]
+      }
+    }
+  },
+  "notifications": {
+    "carbonara/diagnosticsChanged": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "uri": { "type": "string", "format": "uri" },
+          "diagnostics": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/diagnostic" }
+          }
+        },
+        "required": ["uri", "diagnostics"]
+      }
+    }
+  }
+} 
