@@ -72,33 +72,69 @@ async function initCommand(options) {
       fs.mkdirSync(projectPath, { recursive: true });
     }
 
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'name',
-        message: 'Project name:',
-        default: path.basename(projectPath),
-        validate: (input) => input.length > 0 ? true : 'Project name is required'
-      },
-      {
-        type: 'input',
-        name: 'description',
-        message: 'Project description:',
-        default: 'A Carbonara CO2 assessment project'
-      },
-      {
-        type: 'list',
-        name: 'projectType',
-        message: 'Project type:',
-        choices: [
-          { name: 'Web Application', value: 'web' },
-          { name: 'Mobile Application', value: 'mobile' },
-          { name: 'Desktop Application', value: 'desktop' },
-          { name: 'API/Backend Service', value: 'api' },
-          { name: 'Other', value: 'other' }
-        ]
+    let answers;
+    
+    // Check if all required options are provided (non-interactive mode)
+    if (options.name && options.description && options.type) {
+      // Non-interactive mode - use provided options
+      answers = {
+        name: options.name,
+        description: options.description,
+        projectType: { value: options.type }
+      };
+      
+      // Validate the project type
+      const validTypes = ['web', 'mobile', 'desktop', 'api', 'other'];
+      if (!validTypes.includes(options.type)) {
+        throw new Error(`Invalid project type: ${options.type}. Must be one of: ${validTypes.join(', ')}`);
       }
-    ]);
+    } else {
+      // Interactive mode - prompt for missing values
+      const prompts = [];
+      
+      if (!options.name) {
+        prompts.push({
+          type: 'input',
+          name: 'name',
+          message: 'Project name:',
+          default: path.basename(projectPath),
+          validate: (input) => input.length > 0 ? true : 'Project name is required'
+        });
+      }
+      
+      if (!options.description) {
+        prompts.push({
+          type: 'input',
+          name: 'description',
+          message: 'Project description:',
+          default: 'A Carbonara CO2 assessment project'
+        });
+      }
+      
+      if (!options.type) {
+        prompts.push({
+          type: 'list',
+          name: 'projectType',
+          message: 'Project type:',
+          choices: [
+            { name: 'Web Application', value: 'web' },
+            { name: 'Mobile Application', value: 'mobile' },
+            { name: 'Desktop Application', value: 'desktop' },
+            { name: 'API/Backend Service', value: 'api' },
+            { name: 'Other', value: 'other' }
+          ]
+        });
+      }
+      
+      const promptAnswers = await inquirer.prompt(prompts);
+      
+      // Combine provided options with prompted answers
+      answers = {
+        name: options.name || promptAnswers.name,
+        description: options.description || promptAnswers.description,
+        projectType: options.type ? { value: options.type } : promptAnswers.projectType
+      };
+    }
 
     // Initialize database
     const dbPath = path.join(projectPath, 'carbonara.db');
@@ -157,19 +193,42 @@ async function initCommand(options) {
   }
 }
 
+// Function to find project config by searching up directory tree
+function findProjectConfig(searchPath) {
+  let currentPath = searchPath || process.cwd();
+  
+  while (currentPath !== path.dirname(currentPath)) {
+    const configPath = path.join(currentPath, 'carbonara.config.json');
+    
+    if (fs.existsSync(configPath)) {
+      try {
+        const configContent = fs.readFileSync(configPath, 'utf-8');
+        const config = JSON.parse(configContent);
+        return { config, projectPath: currentPath };
+      } catch (error) {
+        throw new Error(`Failed to parse config file: ${configPath}`);
+      }
+    }
+    
+    currentPath = path.dirname(currentPath);
+  }
+  
+  return null;
+}
+
 // Assessment command with comprehensive CO2 questionnaire
 async function assessCommand(options) {
   try {
     console.log(chalk.blue('🌱 Starting CO2 Assessment...'));
     
-    // Load project config
-    const configPath = path.join(process.cwd(), 'carbonara.config.json');
-    if (!fs.existsSync(configPath)) {
+    // Load project config by searching up directory tree
+    const projectInfo = findProjectConfig();
+    if (!projectInfo) {
       console.log(chalk.yellow('⚠️  No project found. Run "carbonara init" first.'));
       return;
     }
 
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const { config, projectPath } = projectInfo;
     
     let assessmentData;
 
@@ -191,7 +250,7 @@ async function assessCommand(options) {
     const impactScore = calculateCO2Impact(assessmentData);
     
     // Store in database
-    const db = new sqlite3.Database(path.join(process.cwd(), 'carbonara.db'));
+    const db = new sqlite3.Database(path.join(projectPath, 'carbonara.db'));
     
     db.run(
       'UPDATE projects SET co2_variables = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -791,14 +850,14 @@ function displayWebsiteTestResults(results, format) {
 
 async function saveWebsiteTestToDatabase(url, results) {
   try {
-    const configPath = path.join(process.cwd(), 'carbonara.config.json');
-    if (!fs.existsSync(configPath)) {
+    const projectInfo = findProjectConfig();
+    if (!projectInfo) {
       console.log(chalk.yellow('⚠️  No project found. Results not saved to database.'));
       return;
     }
 
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    const db = new sqlite3.Database(path.join(process.cwd(), 'carbonara.db'));
+    const { config, projectPath } = projectInfo;
+    const db = new sqlite3.Database(path.join(projectPath, 'carbonara.db'));
 
     db.run(
       'INSERT INTO assessment_data (project_id, tool_name, data_type, data, source) VALUES (?, ?, ?, ?, ?)',
@@ -924,14 +983,14 @@ function displayGreenframeResults(results, format) {
 
 async function saveGreenframeToDatabase(url, results) {
   try {
-    const configPath = path.join(process.cwd(), 'carbonara.config.json');
-    if (!fs.existsSync(configPath)) {
+    const projectInfo = findProjectConfig();
+    if (!projectInfo) {
       console.log(chalk.yellow('⚠️  No project found. Results not saved to database.'));
       return;
     }
 
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    const db = new sqlite3.Database(path.join(process.cwd(), 'carbonara.db'));
+    const { config, projectPath } = projectInfo;
+    const db = new sqlite3.Database(path.join(projectPath, 'carbonara.db'));
 
     db.run(
       'INSERT INTO assessment_data (project_id, tool_name, data_type, data, source) VALUES (?, ?, ?, ?, ?)',
@@ -958,14 +1017,14 @@ async function saveGreenframeToDatabase(url, results) {
 // Data command
 async function dataCommand(options) {
   try {
-    const configPath = path.join(process.cwd(), 'carbonara.config.json');
-    if (!fs.existsSync(configPath)) {
+    const projectInfo = findProjectConfig();
+    if (!projectInfo) {
       console.log(chalk.yellow('⚠️  No project found. Run "carbonara init" first.'));
       return;
     }
 
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    const db = new sqlite3.Database(path.join(process.cwd(), 'carbonara.db'));
+    const { config, projectPath } = projectInfo;
+    const db = new sqlite3.Database(path.join(projectPath, 'carbonara.db'));
 
     if (options.list) {
       await listData(db, config.projectId);
@@ -1402,6 +1461,9 @@ program
   .command('init')
   .description('Initialize a new Carbonara project')
   .option('-p, --path <path>', 'Project path', '.')
+  .option('-n, --name <name>', 'Project name')
+  .option('-d, --description <description>', 'Project description')
+  .option('-t, --type <type>', 'Project type (web|mobile|desktop|api|other)')
   .action(initCommand);
 
 program

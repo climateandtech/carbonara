@@ -1,0 +1,35 @@
+{
+  "project-info": {
+    "expectedUsers": 1000,
+    "expectedTraffic": "low",
+    "targetAudience": "local",
+    "projectLifespan": 100
+  },
+  "infrastructure": {
+    "hostingType": "shared",
+    "cloudProvider": "aws",
+    "serverLocation": "different-continent",
+    "dataStorage": "heavy",
+    "backupStrategy": "daily"
+  },
+  "development": {
+    "teamSize": 50,
+    "developmentDuration": 20,
+    "cicdPipeline": true,
+    "testingStrategy": "comprehensive",
+    "codeQuality": "excellent"
+  },
+  "features": {
+    "realTimeFeatures": true,
+    "mediaProcessing": true,
+    "aiMlFeatures": true,
+    "blockchainIntegration": true,
+    "iotIntegration": true
+  },
+  "sustainability": {
+    "carbonNeutralityTarget": true,
+    "greenHostingRequired": true,
+    "optimizationPriority": "balanced",
+    "budgetForGreenTech": "medium"
+  }
+}

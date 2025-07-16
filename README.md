@@ -318,12 +318,52 @@ node src/index.js init    # Direct node execution
 ```
 
 ### VS Code Extension Development
+
+#### Building from Source
 ```bash
 cd plugins/vscode
-npm install
-npm run build      # Compile TypeScript
-npm run package    # Create .vsix package
+npm install               # Install dependencies
+npm run build            # Compile TypeScript to JavaScript
 ```
+
+#### Creating Installation Package
+```bash
+cd plugins/vscode
+npm run package          # Creates .vsix package for installation
+```
+
+#### Installation and Testing
+```bash
+# Install the built extension
+code --install-extension carbonara-vscode-*.vsix
+
+# Or install directly from VS Code:
+# 1. Open VS Code
+# 2. Go to Extensions panel (Ctrl+Shift+X)
+# 3. Click "..." menu → "Install from VSIX..."
+# 4. Select the generated .vsix file
+```
+
+#### Development Workflow
+```bash
+# 1. Make changes to TypeScript files
+# 2. Build the extension
+npm run build
+
+# 3. Package extension
+npm run package
+
+# 4. Install/reinstall in VS Code
+code --install-extension carbonara-vscode-*.vsix
+
+# 5. Restart VS Code or reload window (Ctrl+Shift+P → "Developer: Reload Window")
+```
+
+#### Available Scripts
+- `npm run build` - Compile TypeScript (`tsc -p ./`)
+- `npm run watch` - Watch mode compilation (`tsc -watch -p ./`)
+- `npm run package` - Create .vsix package (`vsce package`)
+- `npm run publish` - Publish to VS Code marketplace (`vsce publish`)
 
 ### Backend Development
 - **TypeScript**: Use `packages/core-backend/typescript/` for TypeScript services

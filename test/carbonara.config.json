@@ -1,0 +1,13 @@
+{
+  "name": "carbonara-test",
+  "description": "A Carbonara CO2 assessment project",
+  "projectId": 1,
+  "database": {
+    "path": "carbonara.db"
+  },
+  "tools": {
+    "greenframe": {
+      "enabled": true
+    }
+  }
+}

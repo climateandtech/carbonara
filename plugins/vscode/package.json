@@ -2,7 +2,7 @@
   "name": "carbonara-vscode",
   "displayName": "Carbonara",
   "description": "Multi-Editor Plugin Architecture client for VS Code",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "publisher": "carbonara",
   "repository": {
     "type": "git",
@@ -56,8 +56,105 @@
       {
         "command": "carbonara.openConfig",
         "title": "Open Configuration"
+      },
+      {
+        "command": "carbonara.editSection",
+        "title": "Edit Section",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "carbonara.completeAssessment",
+        "title": "Complete Assessment",
+        "icon": "$(check)"
+      },
+      {
+        "command": "carbonara.refreshAssessment",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "carbonara.refreshData",
+        "title": "Refresh Data",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "carbonara.exportDataJson",
+        "title": "Export as JSON",
+        "icon": "$(export)"
+      },
+      {
+        "command": "carbonara.exportDataCsv",
+        "title": "Export as CSV",
+        "icon": "$(export)"
+      },
+      {
+        "command": "carbonara.clearAllData",
+        "title": "Clear All Data",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "carbonara.openProject",
+        "title": "Open Carbonara Project",
+        "icon": "$(folder-opened)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "carbonara",
+          "title": "Carbonara",
+          "icon": "$(leaf)"
+        }
+      ]
+    },
+    "views": {
+      "carbonara": [
+        {
+          "id": "carbonara.assessmentTree",
+          "name": "CO2 Assessment",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "id": "carbonara.dataTree",
+          "name": "Data & Results",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "carbonara.completeAssessment",
+          "when": "view == carbonara.assessmentTree",
+          "group": "navigation"
+        },
+        {
+          "command": "carbonara.refreshAssessment",
+          "when": "view == carbonara.assessmentTree",
+          "group": "navigation"
+        },
+        {
+          "command": "carbonara.refreshData",
+          "when": "view == carbonara.dataTree",
+          "group": "navigation"
+        },
+        {
+          "command": "carbonara.exportDataJson",
+          "when": "view == carbonara.dataTree",
+          "group": "navigation"
+        },
+        {
+          "command": "carbonara.exportDataCsv",
+          "when": "view == carbonara.dataTree",
+          "group": "navigation"
+        },
+        {
+          "command": "carbonara.clearAllData",
+          "when": "view == carbonara.dataTree",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Carbonara",
       "properties": {
