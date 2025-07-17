@@ -202,3 +202,7 @@ Thumbs.db
 # Local development
 .turbo
 .npmrc 
+
+# Carbonara
+carbonara.config.json
+carbonara.db

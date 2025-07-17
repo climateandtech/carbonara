@@ -9,7 +9,7 @@ Carbonara is a comprehensive platform for **CO2 assessment** and **web sustainab
 ### Key Features
 
 - **🔍 CO2 Assessment**: Comprehensive questionnaires to evaluate project sustainability
-- **🌐 Web Analysis**: Greenframe integration for website carbon footprint analysis  
+- **🌐 Web Analysis**: Greenframe integration for website carbon footprint analysis
 - **📊 Data Lake**: SQLite-based storage for all assessment data with JSON flexibility
 - **🛠️ CLI Tool**: Command-line interface for all operations
 - **📝 VS Code Extension**: Native IDE integration with visual interface
@@ -76,16 +76,19 @@ carbonara/
 ### Option 1: CLI Tool (Recommended)
 
 1. **Install the CLI globally:**
+
    ```bash
    npm install -g @carbonara/cli
    ```
 
 2. **Initialize a project:**
+
    ```bash
    carbonara init
    ```
 
 3. **Run CO2 assessment:**
+
    ```bash
    carbonara assess
    ```
@@ -98,6 +101,7 @@ carbonara/
 ### Option 2: VS Code Extension
 
 1. **Install the extension:**
+
    ```bash
    cd plugins/vscode
    code --install-extension carbonara-vscode-1.0.0.vsix
@@ -111,16 +115,19 @@ carbonara/
 ### Option 3: Development Setup
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 2. **Build all packages:**
+
    ```bash
    npm run build
    ```
 
 3. **Install CLI locally for development:**
+
    ```bash
    cd packages/cli
    npm link
@@ -136,23 +143,27 @@ carbonara/
 
 ### Core Commands
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `init` | Initialize new Carbonara project | `carbonara init --path ./my-project` |
-| `assess` | Run CO2 assessment questionnaire | `carbonara assess` |
+| Command            | Description                      | Example                                           |
+| ------------------ | -------------------------------- | ------------------------------------------------- |
+| `init`             | Initialize new Carbonara project | `carbonara init --path ./my-project`              |
+| `assess`           | Run CO2 assessment questionnaire | `carbonara assess`                                |
 | `greenframe <url>` | Analyze website carbon footprint | `carbonara greenframe https://example.com --save` |
-| `data` | Manage stored assessment data | `carbonara data --list` |
+| `data`             | Manage stored assessment data    | `carbonara data --list`                           |
 
 ### Command Details
 
 #### `carbonara init [options]`
+
 **Initialize a new Carbonara project**
+
 - `--path <path>` - Project directory (default: current directory)
 - Creates: `carbonara.config.json`, `carbonara.db`, `schemas/`
 - Interactive prompts for project name, description, and type
 
-#### `carbonara assess [options]`  
+#### `carbonara assess [options]`
+
 **Run comprehensive CO2 assessment**
+
 - Interactive questionnaire covering:
   - Project scope (users, traffic, lifespan)
   - Infrastructure (hosting, location, storage)
@@ -163,24 +174,30 @@ carbonara/
 - Stores results in SQLite database
 
 #### `carbonara greenframe <url> [options]`
+
 **Analyze website carbon footprint using Greenframe**
+
 - `--save` - Save results to database
 - `--output <format>` - Output format (json|table)
 - Provides carbon footprint, energy consumption, and optimization suggestions
 
 #### `carbonara data [options]`
+
 **Manage assessment data lake**
+
 - `--list` - List all stored data
 - `--export <format>` - Export data (json|csv)
 - `--clear` - Clear all stored data
 
 ### Global Options
+
 - `--help` - Show command help
 - `--version` - Show version information
 
 ## 📝 VS Code Extension
 
 ### Features
+
 - **Status Bar Integration**: Real-time project status indicator
 - **Command Palette Integration**: Access all Carbonara commands
 - **Interactive Menus**: Visual interface for all operations
@@ -188,6 +205,7 @@ carbonara/
 - **Data Visualization**: View assessment results and project status
 
 ### Installation
+
 ```bash
 # Method 1: Command line
 code --install-extension ./plugins/vscode/carbonara-vscode-1.0.0.vsix
@@ -197,23 +215,26 @@ code --install-extension ./plugins/vscode/carbonara-vscode-1.0.0.vsix
 ```
 
 ### Usage
+
 1. **Open workspace** in VS Code
 2. **Click Carbonara icon** in status bar (bottom-right)
 3. **Select action** from the quick-pick menu:
    - 🚀 Initialize Project
-   - ✅ Run CO2 Assessment  
+   - ✅ Run CO2 Assessment
    - 🌐 Analyze Website
    - 🗄️ View Data
    - ⚙️ Open Configuration
    - ℹ️ Show Status
 
 ### Status Indicators
+
 - **$(pulse) Carbonara**: Project not initialized
 - **$(check) Carbonara**: Project ready
 
 ## 🗄️ Database Model
 
 ### Overview
+
 - **Type**: SQLite database (`carbonara.db`)
 - **Design**: Schemaless with JSON storage for flexibility
 - **Location**: Created in each project directory
@@ -221,6 +242,7 @@ code --install-extension ./plugins/vscode/carbonara-vscode-1.0.0.vsix
 ### Table Structure
 
 #### `projects` - Project Management
+
 ```sql
 CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,6 +257,7 @@ CREATE TABLE projects (
 ```
 
 #### `assessment_data` - Data Lake Storage
+
 ```sql
 CREATE TABLE assessment_data (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -249,6 +272,7 @@ CREATE TABLE assessment_data (
 ```
 
 #### `tool_runs` - Execution History
+
 ```sql
 CREATE TABLE tool_runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -267,6 +291,7 @@ CREATE TABLE tool_runs (
 ### Data Examples
 
 **CO2 Assessment Data:**
+
 ```json
 {
   "projectInfo": {
@@ -290,6 +315,7 @@ CREATE TABLE tool_runs (
 ```
 
 **Greenframe Analysis Data:**
+
 ```json
 {
   "url": "https://example.com",
@@ -306,6 +332,7 @@ CREATE TABLE tool_runs (
 ## 🔧 Development
 
 ### CLI Development
+
 ```bash
 cd packages/cli
 npm install
@@ -320,6 +347,7 @@ node src/index.js init    # Direct node execution
 ### VS Code Extension Development
 
 #### Building from Source
+
 ```bash
 cd plugins/vscode
 npm install               # Install dependencies
@@ -327,12 +355,14 @@ npm run build            # Compile TypeScript to JavaScript
 ```
 
 #### Creating Installation Package
+
 ```bash
 cd plugins/vscode
 npm run package          # Creates .vsix package for installation
 ```
 
 #### Installation and Testing
+
 ```bash
 # Install the built extension
 code --install-extension carbonara-vscode-*.vsix
@@ -345,6 +375,7 @@ code --install-extension carbonara-vscode-*.vsix
 ```
 
 #### Development Workflow
+
 ```bash
 # 1. Make changes to TypeScript files
 # 2. Build the extension
@@ -360,16 +391,19 @@ code --install-extension carbonara-vscode-*.vsix
 ```
 
 #### Available Scripts
+
 - `npm run build` - Compile TypeScript (`tsc -p ./`)
 - `npm run watch` - Watch mode compilation (`tsc -watch -p ./`)
 - `npm run package` - Create .vsix package (`vsce package`)
 - `npm run publish` - Publish to VS Code marketplace (`vsce publish`)
 
 ### Backend Development
+
 - **TypeScript**: Use `packages/core-backend/typescript/` for TypeScript services
 - **Python**: Use `packages/core-backend/python/` for Python services
 
 ### Testing
+
 ```bash
 npm test           # Run all tests
 npm run test:cli   # CLI tests only
@@ -388,8 +422,4 @@ Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code 
 
 ## 📄 License
 
-<<<<<<< HEAD
-This project is licensed under the RPL License - see the [LICENSE](./LICENSE) file for details.
-=======
-This project is licensed under the RPL License with dual licensing - see the [LICENSE](./LICENSE) file for details. 
->>>>>>> 0fe5892 (Add proof of concept with CLI and VSCODE extension)
+This project is licensed under the RPL License with dual licensing - see the [LICENSE](./LICENSE) file for details.
