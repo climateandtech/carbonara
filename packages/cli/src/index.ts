@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import { initCommand } from './commands/init';
 import { assessCommand } from './commands/assess';
 import { greenframeCommand } from './commands/greenframe';
+import { megalinterCommand } from './commands/megalinter';
 import { dataCommand } from './commands/data';
 import { version } from '../package.json';
 
@@ -33,6 +34,15 @@ program
   .option('-s, --save', 'Save results to data lake')
   .option('-o, --output <format>', 'Output format (json|table)', 'table')
   .action(greenframeCommand);
+
+program
+  .command('megalinter')
+  .description('Run MegaLinter code quality analysis')
+  .option('-s, --save', 'Save results to data lake')
+  .option('-o, --output <format>', 'Output format (json|table)', 'table')
+  .option('-f, --flavor <flavor>', 'MegaLinter flavor to use')
+  .option('-e, --env <env>', 'Environment variables for MegaLinter')
+  .action(megalinterCommand);
 
 program
   .command('data')

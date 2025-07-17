@@ -608,6 +608,170 @@ async function greenframeCommand(url, options) {
   }
 }
 
+// MegaLinter command
+async function megalinterCommand(options) {
+  const spinner = require('ora').default('Running MegaLinter analysis...').start();
+  
+  try {
+    const { execa } = await import('execa');
+    
+    // Check if npx is available
+    try {
+      await execa('npx', ['--version']);
+    } catch {
+      throw new Error('npx is required to run MegaLinter. Please install Node.js');
+    }
+
+    spinner.text = 'Starting MegaLinter interactive configuration...';
+    
+    // Prepare command arguments
+    const args = ['mega-linter-runner'];
+    
+    if (options.flavor) {
+      args.push('--flavor', options.flavor);
+    }
+    
+    if (options.env) {
+      args.push('--env', options.env);
+    }
+
+    // Run MegaLinter with interactive configuration
+    const megalinterResult = await execa('npx', args, {
+      stdio: 'inherit', // Allow interactive input/output
+      cwd: process.cwd()
+    });
+
+    spinner.succeed('MegaLinter analysis completed!');
+
+    // Since MegaLinter outputs to files, we need to read the results
+    const results = await parseMegalinterResults();
+    
+    // Display results
+    displayMegalinterResults(results, options.output || 'table');
+
+    // Save to database if requested
+    if (options.save) {
+      await saveMegalinterToDatabase(results);
+    }
+
+  } catch (error) {
+    spinner.fail('MegaLinter analysis failed');
+    
+    if (error.message.includes('mega-linter-runner')) {
+      console.log(chalk.yellow('\n💡 MegaLinter not found. You can install it with:'));
+      console.log(chalk.white('npm install -g mega-linter-runner'));
+      console.log(chalk.gray('or it will be downloaded automatically when run with npx'));
+    } else {
+      console.error(chalk.red('Error:'), error.message);
+    }
+    
+    process.exit(1);
+  }
+}
+
+async function parseMegalinterResults() {
+  try {
+    // MegaLinter typically outputs to megalinter-reports directory
+    const reportsDir = path.join(process.cwd(), 'megalinter-reports');
+    
+    // Try to read the main report file
+    let reportData = {};
+    
+    try {
+      const reportPath = path.join(reportsDir, 'megalinter-report.json');
+      const reportContent = fs.readFileSync(reportPath, 'utf8');
+      reportData = JSON.parse(reportContent);
+    } catch {
+      // If JSON report doesn't exist, create a basic summary
+      reportData = {
+        status: 'completed',
+        timestamp: new Date().toISOString(),
+        reportsDirectory: reportsDir
+      };
+    }
+    
+    return reportData;
+  } catch (error) {
+    return {
+      status: 'completed',
+      timestamp: new Date().toISOString(),
+      note: 'Analysis completed. Check megalinter-reports directory for detailed results.'
+    };
+  }
+}
+
+function displayMegalinterResults(results, format) {
+  console.log(chalk.blue('\n🔍 MegaLinter Analysis Results'));
+  console.log('═'.repeat(50));
+
+  if (format === 'json') {
+    console.log(JSON.stringify(results, null, 2));
+    return;
+  }
+
+  // Table format
+  if (results.status) {
+    console.log(chalk.green('📊 Status:'), results.status);
+  }
+  
+  if (results.timestamp) {
+    console.log(chalk.green('🕐 Completed:'), new Date(results.timestamp).toLocaleString());
+  }
+  
+  if (results.summary) {
+    console.log(chalk.blue('\n📋 Summary:'));
+    if (results.summary.linters_run) {
+      console.log(`  Linters Run: ${results.summary.linters_run}`);
+    }
+    if (results.summary.errors) {
+      console.log(chalk.red(`  Errors: ${results.summary.errors}`));
+    }
+    if (results.summary.warnings) {
+      console.log(chalk.yellow(`  Warnings: ${results.summary.warnings}`));
+    }
+  }
+  
+  if (results.reportsDirectory) {
+    console.log(chalk.blue('\n📁 Reports:'));
+    console.log(`  Check detailed reports in: ${results.reportsDirectory}`);
+  }
+  
+  console.log(chalk.blue('\n💡 Tip:'));
+  console.log('  Open megalinter-reports/index.html in your browser for detailed results');
+}
+
+async function saveMegalinterToDatabase(results) {
+  try {
+    const projectInfo = findProjectConfig();
+    if (!projectInfo) {
+      console.log(chalk.yellow('⚠️  No project found. Results not saved to database.'));
+      return;
+    }
+
+    const { config, projectPath } = projectInfo;
+    const db = new sqlite3.Database(path.join(projectPath, 'carbonara.db'));
+
+    db.run(
+      'INSERT INTO assessment_data (project_id, tool_name, data_type, data, source) VALUES (?, ?, ?, ?, ?)',
+      [config.projectId, 'megalinter', 'code-quality', JSON.stringify({
+        results,
+        analyzedAt: new Date().toISOString()
+      }), 'cli'],
+      (err) => {
+        if (err) {
+          console.error(chalk.red('❌ Failed to save to database:'), err.message);
+        } else {
+          console.log(chalk.green('✅ Results saved to database'));
+        }
+        db.close();
+      }
+    );
+
+  } catch (error) {
+    console.error(chalk.red('❌ Failed to save to database:'), error.message);
+  }
+}
+
 async function testWebsiteCommand(url, options) {
   try {
     console.log(chalk.blue(`🌐 Website Analysis: ${url}`));
@@ -1480,6 +1644,15 @@ program
   .option('-s, --save', 'Save results to data lake')
   .option('-o, --output <format>', 'Output format (json|table)', 'table')
   .action(greenframeCommand);
+
+program
+  .command('megalinter')
+  .description('Run MegaLinter code quality analysis')
+  .option('-s, --save', 'Save results to data lake')
+  .option('-o, --output <format>', 'Output format (json|table)', 'table')
+  .option('-f, --flavor <flavor>', 'MegaLinter flavor to use')
+  .option('-e, --env <env>', 'Environment variables for MegaLinter')
+  .action(megalinterCommand);
 
 program
   .command('test-website')
