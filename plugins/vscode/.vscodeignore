@@ -1,0 +1,44 @@
+# Source files
+src/
+*.ts
+*.map
+
+# Build artifacts
+out/
+node_modules/
+.vscode-test/
+
+# Development files
+.git/
+.gitignore
+.eslintrc.json
+tsconfig.json
+webpack.config.js
+
+# Parent directory files (monorepo structure)
+../**
+../../**
+../../../**
+
+# Test files
+test/
+**/*.test.*
+
+# Documentation (except README)
+*.md
+!README.md
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp 
