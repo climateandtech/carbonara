@@ -207,3 +207,5 @@ Thumbs.db
 carbonara.config.json
 carbonara.db
 test/*
+megalinter-reports
+*/megalinter-reports
