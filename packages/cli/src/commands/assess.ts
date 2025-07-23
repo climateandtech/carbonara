@@ -3,8 +3,8 @@ import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
-import { createDataLake } from '../database';
-import { loadProjectConfig } from '../utils/config';
+import { createDataLake } from '../database/index.js';
+import { loadProjectConfig } from '../utils/config.js';
 
 // CO2 Assessment Schema
 const CO2AssessmentSchema = z.object({
@@ -116,7 +116,7 @@ async function runInteractiveAssessment() {
       name: 'expectedUsers',
       message: 'Expected number of users:',
       default: 1000,
-      validate: (value) => value > 0 ? true : 'Must be greater than 0'
+      validate: (value: number) => value > 0 ? true : 'Must be greater than 0'
     },
     {
       type: 'list',
@@ -144,7 +144,7 @@ async function runInteractiveAssessment() {
       name: 'projectLifespan',
       message: 'Project lifespan (months):',
       default: 12,
-      validate: (value) => value > 0 ? true : 'Must be greater than 0'
+      validate: (value: number) => value > 0 ? true : 'Must be greater than 0'
     }
   ]);
 
@@ -166,7 +166,7 @@ async function runInteractiveAssessment() {
       type: 'input',
       name: 'cloudProvider',
       message: 'Cloud provider (if applicable):',
-      when: (answers) => answers.hostingType === 'cloud'
+      when: (answers: any) => answers.hostingType === 'cloud'
     },
     {
       type: 'list',
@@ -209,14 +209,14 @@ async function runInteractiveAssessment() {
       name: 'teamSize',
       message: 'Development team size:',
       default: 3,
-      validate: (value) => value > 0 ? true : 'Must be greater than 0'
+      validate: (value: number) => value > 0 ? true : 'Must be greater than 0'
     },
     {
       type: 'number',
       name: 'developmentDuration',
       message: 'Development duration (months):',
       default: 6,
-      validate: (value) => value > 0 ? true : 'Must be greater than 0'
+      validate: (value: number) => value > 0 ? true : 'Must be greater than 0'
     },
     {
       type: 'confirm',

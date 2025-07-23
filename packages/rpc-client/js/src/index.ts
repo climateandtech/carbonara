@@ -242,6 +242,11 @@ export class CarbonaraClient {
   }
 
   private handleResponse(response: JsonRpcResponse): void {
+    if (response.id === null) {
+      console.warn('Received response with null ID');
+      return;
+    }
+    
     const pending = this.pendingRequests.get(response.id);
     if (!pending) {
       console.warn('Received response for unknown request ID:', response.id);

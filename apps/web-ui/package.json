@@ -13,7 +13,8 @@
     "clean": "rm -rf dist .svelte-kit"
   },
   "dependencies": {
-
+    "@carbonara/rpc-client-js": "1.0.0",
+    "@carbonara/rpc-protocol": "1.0.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.0.0",

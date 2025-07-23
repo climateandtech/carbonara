@@ -2,7 +2,7 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
-import { createDataLake } from '../database';
+import { createDataLake } from '../database/index.js';
 
 interface InitOptions {
   path: string;

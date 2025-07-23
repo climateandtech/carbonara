@@ -1,8 +1,8 @@
-import { execa } from 'execa';
+import execa from 'execa';
 import chalk from 'chalk';
 import ora from 'ora';
-import { createDataLake } from '../database';
-import { loadProjectConfig } from '../utils/config';
+import { createDataLake } from '../database/index.js';
+import { loadProjectConfig } from '../utils/config.js';
 
 interface GreenframeOptions {
   save: boolean;
@@ -52,7 +52,7 @@ export async function greenframeCommand(url: string, options: GreenframeOptions)
       await saveToDatabase(url, results);
     }
 
-  } catch (error) {
+  } catch (error: any) {
     spinner.fail('Greenframe analysis failed');
     
     if (error.message.includes('greenframe')) {
@@ -143,7 +143,7 @@ async function saveToDatabase(url: string, results: any) {
     await dataLake.close();
     console.log(chalk.green('✅ Results saved to database'));
     
-  } catch (error) {
+  } catch (error: any) {
     console.error(chalk.red('❌ Failed to save to database:'), error.message);
   }
 }
@@ -171,17 +171,18 @@ export async function mockGreenframeAnalysis(url: string): Promise<any> {
     carbonMultiplier *= 1.2; // HTTP slightly less efficient
   }
   
-  const totalCarbon = (baseCarbon * carbonMultiplier).toFixed(2);
+  const totalCarbonNum = baseCarbon * carbonMultiplier;
+  const totalCarbon = totalCarbonNum.toFixed(2);
   
   return {
     url,
     carbon: {
       total: totalCarbon,
       breakdown: {
-        'Data Transfer': (totalCarbon * 0.4).toFixed(2),
-        'Server Processing': (totalCarbon * 0.3).toFixed(2),
-        'Device Usage': (totalCarbon * 0.2).toFixed(2),
-        'Network Infrastructure': (totalCarbon * 0.1).toFixed(2)
+        'Data Transfer': (totalCarbonNum * 0.4).toFixed(2),
+        'Server Processing': (totalCarbonNum * 0.3).toFixed(2),
+        'Device Usage': (totalCarbonNum * 0.2).toFixed(2),
+        'Network Infrastructure': (totalCarbonNum * 0.1).toFixed(2)
       }
     },
     performance: {

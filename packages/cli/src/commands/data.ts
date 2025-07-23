@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
-import { createDataLake } from '../database';
-import { loadProjectConfig } from '../utils/config';
+import { createDataLake } from '../database/index.js';
+import { loadProjectConfig } from '../utils/config.js';
 
 interface DataOptions {
   list: boolean;

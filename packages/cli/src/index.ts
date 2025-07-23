@@ -2,11 +2,13 @@
 
 import { program } from 'commander';
 import chalk from 'chalk';
-import { initCommand } from './commands/init';
-import { assessCommand } from './commands/assess';
-import { greenframeCommand } from './commands/greenframe';
-import { dataCommand } from './commands/data';
-import { version } from '../package.json';
+import { initCommand } from './commands/init.js';
+import { assessCommand } from './commands/assess.js';
+import { greenframeCommand } from './commands/greenframe.js';
+import { dataCommand } from './commands/data.js';
+import packageJson from '../package.json' with { type: 'json' };
+
+const { version } = packageJson;
 
 program
   .name('carbonara')
