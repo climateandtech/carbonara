@@ -167,6 +167,19 @@ async function initCommand(options) {
           JSON.stringify(config, null, 2)
         );
 
+        // Create .mega-linter.yml configuration file - refer to init.ts for the template
+        const { initCommand: tsInitCommand } = require('./commands/init');
+        // Use the same config template as in init.ts
+        const megalinterConfigPath = path.join(__dirname, 'commands/init.ts');
+        if (fs.existsSync(megalinterConfigPath)) {
+          // Copy .mega-linter.yml from project root if it exists, or create basic one
+          const rootConfigPath = path.join(__dirname, '../../../.mega-linter.yml');
+          if (fs.existsSync(rootConfigPath)) {
+            const megalinterConfig = fs.readFileSync(rootConfigPath, 'utf8');
+            fs.writeFileSync(path.join(projectPath, '.mega-linter.yml'), megalinterConfig);
+          }
+        }
+
         // Create schemas directory
         const schemasDir = path.join(projectPath, 'schemas');
         if (!fs.existsSync(schemasDir)) {
@@ -179,11 +192,13 @@ async function initCommand(options) {
         console.log(chalk.yellow('📁 Project path:'), projectPath);
         console.log(chalk.yellow('🗄️  Database:'), 'carbonara.db');
         console.log(chalk.yellow('⚙️  Config:'), 'carbonara.config.json');
+        console.log(chalk.yellow('🔧 MegaLinter:'), '.mega-linter.yml');
         console.log(chalk.yellow('📋 Schemas:'), 'schemas/');
         console.log('');
         console.log(chalk.blue('Next steps:'));
         console.log(chalk.gray('  1. Run'), chalk.white('carbonara assess'), chalk.gray('to start CO2 assessment'));
-        console.log(chalk.gray('  2. Run'), chalk.white('carbonara greenframe <url>'), chalk.gray('to analyze a website'));
+        console.log(chalk.gray('  2. Run'), chalk.white('carbonara megalinter'), chalk.gray('to analyze code quality'));
+        console.log(chalk.gray('  3. Run'), chalk.white('carbonara greenframe <url>'), chalk.gray('to analyze a website'));
       }
     );
 
@@ -622,7 +637,16 @@ async function megalinterCommand(options) {
       throw new Error('npx is required to run MegaLinter. Please install Node.js');
     }
 
-    spinner.text = 'Starting MegaLinter interactive configuration...';
+    // Check if .mega-linter.yml exists
+    const configPath = path.join(process.cwd(), '.mega-linter.yml');
+    
+    try {
+      fs.accessSync(configPath);
+      spinner.text = 'Running MegaLinter with configuration file...';
+    } catch {
+      spinner.warn('No .mega-linter.yml found. Run \'carbonara init\' to create one.');
+      throw new Error('Configuration file .mega-linter.yml not found');
+    }
     
     // Prepare command arguments
     const args = ['mega-linter-runner'];
@@ -635,9 +659,9 @@ async function megalinterCommand(options) {
       args.push('--env', options.env);
     }
 
-    // Run MegaLinter with interactive configuration
+    // Run MegaLinter with configuration file
     const megalinterResult = await execa('npx', args, {
-      stdio: 'inherit', // Allow interactive input/output
+      stdio: 'inherit',
       cwd: process.cwd()
     });
 

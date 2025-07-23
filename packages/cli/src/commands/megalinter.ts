@@ -20,7 +20,20 @@ export async function megalinterCommand(options: MegalinterOptions) {
         "npx is required to run MegaLinter. Please install Node.js"
       );
     }
-    spinner.text = "Starting MegaLinter interactive configuration...";
+    
+    // Check if .mega-linter.yml exists
+    const fs = await import("fs/promises");
+    const path = await import("path");
+    const configPath = path.join(process.cwd(), ".mega-linter.yml");
+    
+    try {
+      await fs.access(configPath);
+      spinner.text = "Running MegaLinter with configuration file...";
+    } catch {
+      spinner.warn("No .mega-linter.yml found. Run 'carbonara init' to create one.");
+      throw new Error("Configuration file .mega-linter.yml not found");
+    }
+    
     // Prepare command arguments
     const args = ["mega-linter-runner"];
     if (options.flavor) {
@@ -29,9 +42,9 @@ export async function megalinterCommand(options: MegalinterOptions) {
     if (options.env) {
       args.push("--env", options.env);
     }
-    // Run MegaLinter with interactive configuration
+    // Run MegaLinter with configuration file
     const megalinterResult = await execa("npx", args, {
-      stdio: "inherit", // Allow interactive input/output
+      stdio: "inherit",
       cwd: process.cwd(),
     });
     spinner.succeed("MegaLinter analysis completed!");
