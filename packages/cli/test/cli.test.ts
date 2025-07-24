@@ -1,15 +1,16 @@
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { describe, test, beforeEach, afterEach, expect } from 'vitest';
 
-describe('Carbonara CLI - Simple Tests', () => {
-  let testDir;
-  let cliPath;
+describe('Carbonara CLI - Tests', () => {
+  let testDir: string;
+  let cliPath: string;
 
   beforeEach(() => {
-    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbonara-simple-'));
-    cliPath = path.join(__dirname, '..', 'src', 'index.js');
+    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbonara-test-'));
+    cliPath = path.resolve('./dist/index.js');
   });
 
   afterEach(() => {
@@ -41,7 +42,7 @@ describe('Carbonara CLI - Simple Tests', () => {
   test('greenframe command should handle invalid URL', () => {
     try {
       execSync(`cd "${testDir}" && node "${cliPath}" greenframe invalid-url`, { encoding: 'utf8' });
-    } catch (error) {
+    } catch (error: any) {
       expect(error.status).toBe(1);
       expect(error.stderr.toString()).toContain('Error');
     }
@@ -55,14 +56,13 @@ describe('Carbonara CLI - Simple Tests', () => {
       });
       expect(result).toContain('Greenframe analysis completed');
       expect(result).toContain('Carbon Footprint');
-    } catch (error) {
-      // If there's an ora error, just check that it's trying to run the command
-      expect(error.stderr.toString()).toContain('ora');
+    } catch (error: any) {
+      // If greenframe fails, just check that it's trying to run
+      expect(error.stderr.toString()).toContain('Greenframe analysis failed');
     }
   });
 
   test('data command should show help when no options provided', () => {
-    // First create a basic project structure to avoid the "no project" error
     fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
       name: 'Test Project',
       projectType: 'web',
@@ -75,7 +75,6 @@ describe('Carbonara CLI - Simple Tests', () => {
   });
 
   test('data --list should handle missing database gracefully', () => {
-    // Create a basic project structure
     fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
       name: 'Test Project',
       projectType: 'web',
@@ -85,9 +84,8 @@ describe('Carbonara CLI - Simple Tests', () => {
     try {
       const result = execSync(`cd "${testDir}" && node "${cliPath}" data --list`, { encoding: 'utf8' });
       expect(result).toContain('No data found');
-    } catch (error) {
-      // Should handle missing database gracefully
+    } catch (error: any) {
       expect(error.stderr.toString()).toContain('Data operation failed');
     }
   });
-}); 
+});

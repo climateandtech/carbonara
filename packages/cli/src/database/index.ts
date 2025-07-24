@@ -7,6 +7,22 @@ import { z } from 'zod';
 // Enable verbose mode for debugging
 sqlite3.verbose();
 
+interface ProjectRow {
+  id?: number;
+  name: string;
+  path: string;
+  metadata?: string;
+  co2_variables?: string;
+  created_at?: string;
+}
+
+interface DataRow {
+  id?: number;
+  type: string;
+  data: string;
+  timestamp?: string;
+}
+
 export interface DatabaseConfig {
   dbPath?: string;
   schemaPath?: string;
@@ -127,12 +143,12 @@ export class DataLake {
       this.db.get(
         'SELECT * FROM projects WHERE path = ?',
         [projectPath],
-        (err, row) => {
+        (err, row: ProjectRow) => {
           if (err) reject(err);
           else {
             if (row) {
-              row.metadata = row.metadata ? JSON.parse(row.metadata) : {};
-              row.co2_variables = row.co2_variables ? JSON.parse(row.co2_variables) : {};
+              (row as any).metadata = row.metadata ? JSON.parse(row.metadata) : {};
+              (row as any).co2_variables = row.co2_variables ? JSON.parse(row.co2_variables) : {};
             }
             resolve(row || null);
           }
@@ -143,7 +159,7 @@ export class DataLake {
 
   async getAllProjects(): Promise<any[]> {
     return new Promise((resolve, reject) => {
-      this.db.all('SELECT * FROM projects ORDER BY created_at DESC', (err, rows) => {
+      this.db.all('SELECT * FROM projects ORDER BY created_at DESC', (err, rows: ProjectRow[]) => {
         if (err) reject(err);
         else {
           const projects = rows.map(row => ({
@@ -181,7 +197,7 @@ export class DataLake {
     query += ' ORDER BY timestamp DESC';
 
     return new Promise((resolve, reject) => {
-      this.db.all(query, params, (err, rows) => {
+      this.db.all(query, params, (err, rows: DataRow[]) => {
         if (err) reject(err);
         else {
           const data = rows.map(row => ({

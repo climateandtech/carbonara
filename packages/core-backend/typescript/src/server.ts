@@ -18,7 +18,7 @@ import {
 export class CarbonaraServer {
   private app: express.Application;
   private server: any;
-  private wss: WebSocket.Server;
+  private wss!: WebSocket.Server;
   private port: number;
   private clients: Set<WebSocket> = new Set();
 

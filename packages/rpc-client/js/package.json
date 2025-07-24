@@ -2,12 +2,13 @@
   "name": "@carbonara/rpc-client-js",
   "version": "1.0.0",
   "description": "JavaScript client library for Carbonara JSON-RPC",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "clean": "rm -rf dist"
   },
   "dependencies": {

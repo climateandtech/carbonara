@@ -6,7 +6,7 @@ The test suite uses a simple, reliable approach focused on testing actual CLI fu
 
 ## Test Files
 
-### `simple.test.js`
+### `cli.test.ts`
 
 Basic functionality tests using `execSync` for reliability:
 
@@ -29,10 +29,7 @@ Basic functionality tests using `execSync` for reliability:
 # Run all tests
 npm test
 
-# Run with coverage
-npm run test:coverage
-
-# Watch mode
+# Run in watch mode during development
 npm run test:watch
 ```
 
@@ -74,7 +71,7 @@ When adding new tests:
 5. Clean up temporary files
 
 Example:
-```javascript
+```typescript
 test('new command should work', () => {
   try {
     const result = execSync(`cd "${testDir}" && node "${cliPath}" newcommand`, { 
@@ -82,7 +79,7 @@ test('new command should work', () => {
       timeout: 5000 
     });
     expect(result).toContain('expected output');
-  } catch (error) {
+  } catch (error: any) {
     // Handle expected errors gracefully
     expect(error.stderr.toString()).toContain('expected error');
   }
