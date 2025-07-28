@@ -1,4 +1,4 @@
-import execa from "execa";
+import { execa } from "execa";
 import chalk from "chalk";
 import ora from "ora";
 import { createDataLake } from "../database/index.js";
@@ -11,7 +11,7 @@ interface GreenframeOptions {
 
 export async function greenframeCommand(
   url: string,
-  options: GreenframeOptions,
+  options: GreenframeOptions
 ) {
   const spinner = ora("Running Greenframe analysis...").start();
 
@@ -28,7 +28,7 @@ export async function greenframeCommand(
       await execa("npx", ["--version"]);
     } catch {
       throw new Error(
-        "npx is required to run Greenframe. Please install Node.js",
+        "npx is required to run Greenframe. Please install Node.js"
       );
     }
 
@@ -40,7 +40,7 @@ export async function greenframeCommand(
       ["greenframe", "analyze", url, "--format=json"],
       {
         stdio: "pipe",
-      },
+      }
     );
 
     spinner.succeed("Greenframe analysis completed!");
@@ -60,7 +60,7 @@ export async function greenframeCommand(
 
     if (error.message.includes("greenframe")) {
       console.log(
-        chalk.yellow("\n💡 Greenframe CLI not found. Install it with:"),
+        chalk.yellow("\n💡 Greenframe CLI not found. Install it with:")
       );
       console.log(chalk.white("npm install -g greenframe-cli"));
       console.log(chalk.gray("or use:"));
@@ -90,7 +90,7 @@ function displayResults(results: any, format: "json" | "table") {
   if (results.carbon) {
     console.log(
       chalk.green("🌱 Carbon Footprint:"),
-      `${results.carbon.total}g CO2`,
+      `${results.carbon.total}g CO2`
     );
 
     if (results.carbon.breakdown) {
@@ -130,7 +130,7 @@ async function saveToDatabase(url: string, results: any) {
     const config = await loadProjectConfig();
     if (!config) {
       console.log(
-        chalk.yellow("⚠️  No project found. Results not saved to database."),
+        chalk.yellow("⚠️  No project found. Results not saved to database.")
       );
       return;
     }
@@ -147,7 +147,7 @@ async function saveToDatabase(url: string, results: any) {
         results,
         analyzedAt: new Date().toISOString(),
       },
-      "cli",
+      "cli"
     );
 
     await dataLake.close();
