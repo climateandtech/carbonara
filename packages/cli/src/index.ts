@@ -40,9 +40,6 @@ program
 program
   .command("megalinter")
   .description("Run MegaLinter code analysis")
-  .option("-s, --save", "Save results to data lake")
-  .option("-o, --output <format>", "Output format (json|table)", "table")
-  .option("-f, --fix", "Apply automatic fixes")
   .action(megalinterCommand);
 
 program

@@ -10,7 +10,7 @@ interface MegalinterOptions {
   env?: string;
 }
 export async function megalinterCommand(options: MegalinterOptions) {
-  const spinner = ora("Running MegaLinter analysis... v14").start();
+  const spinner = ora("Running MegaLinter analysis...").start();
   try {
     // Check if npx is available
     try {
