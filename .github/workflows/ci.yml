@@ -9,6 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+      DO_NOT_TRACK: 1
 
     strategy:
       matrix:
