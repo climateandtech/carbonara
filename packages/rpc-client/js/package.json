@@ -12,7 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-
+    "@carbonara/rpc-protocol": "^1.0.0",
     "ws": "^8.14.0"
   },
   "devDependencies": {
