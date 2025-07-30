@@ -26,6 +26,9 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
+    - name: Build RPC Protocol first
+      run: cd packages/rpc-protocol && npm run build
+      
     - name: Build project
       run: npx turbo build --force
     
