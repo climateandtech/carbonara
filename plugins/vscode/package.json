@@ -198,7 +198,18 @@
     "package": "vsce package",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-1.0.0.vsix",
-    "test": "echo 'No tests configured for VSCode plugin'"
+    "test": "npm run compile-tests && node ./out/test/runTest.js",
+    "test:ui": "playwright test e2e --workers=1",
+    "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
+    "test:ui:comprehensive": "playwright test e2e/carbonara-ui-comprehensive.spec.ts --workers=1", 
+    "test:ui:workspace-scenarios": "playwright test e2e/workspace-scenarios.spec.ts --workers=1",
+    "test:ui:empty-workspace": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Empty workspace\" --workers=1",
+    "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
+    "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
+    "test:ui:headed": "playwright test e2e --headed --workers=1",
+    "compile-tests": "tsc -p . --outDir out",
+    "pretest": "npm run build",
+    "playwright:install": "playwright install"
   },
   "dependencies": {
   },
@@ -207,6 +218,10 @@
     "@types/node": "16.x",
     "typescript": "^4.9.4",
     "@vscode/test-electron": "^2.2.0",
-    "@vscode/vsce": "^2.15.0"
+    "@vscode/vsce": "^2.15.0",
+    "@types/mocha": "^10.0.1",
+    "mocha": "^10.2.0",
+    "playwright": "^1.40.0",
+    "@playwright/test": "^1.40.0"
   }
 } 
