@@ -84,4 +84,4 @@ test('new command should work', () => {
     expect(error.stderr.toString()).toContain('expected error');
   }
 });
-``` 
+```

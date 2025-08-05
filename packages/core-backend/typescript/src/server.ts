@@ -1,8 +1,8 @@
-import express from 'express';
-import { createServer } from 'http';
-import WebSocket from 'ws';
-import cors from 'cors';
-import bodyParser from 'body-parser';
+import express from "express";
+import { createServer } from "http";
+import WebSocket from "ws";
+import cors from "cors";
+import bodyParser from "body-parser";
 import {
   JsonRpcRequest,
   JsonRpcResponse,
@@ -12,8 +12,8 @@ import {
   ServerCapabilities,
   Diagnostic,
   CompletionItem,
-  CompletionItemKind
-} from '@carbonara/rpc-protocol';
+  CompletionItemKind,
+} from "@carbonara/rpc-protocol";
 
 export class CarbonaraServer {
   private app: express.Application;
@@ -38,25 +38,25 @@ export class CarbonaraServer {
 
   private setupRoutes() {
     // Health check
-    this.app.get('/health', (req, res) => {
-      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    this.app.get("/health", (req, res) => {
+      res.json({ status: "ok", timestamp: new Date().toISOString() });
     });
 
     // JSON-RPC over HTTP
-    this.app.post('/rpc', async (req, res) => {
+    this.app.post("/rpc", async (req, res) => {
       try {
         const request = req.body as JsonRpcRequest;
         const response = await this.handleRpcRequest(request);
         res.json(response);
       } catch (error) {
         const errorResponse: JsonRpcResponse = {
-          jsonrpc: '2.0',
+          jsonrpc: "2.0",
           error: {
             code: ErrorCodes.InternalError,
-            message: 'Internal server error',
-            data: error instanceof Error ? error.message : String(error)
+            message: "Internal server error",
+            data: error instanceof Error ? error.message : String(error),
           },
-          id: null
+          id: null,
         };
         res.status(500).json(errorResponse);
       }
@@ -65,100 +65,101 @@ export class CarbonaraServer {
 
   private setupWebSocket() {
     this.wss = new WebSocket.Server({ server: this.server });
-    
-    this.wss.on('connection', (ws) => {
-      console.log('WebSocket client connected');
+
+    this.wss.on("connection", (ws) => {
+      console.log("WebSocket client connected");
       this.clients.add(ws);
 
-      ws.on('message', async (data) => {
+      ws.on("message", async (data) => {
         try {
           const request = JSON.parse(data.toString()) as JsonRpcRequest;
           const response = await this.handleRpcRequest(request);
           ws.send(JSON.stringify(response));
         } catch (error) {
           const errorResponse: JsonRpcResponse = {
-            jsonrpc: '2.0',
+            jsonrpc: "2.0",
             error: {
               code: ErrorCodes.ParseError,
-              message: 'Parse error'
+              message: "Parse error",
             },
-            id: null
+            id: null,
           };
           ws.send(JSON.stringify(errorResponse));
         }
       });
 
-      ws.on('close', () => {
-        console.log('WebSocket client disconnected');
+      ws.on("close", () => {
+        console.log("WebSocket client disconnected");
         this.clients.delete(ws);
       });
     });
   }
 
-  private async handleRpcRequest(request: JsonRpcRequest): Promise<JsonRpcResponse> {
+  private async handleRpcRequest(
+    request: JsonRpcRequest,
+  ): Promise<JsonRpcResponse> {
     console.log(`RPC Request: ${request.method}`, request.params);
 
     try {
       let result: any;
 
       switch (request.method) {
-        case 'carbonara/initialize':
+        case "carbonara/initialize":
           result = await this.handleInitialize(request.params);
           break;
-          
-        case 'carbonara/analyze':
+
+        case "carbonara/analyze":
           result = await this.handleAnalyze(request.params);
           break;
-          
-        case 'carbonara/getCompletions':
+
+        case "carbonara/getCompletions":
           result = await this.handleGetCompletions(request.params);
           break;
-          
-        case 'carbonara/getRefactorActions':
+
+        case "carbonara/getRefactorActions":
           result = await this.handleGetRefactorActions(request.params);
           break;
-          
-        case 'carbonara/executeRefactor':
+
+        case "carbonara/executeRefactor":
           result = await this.handleExecuteRefactor(request.params);
           break;
-          
-        case 'carbonara/openFile':
+
+        case "carbonara/openFile":
           result = await this.handleOpenFile(request.params);
           break;
-          
-        case 'carbonara/closeFile':
+
+        case "carbonara/closeFile":
           result = await this.handleCloseFile(request.params);
           break;
-          
-        case 'carbonara/saveFile':
+
+        case "carbonara/saveFile":
           result = await this.handleSaveFile(request.params);
           break;
-          
-        case 'carbonara/shutdown':
+
+        case "carbonara/shutdown":
           result = await this.handleShutdown(request.params);
           break;
-          
+
         default:
           throw new Error(`Method not found: ${request.method}`);
       }
 
       const response: JsonRpcResponse = {
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         result,
-        id: request.id || null
+        id: request.id || null,
       };
 
       return response;
-
     } catch (error) {
       const errorResponse: JsonRpcResponse = {
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         error: {
           code: ErrorCodes.InternalError,
-          message: error instanceof Error ? error.message : 'Unknown error',
-          data: error instanceof Error ? error.stack : undefined
+          message: error instanceof Error ? error.message : "Unknown error",
+          data: error instanceof Error ? error.stack : undefined,
         },
-        id: request.id || null
+        id: request.id || null,
       };
 
       return errorResponse;
@@ -166,68 +167,80 @@ export class CarbonaraServer {
   }
 
   // RPC Method Implementations
-  private async handleInitialize(params: any): Promise<{ capabilities: ServerCapabilities }> {
+  private async handleInitialize(
+    params: any,
+  ): Promise<{ capabilities: ServerCapabilities }> {
     const clientInfo = params.clientInfo;
-    console.log(`Client initialized: ${clientInfo.name} v${clientInfo.version}`);
-    
+    console.log(
+      `Client initialized: ${clientInfo.name} v${clientInfo.version}`,
+    );
+
     return {
       capabilities: {
         completionProvider: true,
         diagnosticProvider: true,
         refactorProvider: true,
-        documentFormattingProvider: false
-      }
+        documentFormattingProvider: false,
+      },
     };
   }
 
-  private async handleAnalyze(params: any): Promise<{ diagnostics: Diagnostic[] }> {
+  private async handleAnalyze(
+    params: any,
+  ): Promise<{ diagnostics: Diagnostic[] }> {
     const { uri, content } = params;
-    
+
     // Mock analysis - replace with actual analysis logic
     const diagnostics: Diagnostic[] = [];
-    
-    if (content && content.includes('TODO')) {
+
+    if (content && content.includes("TODO")) {
       diagnostics.push({
         range: {
           start: { line: 0, character: 0 },
-          end: { line: 0, character: 4 }
+          end: { line: 0, character: 4 },
         },
-        message: 'TODO comment found',
-        severity: 'info',
-        source: 'carbonara'
+        message: "TODO comment found",
+        severity: "info",
+        source: "carbonara",
       });
     }
-    
+
     console.log(`Analyzed ${uri}: ${diagnostics.length} diagnostics`);
     return { diagnostics };
   }
 
-  private async handleGetCompletions(params: any): Promise<{ items: CompletionItem[] }> {
+  private async handleGetCompletions(
+    params: any,
+  ): Promise<{ items: CompletionItem[] }> {
     const { uri, position } = params;
-    
+
     // Mock completions - replace with actual completion logic
     const items: CompletionItem[] = [
       {
-        label: 'console.log',
+        label: "console.log",
         kind: CompletionItemKind.Method,
-        detail: 'Log to console',
-        insertText: 'console.log($1)',
-        sortText: '0001'
+        detail: "Log to console",
+        insertText: "console.log($1)",
+        sortText: "0001",
       },
       {
-        label: 'function',
+        label: "function",
         kind: CompletionItemKind.Keyword,
-        detail: 'Function declaration',
-        insertText: 'function ${1:name}($2) {\n  $3\n}',
-        sortText: '0002'
-      }
+        detail: "Function declaration",
+        insertText: "function ${1:name}($2) {\n  $3\n}",
+        sortText: "0002",
+      },
     ];
-    
-    console.log(`Completions for ${uri} at ${position.line}:${position.character}: ${items.length} items`);
+
+    console.log(
+      `Completions for ${uri} at ${position.line}:${position.character}: ${items.length} items`,
+    );
     return { items };
   }
 
-  private async handleGetRefactorActions(params: any): Promise<{ actions: any[] }> {
+  private async handleGetRefactorActions(
+    params: any,
+  ): Promise<{ actions: any[] }> {
     const { uri, range } = params;
     console.log(`Refactor actions for ${uri}`, range);
     return { actions: [] };
@@ -258,7 +271,7 @@ export class CarbonaraServer {
   }
 
   private async handleShutdown(params: any): Promise<null> {
-    console.log('Server shutdown requested');
+    console.log("Server shutdown requested");
     setTimeout(() => {
       process.exit(0);
     }, 1000);
@@ -268,13 +281,13 @@ export class CarbonaraServer {
   // Notification methods (server -> client)
   public sendNotification(method: string, params: any) {
     const notification = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       method,
-      params
+      params,
     };
 
     const message = JSON.stringify(notification);
-    this.clients.forEach(client => {
+    this.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
       }
@@ -296,4 +309,4 @@ export class CarbonaraServer {
     this.server.close();
     this.wss.close();
   }
-} 
+}
