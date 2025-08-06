@@ -10,5 +10,6 @@ export default defineConfig({
     },
     testTimeout: 15000, // 15 seconds for CLI operations
     passWithNoTests: true,
+    tsconfig: './tsconfig.test.json',
   },
 });
