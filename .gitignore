@@ -209,3 +209,9 @@ carbonara.db
 test/*
 megalinter-reports
 */megalinter-reports
+
+# Compiled files and type maps
+**/*.js
+**/*.js.map
+**/*.d.ts
+**/*.d.ts.map

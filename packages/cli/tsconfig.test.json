@@ -1,7 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "."
+    "noEmit": true, // Don't emit any files
+    "rootDir": ".",
+    "allowImportingTsExtensions": true // Allow .ts imports in tests
   },
   "include": ["src/**/*", "test/**/*"]
 }
