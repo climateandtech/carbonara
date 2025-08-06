@@ -22,7 +22,8 @@
     "start:cli": "npm run start --workspace=packages/cli"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^20.19.9",
     "eslint": "^8.0.0",
     "prettier": "^3.0.0",
     "turbo": "^2.5.5",
@@ -32,5 +33,6 @@
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
-  }
+  },
+  "dependencies": {}
 }

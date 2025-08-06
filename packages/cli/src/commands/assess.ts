@@ -153,7 +153,7 @@ async function runInteractiveAssessment() {
       validate: (value: number) =>
         value > 0 ? true : "Must be greater than 0",
     },
-  ]);
+  ] as any);
 
   console.log(chalk.green("\n🏗️  Infrastructure"));
   const infrastructure = await inquirer.prompt([
@@ -253,7 +253,7 @@ async function runInteractiveAssessment() {
         { name: "Excellent", value: "excellent" },
       ],
     },
-  ]);
+  ] as any);
 
   console.log(chalk.green("\n⚡ Features"));
   const features = await inquirer.prompt([
