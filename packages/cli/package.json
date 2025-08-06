@@ -11,6 +11,9 @@
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run --config ./vitest.config.ts",
+    "test:ci": "CI=true vitest run --config ./vitest.config.ts",
+    "test:megalinter": "vitest run --config ./vitest.config.ts test/megalinter.test.ts",
+    "test:no-megalinter": "vitest run --config ./vitest.config.ts --exclude='**/megalinter.test.ts'",
     "test:watch": "vitest --config ./vitest.config.ts",
     "test:ui": "vitest --ui"
   },

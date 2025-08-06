@@ -1,87 +1,106 @@
-# CLI Test Suite
+# CLI Test Documentation
 
-## Overview
+## Test Structure
 
-The test suite uses a simple, reliable approach focused on testing actual CLI functionality without complex interactive simulation.
+The CLI tests are organized into separate files for better maintainability and CI/CD optimization:
 
-## Test Files
+- **`cli.test.ts`** - Core CLI functionality tests (fast, always run)
+  - CLI help and version commands
+  - Basic command validation
+  - Data management operations
+  - Project initialization
 
-### `cli.test.ts`
-
-Basic functionality tests using `execSync` for reliability:
-
-- **Help & Version**: Tests `--help` and `--version` flags
-- **Error Handling**: Tests invalid inputs and missing projects
-- **Basic Commands**: Tests core command structure
-- **Database Operations**: Tests data management with graceful error handling
-
-## Test Philosophy
-
-1. **Synchronous Testing**: Uses `execSync` instead of complex async process management
-2. **Error Tolerance**: Tests expect and handle common errors gracefully
-3. **Isolated Tests**: Each test uses its own temporary directory
-4. **Fast Execution**: All tests complete in under 2 seconds
-5. **No User Input**: Avoids interactive prompts that can cause hangs
+- **`megalinter.test.ts`** - MegaLinter-specific tests (can be slow)
+  - MegaLinter execution
+  - Report processing
+  - Database storage of results
+  - Cleanup operations
 
 ## Running Tests
 
+### Local Development
+
 ```bash
-# Run all tests
+# Run all tests (including MegaLinter)
 npm test
 
-# Run in watch mode during development
+# Run only non-MegaLinter tests (faster)
+npm run test:no-megalinter
+
+# Run only MegaLinter tests
+npm run test:megalinter
+
+# Watch mode for development
 npm run test:watch
 ```
 
-## Test Results
+### CI Environment
 
-All 7 tests currently pass:
-- ✅ CLI should show help
-- ✅ CLI should show version  
-- ✅ assess command should show warning without project
-- ✅ greenframe command should handle invalid URL
-- ✅ greenframe command should work with valid URL
-- ✅ data command should show help when no options provided
-- ✅ data --list should handle missing database gracefully
+```bash
+# Run tests in CI mode (excludes MegaLinter by default)
+npm run test:ci
 
-## Testing Strategy
+# The CI environment will:
+# - Skip actual MegaLinter execution
+# - Use mock data for MegaLinter tests
+# - Have shorter timeouts
+# - Focus on database writing logic
+```
 
-### What We Test
-- Command line argument parsing
-- Help text generation
-- Error message display
-- Basic command execution
-- URL validation
-- Database error handling
+## Environment Variables
 
-### What We Don't Test
-- Complex interactive flows (prone to timeouts)
-- Full CO2 assessment questionnaire (too slow for CI)
-- Real external API calls (unreliable)
-- File system edge cases (platform-specific)
+- **`CI`** - Set to `'true'` to enable CI mode
+- **`GITHUB_ACTIONS`** - Automatically set by GitHub Actions
+- **`MOCK_MEGALINTER`** - Force use of mock MegaLinter data
+- **`SKIP_MEGALINTER_TESTS`** - Skip MegaLinter tests entirely
+
+## CI/CD Strategy
+
+The tests are configured to run differently based on the environment:
+
+### In CI (GitHub Actions, etc.)
+
+1. **Unit Tests** - Always run, fast (<10s)
+2. **MegaLinter Mock Tests** - Use mock data to test database operations (<5s)
+3. **Integration Tests** - Only on main branch or manual trigger (full MegaLinter run)
+
+### Locally
+
+- All tests run with full functionality
+- Longer timeouts allowed (up to 5 minutes for MegaLinter)
+- Actual MegaLinter execution when installed
+
+## Test Timeouts
+
+- **CI Mode**: 10 seconds per test
+- **Local Mode**: 15 seconds for regular tests, 5 minutes for MegaLinter tests
+- **Mock Mode**: 5 seconds per test
 
 ## Adding New Tests
 
-When adding new tests:
+When adding new long-running tests:
 
-1. Use `execSync` for reliability
-2. Create isolated test directories
-3. Handle expected errors with try/catch
-4. Keep tests fast (< 1 second each)
-5. Clean up temporary files
+1. Consider if they should be in a separate file
+2. Add CI detection: `const isCI = process.env.CI === 'true'`
+3. Provide mock/fast alternatives for CI
+4. Document any special requirements
 
-Example:
-```typescript
-test('new command should work', () => {
-  try {
-    const result = execSync(`cd "${testDir}" && node "${cliPath}" newcommand`, { 
-      encoding: 'utf8',
-      timeout: 5000 
-    });
-    expect(result).toContain('expected output');
-  } catch (error: any) {
-    // Handle expected errors gracefully
-    expect(error.stderr.toString()).toContain('expected error');
-  }
-});
-```
+## Troubleshooting
+
+### Tests timeout in CI
+
+- Check if MegaLinter tests are being excluded properly
+- Verify `CI` environment variable is set
+- Look for tests that might be running actual tools instead of mocks
+
+### MegaLinter tests fail locally
+
+- Ensure MegaLinter is installed: `npm install -g mega-linter-runner`
+- Check if Docker is running (required for MegaLinter)
+- Verify sufficient disk space for MegaLinter operations
+
+### Mock data issues
+
+- Mock reports are created in the temp directory
+- Check the mock report structure matches your CLI expectations
+- Ensure cleanup happens properly after tests
