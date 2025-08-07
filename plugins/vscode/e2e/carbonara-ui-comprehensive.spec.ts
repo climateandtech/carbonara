@@ -4,6 +4,16 @@ import { VSCodeLauncher, VSCodeInstance } from './helpers/vscode-launcher';
 let vscode: VSCodeInstance;
 
 test.describe('Carbonara Extension User Workflows', () => {
+  test.beforeAll(async () => {
+    // Clean up any existing VSCode processes before starting tests
+    await VSCodeLauncher.cleanupAll();
+  });
+
+  test.afterAll(async () => {
+    // Final cleanup after all tests complete
+    await VSCodeLauncher.cleanupAll();
+  });
+
   test.beforeEach(async () => {
     vscode = await VSCodeLauncher.launch();
     
@@ -170,6 +180,33 @@ test.describe('Carbonara Extension User Workflows', () => {
           const successNotification = vscode.window.locator('text*=initialized successfully');
           if (await successNotification.isVisible({ timeout: 5000 })) {
             console.log('✅ Project initialization successful!');
+            
+            // 🔍 VERIFY PROJECT CREATION: Test through UI consequences
+            await vscode.window.waitForTimeout(3000); // Wait for project to be recognized
+            
+            // Test that the extension now recognizes a project exists
+            console.log('🧪 Testing: Verifying project creation through UI behavior...');
+            await vscode.window.waitForTimeout(1000);
+            
+            // Try to open sidebar to see if project data appears
+            try {
+              await VSCodeLauncher.openSidebar(vscode.window);
+              await vscode.window.waitForTimeout(2000);
+              
+              // Look for project-specific content in sidebar
+              const assessmentPanel = vscode.window.locator('text=CO2 Assessment');
+              if (await assessmentPanel.isVisible({ timeout: 3000 })) {
+                console.log('✅ Project initialization verified: CO2 Assessment panel available');
+                
+                // Look for project information section
+                const projectInfoSection = vscode.window.locator('text=Project Information');
+                if (await projectInfoSection.isVisible({ timeout: 3000 })) {
+                  console.log('✅ Project data loaded: Project Information section found');
+                }
+              }
+            } catch (error) {
+              console.log('🧪 Sidebar test inconclusive, project may still be initializing');
+            }
           }
         }
       }

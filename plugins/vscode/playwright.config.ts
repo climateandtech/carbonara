@@ -28,4 +28,8 @@ export default defineConfig({
   ],
 
   webServer: undefined, // We don't need a web server for VSCode extension testing
+  
+  // Global setup and teardown
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
 }); 

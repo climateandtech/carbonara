@@ -17,6 +17,8 @@ export function activate(context: vscode.ExtensionContext) {
     carbonaraStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     carbonaraStatusBar.text = "$(pulse) Carbonara";
     carbonaraStatusBar.tooltip = "Carbonara CO2 Assessment Tools";
+    // Make it uniquely selectable in tests and accessible UIs
+    carbonaraStatusBar.accessibilityInformation = { label: 'carbonara-statusbar' };
     carbonaraStatusBar.command = 'carbonara.showMenu';
     carbonaraStatusBar.show();
 
@@ -622,28 +624,76 @@ async function runCarbonaraCommand(args: string[], message: string): Promise<voi
 }
 
 function findCarbonaraCLI(): string | null {
-    // Try to find CLI in the monorepo structure
+    // 1) Explicit env override (used by tests/CI)
+    const envCli = process.env.CARBONARA_CLI_PATH;
+    if (envCli && fs.existsSync(envCli)) {
+        return envCli;
+    }
+
+    // 1b) Try resolving installed package (when bundled as dependency)
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const pkgPath = require.resolve('@carbonara/cli/package.json');
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const binRel = (pkg?.bin && (pkg.bin.carbonara || pkg.bin)) || 'dist/index.js';
+        const resolved = path.join(path.dirname(pkgPath), binRel);
+        if (fs.existsSync(resolved)) {
+            return resolved;
+        }
+    } catch {
+        // ignore if not installed as a dependency
+    }
+
+    // 2) Try to find CLI in the monorepo structure relative to current workspace
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-        return null;
+    if (workspaceFolder) {
+        const wsRoot = workspaceFolder.uri.fsPath;
+
+        // Prefer built dist artifact
+        const distPaths = [
+            path.join(wsRoot, 'packages', 'cli', 'dist', 'index.js'),
+            path.join(wsRoot, '..', 'packages', 'cli', 'dist', 'index.js')
+        ];
+        for (const p of distPaths) {
+            if (fs.existsSync(p)) return p;
+        }
+
+        // Fallback to sources (only if runnable directly)
+        const srcPaths = [
+            path.join(wsRoot, 'packages', 'cli', 'src', 'index.js'),
+            path.join(wsRoot, '..', 'packages', 'cli', 'src', 'index.js')
+        ];
+        for (const p of srcPaths) {
+            if (fs.existsSync(p)) return p;
+        }
+
+        // Respect bin field if package.json is present
+        const pkgJsonCandidates = [
+            path.join(wsRoot, 'packages', 'cli', 'package.json'),
+            path.join(wsRoot, '..', 'packages', 'cli', 'package.json')
+        ];
+        for (const pkgPath of pkgJsonCandidates) {
+            try {
+                if (fs.existsSync(pkgPath)) {
+                    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+                    const binRel: string | undefined = pkg?.bin?.carbonara || pkg?.bin;
+                    if (binRel) {
+                        const resolved = path.join(path.dirname(pkgPath), binRel);
+                        if (fs.existsSync(resolved)) return resolved;
+                    }
+                }
+            } catch {}
+        }
     }
 
-    // Check if we're in the monorepo structure
-    const monorepoCliPath = path.join(workspaceFolder.uri.fsPath, 'packages', 'cli', 'src', 'index.js');
-    if (fs.existsSync(monorepoCliPath)) {
-        return monorepoCliPath;
-    }
-
-    // Check if we're in a parent of the monorepo
-    const parentMonorepoPath = path.join(workspaceFolder.uri.fsPath, '..', 'packages', 'cli', 'src', 'index.js');
-    if (fs.existsSync(parentMonorepoPath)) {
-        return parentMonorepoPath;
-    }
-
-    // Check if CLI is globally installed
-    const globalCli = path.join(process.env.HOME || '', '.npm', 'bin', 'carbonara');
-    if (fs.existsSync(globalCli)) {
-        return globalCli;
+    // 3) Global install fallback (npm user bin)
+    const npmPrefix = (process.env.npm_config_prefix || process.env.NPM_CONFIG_PREFIX || '') as string;
+    const globalCliCandidates = [
+        path.join(process.env.HOME || '', '.npm', 'bin', 'carbonara'),
+        npmPrefix ? path.join(npmPrefix, 'bin', 'carbonara') : ''
+    ].filter(Boolean) as string[];
+    for (const p of globalCliCandidates) {
+        if (p && fs.existsSync(p)) return p;
     }
 
     return null;

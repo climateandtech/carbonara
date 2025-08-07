@@ -4,6 +4,16 @@ import { VSCodeLauncher, VSCodeInstance } from './helpers/vscode-launcher';
 let vscode: VSCodeInstance;
 
 test.describe('Carbonara VSCode Extension UI Tests', () => {
+  test.beforeAll(async () => {
+    // Clean up any existing VSCode processes before starting tests
+    await VSCodeLauncher.cleanupAll();
+  });
+
+  test.afterAll(async () => {
+    // Final cleanup after all tests complete
+    await VSCodeLauncher.cleanupAll();
+  });
+
   test.beforeEach(async () => {
     vscode = await VSCodeLauncher.launch();
   });

@@ -207,6 +207,7 @@
     "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
     "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
     "test:ui:headed": "playwright test e2e --headed --workers=1",
+
     "compile-tests": "tsc -p . --outDir out",
     "pretest": "npm run build",
     "playwright:install": "playwright install"
