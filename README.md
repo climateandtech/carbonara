@@ -98,11 +98,44 @@ npm test
 | Command | Description | Example |
 |---------|-------------|---------|
 | `init` | Initialize new project | `carbonara init` |
-| `assess` | Run CO2 assessment | `carbonara assess` |
-| `analyze <tool> <url>` | Run analysis with tool | `carbonara analyze byte-counter https://example.com --save` |
+| `assess` | Run CO2 assessment questionnaire | `carbonara assess` |
+| `analyze <tool> <url>` | Run analysis with registered tool | `carbonara analyze byte-counter https://example.com --save` |
 | `tools` | Manage analysis tools | `carbonara tools --list` |
-| `data` | Manage stored data | `carbonara data --list` |
+| `data` | Manage stored assessment data | `carbonara data --list` |
 | `import` | Import data from files/databases | `carbonara import --file data.json` |
+
+### Detailed Command Reference
+
+#### Project Management
+```bash
+carbonara init [--path <path>]           # Initialize project with config and database
+carbonara assess [--interactive]         # Interactive CO2 assessment questionnaire
+```
+
+#### Analysis Tools
+```bash
+carbonara tools --list                   # List all available tools and status
+carbonara tools --install <tool-id>      # Install external analysis tool
+carbonara tools --refresh                # Refresh tool installation status
+
+carbonara analyze <tool-id> <url>        # Run analysis with specified tool
+  --save                                  # Save results to project database
+  --output <json|table>                  # Output format (default: table)
+  --scroll-to-bottom                     # Scroll page during analysis
+```
+
+#### Data Management
+```bash
+carbonara data --list                    # List all stored assessment data
+carbonara data --show                    # Show detailed project analysis
+carbonara data --export <json|csv>       # Export data to file
+carbonara data --clear                   # Clear all stored data
+
+carbonara import --file <path>           # Import from JSON/CSV file
+carbonara import --database <path>       # Import from another Carbonara database
+  --format <json|csv>                    # Force file format
+  --overwrite                           # Overwrite duplicate records
+```
 
 ### Analysis Tools
 
@@ -179,4 +212,4 @@ npm run test:cli            # CLI tests only
 
 ## 📄 License
 
-ISC
+To be clarified - All rights reserved
