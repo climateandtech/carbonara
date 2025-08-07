@@ -210,6 +210,24 @@ export class DataLake {
     });
   }
 
+  async getAllAssessmentData(): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT * FROM assessment_data ORDER BY timestamp DESC',
+        (err, rows: any[]) => {
+          if (err) reject(err);
+          else {
+            const assessmentData = rows.map(row => ({
+              ...row,
+              data: row.data ? JSON.parse(row.data) : {}
+            }));
+            resolve(assessmentData);
+          }
+        }
+      );
+    });
+  }
+
   async close(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.db.close((err) => {
@@ -220,4 +238,9 @@ export class DataLake {
   }
 }
 
-export const createDataLake = (config?: DatabaseConfig) => new DataLake(config); 
+export const createDataLake = (dbPath?: string | DatabaseConfig) => {
+  if (typeof dbPath === 'string') {
+    return new DataLake({ dbPath });
+  }
+  return new DataLake(dbPath);
+}; 

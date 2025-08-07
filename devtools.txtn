@@ -1,0 +1,613 @@
+workbench.desktop.main.js:277:17418
+    at CW (workbench.desktop.main.js:277:2766)
+    at xM (workbench.desktop.main.js:275:22274)
+    at ius.r [as setData] (workbench.desktop.main.js:277:17382)
+    at setData (workbench.desktop.main.js:491:21660)
+    at workbench.desktop.main.js:1348:42436
+    at pd.updateComposerDataSetStore (workbench.desktop.main.js:1348:33932)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at pd.addCapabilityRan (workbench.desktop.main.js:1348:42404)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at r.value (workbench.desktop.main.js:4514:57759)
+    at async PC.measureCapabilityExecution (workbench.desktop.main.js:1445:437)
+    at async workbench.desktop.main.js:1425:13151
+    at async Promise.all (index 0)
+    at async PC.runCapabilitiesForProcess (workbench.desktop.main.js:1425:13047)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:26245)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:1425
+workbench.desktop.main.js:1425 [composer] Error running capability 'Queuing' during after-submit-chat TypeError: Cannot read properties of undefined (reading 'capabilitiesRan')
+    at U1t (workbench.desktop.main.js:277:16886)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at workbench.desktop.main.js:277:17418
+    at CW (workbench.desktop.main.js:277:2766)
+    at xM (workbench.desktop.main.js:275:22274)
+    at ius.r [as setData] (workbench.desktop.main.js:277:17382)
+    at setData (workbench.desktop.main.js:491:21660)
+    at workbench.desktop.main.js:1348:42436
+    at pd.updateComposerDataSetStore (workbench.desktop.main.js:1348:33932)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at pd.addCapabilityRan (workbench.desktop.main.js:1348:42404)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at r.value (workbench.desktop.main.js:4514:57759)
+    at async PC.measureCapabilityExecution (workbench.desktop.main.js:1445:437)
+    at async workbench.desktop.main.js:1425:13151
+    at async Promise.all (index 3)
+    at async PC.runCapabilitiesForProcess (workbench.desktop.main.js:1425:13047)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:26245)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:1425
+workbench.desktop.main.js:1425 [composer] Error running capability 'Diff Hash Generator' during after-submit-chat TypeError: Cannot read properties of undefined (reading 'capabilitiesRan')
+    at U1t (workbench.desktop.main.js:277:16886)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at workbench.desktop.main.js:277:17418
+    at CW (workbench.desktop.main.js:277:2766)
+    at xM (workbench.desktop.main.js:275:22274)
+    at ius.r [as setData] (workbench.desktop.main.js:277:17382)
+    at setData (workbench.desktop.main.js:491:21660)
+    at workbench.desktop.main.js:1348:42436
+    at pd.updateComposerDataSetStore (workbench.desktop.main.js:1348:33932)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at pd.addCapabilityRan (workbench.desktop.main.js:1348:42404)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at r.value (workbench.desktop.main.js:4514:57759)
+    at async PC.measureCapabilityExecution (workbench.desktop.main.js:1445:437)
+    at async workbench.desktop.main.js:1425:13151
+    at async Promise.all (index 2)
+    at async PC.runCapabilitiesForProcess (workbench.desktop.main.js:1425:13047)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:26245)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:1425
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 9)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 16)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:1348 LS: Unable to read file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png' (Error: Unable to resolve nonexistent file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png')
+    at jYs.G (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67617)
+    at jYs.F (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67437)
+    at async jYs.D (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:66803)
+    at async vYc (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:7752)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:9153
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2572:14414)
+    at async lJ.updateComposerSummaryIfOutdated (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2565:28523)
+vYc @ workbench.desktop.main.js:1348
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.updateComposerSummaryIfOutdated (workbench.desktop.main.js:2565:28523)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 9)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 16)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:1348 LS: Unable to read file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png' (Error: Unable to resolve nonexistent file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png')
+    at jYs.G (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67617)
+    at jYs.F (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67437)
+    at async jYs.D (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:66803)
+    at async vYc (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:7752)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:9153
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2572:14414)
+    at async lJ.submitChatMaybeAbortCurrent (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2565:17797)
+    at async si (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:4516:24730)
+vYc @ workbench.desktop.main.js:1348
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:17797)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 9)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 16)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:1348 LS: Unable to read file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png' (Error: Unable to resolve nonexistent file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png')
+    at jYs.G (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67617)
+    at jYs.F (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67437)
+    at async jYs.D (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:66803)
+    at async vYc (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:7752)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:9153
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:5419:3660)
+vYc @ workbench.desktop.main.js:1348
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+workbench.desktop.main.js:1425 [composer] Error running capability 'Usage Data' during after-submit-chat TypeError: Cannot read properties of undefined (reading 'capabilitiesRan')
+    at U1t (workbench.desktop.main.js:277:16886)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at workbench.desktop.main.js:277:17418
+    at CW (workbench.desktop.main.js:277:2766)
+    at xM (workbench.desktop.main.js:275:22274)
+    at ius.r [as setData] (workbench.desktop.main.js:277:17382)
+    at setData (workbench.desktop.main.js:491:21660)
+    at workbench.desktop.main.js:1348:42436
+    at pd.updateComposerDataSetStore (workbench.desktop.main.js:1348:33932)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at pd.addCapabilityRan (workbench.desktop.main.js:1348:42404)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at r.value (workbench.desktop.main.js:4514:57759)
+    at async PC.measureCapabilityExecution (workbench.desktop.main.js:1445:437)
+    at async workbench.desktop.main.js:1425:13151
+    at async Promise.all (index 0)
+    at async PC.runCapabilitiesForProcess (workbench.desktop.main.js:1425:13047)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:26245)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:1425
+await in (anonymous)
+runCapabilitiesForProcess @ workbench.desktop.main.js:1425
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+workbench.desktop.main.js:1425 [composer] Error running capability 'Queuing' during after-submit-chat TypeError: Cannot read properties of undefined (reading 'capabilitiesRan')
+    at U1t (workbench.desktop.main.js:277:16886)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at workbench.desktop.main.js:277:17418
+    at CW (workbench.desktop.main.js:277:2766)
+    at xM (workbench.desktop.main.js:275:22274)
+    at ius.r [as setData] (workbench.desktop.main.js:277:17382)
+    at setData (workbench.desktop.main.js:491:21660)
+    at workbench.desktop.main.js:1348:42436
+    at pd.updateComposerDataSetStore (workbench.desktop.main.js:1348:33932)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at pd.addCapabilityRan (workbench.desktop.main.js:1348:42404)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at r.value (workbench.desktop.main.js:4514:57759)
+    at async PC.measureCapabilityExecution (workbench.desktop.main.js:1445:437)
+    at async workbench.desktop.main.js:1425:13151
+    at async Promise.all (index 3)
+    at async PC.runCapabilitiesForProcess (workbench.desktop.main.js:1425:13047)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:26245)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:1425
+await in (anonymous)
+runCapabilitiesForProcess @ workbench.desktop.main.js:1425
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+workbench.desktop.main.js:1425 [composer] Error running capability 'Diff Hash Generator' during after-submit-chat TypeError: Cannot read properties of undefined (reading 'capabilitiesRan')
+    at U1t (workbench.desktop.main.js:277:16886)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at U1t (workbench.desktop.main.js:277:16881)
+    at workbench.desktop.main.js:277:17418
+    at CW (workbench.desktop.main.js:277:2766)
+    at xM (workbench.desktop.main.js:275:22274)
+    at ius.r [as setData] (workbench.desktop.main.js:277:17382)
+    at setData (workbench.desktop.main.js:491:21660)
+    at workbench.desktop.main.js:1348:42436
+    at pd.updateComposerDataSetStore (workbench.desktop.main.js:1348:33932)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at pd.addCapabilityRan (workbench.desktop.main.js:1348:42404)
+    at workbench.desktop.main.js:51:37011
+    at j9 (workbench.desktop.main.js:51:36764)
+    at n.value (workbench.desktop.main.js:51:37000)
+    at r.value (workbench.desktop.main.js:4514:57759)
+    at async PC.measureCapabilityExecution (workbench.desktop.main.js:1445:437)
+    at async workbench.desktop.main.js:1425:13151
+    at async Promise.all (index 2)
+    at async PC.runCapabilitiesForProcess (workbench.desktop.main.js:1425:13047)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:26245)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:1425
+await in (anonymous)
+runCapabilitiesForProcess @ workbench.desktop.main.js:1425
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 9)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+await in (anonymous)
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+updateComposerSummaryIfOutdated @ workbench.desktop.main.js:2565
+await in updateComposerSummaryIfOutdated
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 16)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+await in (anonymous)
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+updateComposerSummaryIfOutdated @ workbench.desktop.main.js:2565
+await in updateComposerSummaryIfOutdated
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+workbench.desktop.main.js:1348 LS: Unable to read file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png' (Error: Unable to resolve nonexistent file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png')
+    at jYs.G (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67617)
+    at jYs.F (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67437)
+    at async jYs.D (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:66803)
+    at async vYc (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:7752)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:9153
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2572:14414)
+    at async lJ.updateComposerSummaryIfOutdated (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2565:28523)
+vYc @ workbench.desktop.main.js:1348
+await in vYc
+RRt @ workbench.desktop.main.js:1348
+(anonymous) @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+updateComposerSummaryIfOutdated @ workbench.desktop.main.js:2565
+await in updateComposerSummaryIfOutdated
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.updateComposerSummaryIfOutdated (workbench.desktop.main.js:2565:28523)
+(anonymous) @ workbench.desktop.main.js:2569
+await in (anonymous)
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+updateComposerSummaryIfOutdated @ workbench.desktop.main.js:2565
+await in updateComposerSummaryIfOutdated
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 9)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+await in (anonymous)
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+await in submitChatMaybeAbortCurrent
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+si @ workbench.desktop.main.js:4516
+onSubmit @ workbench.desktop.main.js:4516
+F @ workbench.desktop.main.js:4512
+onSubmit @ workbench.desktop.main.js:4512
+handleSubmit @ workbench.desktop.main.js:4511
+(anonymous) @ workbench.desktop.main.js:4511
+U_o @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443
+q_o @ workbench.desktop.main.js:443
+hz @ workbench.desktop.main.js:443
+update @ workbench.desktop.main.js:445
+U_o @ workbench.desktop.main.js:443
+ql @ workbench.desktop.main.js:443
+DFc @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 16)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitPromptDryRun (workbench.desktop.main.js:2572:5317)
+    at async wfn.updatePromptDryRunInfo (workbench.desktop.main.js:5419:3660)
+(anonymous) @ workbench.desktop.main.js:2569
+await in (anonymous)
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+await in submitChatMaybeAbortCurrent
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+si @ workbench.desktop.main.js:4516
+onSubmit @ workbench.desktop.main.js:4516
+F @ workbench.desktop.main.js:4512
+onSubmit @ workbench.desktop.main.js:4512
+handleSubmit @ workbench.desktop.main.js:4511
+(anonymous) @ workbench.desktop.main.js:4511
+U_o @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443
+q_o @ workbench.desktop.main.js:443
+hz @ workbench.desktop.main.js:443
+update @ workbench.desktop.main.js:445
+U_o @ workbench.desktop.main.js:443
+ql @ workbench.desktop.main.js:443
+DFc @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443
+workbench.desktop.main.js:1348 LS: Unable to read file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png' (Error: Unable to resolve nonexistent file '/Users/chris/Library/Application Support/Cursor/User/workspaceStorage/images/Screenshot 2025-07-21 at 18.59.05-80144668-0ca4-4fe2-9803-f3201f6f8d18.png')
+    at jYs.G (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67617)
+    at jYs.F (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:67437)
+    at async jYs.D (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:6940:66803)
+    at async vYc (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:7752)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:1348:9153
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2572:14414)
+    at async lJ.submitChatMaybeAbortCurrent (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:2565:17797)
+    at async si (vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js:4516:24730)
+vYc @ workbench.desktop.main.js:1348
+await in vYc
+RRt @ workbench.desktop.main.js:1348
+(anonymous) @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+await in submitChatMaybeAbortCurrent
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+si @ workbench.desktop.main.js:4516
+onSubmit @ workbench.desktop.main.js:4516
+F @ workbench.desktop.main.js:4512
+onSubmit @ workbench.desktop.main.js:4512
+handleSubmit @ workbench.desktop.main.js:4511
+(anonymous) @ workbench.desktop.main.js:4511
+U_o @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443
+q_o @ workbench.desktop.main.js:443
+hz @ workbench.desktop.main.js:443
+update @ workbench.desktop.main.js:445
+U_o @ workbench.desktop.main.js:443
+ql @ workbench.desktop.main.js:443
+DFc @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443
+workbench.desktop.main.js:2569 Error: Image selected in conversation was not found on disk
+    at vYc (workbench.desktop.main.js:1348:7836)
+    at async workbench.desktop.main.js:1348:9153
+    at async workbench.desktop.main.js:2569:1632
+    at async Promise.all (index 0)
+    at async Promise.all (index 4)
+    at async workbench.desktop.main.js:2569:2449
+    at async Promise.all (index 0)
+    at async lJ.populateConversationWithExtraContext (workbench.desktop.main.js:2569:888)
+    at async lJ.populateConversationWithContext (workbench.desktop.main.js:2572:14414)
+    at async lJ.submitChatMaybeAbortCurrent (workbench.desktop.main.js:2565:17797)
+    at async si (workbench.desktop.main.js:4516:24730)
+(anonymous) @ workbench.desktop.main.js:2569
+await in (anonymous)
+(anonymous) @ workbench.desktop.main.js:2569
+populateConversationWithExtraContext @ workbench.desktop.main.js:2569
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+populateConversationWithContext @ workbench.desktop.main.js:2572
+await in populateConversationWithContext
+submitChatMaybeAbortCurrent @ workbench.desktop.main.js:2565
+await in submitChatMaybeAbortCurrent
+(anonymous) @ workbench.desktop.main.js:51
+j9 @ workbench.desktop.main.js:51
+n.value @ workbench.desktop.main.js:51
+si @ workbench.desktop.main.js:4516
+onSubmit @ workbench.desktop.main.js:4516
+F @ workbench.desktop.main.js:4512
+onSubmit @ workbench.desktop.main.js:4512
+handleSubmit @ workbench.desktop.main.js:4511
+(anonymous) @ workbench.desktop.main.js:4511
+U_o @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443
+q_o @ workbench.desktop.main.js:443
+hz @ workbench.desktop.main.js:443
+update @ workbench.desktop.main.js:445
+U_o @ workbench.desktop.main.js:443
+ql @ workbench.desktop.main.js:443
+DFc @ workbench.desktop.main.js:443
+(anonymous) @ workbench.desktop.main.js:443

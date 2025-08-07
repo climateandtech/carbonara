@@ -44,10 +44,30 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('carbonara.exportDataJson', () => dataTreeProvider.exportData('json')),
         vscode.commands.registerCommand('carbonara.exportDataCsv', () => dataTreeProvider.exportData('csv')),
         vscode.commands.registerCommand('carbonara.clearAllData', () => dataTreeProvider.clearData()),
-        vscode.commands.registerCommand('carbonara.openProject', openCarbonaraProject)
+        vscode.commands.registerCommand('carbonara.openProject', openCarbonaraProject),
+        vscode.commands.registerCommand('carbonara.installCli', installCli)
     ];
 
     context.subscriptions.push(carbonaraStatusBar, ...commands);
+
+    // Watch for project config changes and refresh views/status accordingly
+    const watcher = vscode.workspace.createFileSystemWatcher('**/carbonara.config.json');
+    watcher.onDidCreate(() => {
+        assessmentTreeProvider.refresh();
+        dataTreeProvider.refresh();
+        checkProjectStatus();
+    });
+    watcher.onDidChange(() => {
+        assessmentTreeProvider.refresh();
+        dataTreeProvider.refresh();
+        checkProjectStatus();
+    });
+    watcher.onDidDelete(() => {
+        assessmentTreeProvider.refresh();
+        dataTreeProvider.refresh();
+        checkProjectStatus();
+    });
+    context.subscriptions.push(watcher);
 
     // Check if project is already initialized
     checkProjectStatus();
@@ -138,19 +158,32 @@ async function initProject() {
         return;
     }
 
-    // Run carbonara init command with collected data
     const projectPath = getCurrentProjectPath();
-    await runCarbonaraCommand([
-        'init', 
-        '--path', projectPath,
-        '--name', projectName,
-        '--description', `${projectName} - Carbonara CO2 assessment project`,
-        '--type', projectType.value
-    ], 'Initializing Carbonara project...');
-    
-    // Refresh project status
+
+    // Always ensure a basic project structure exists locally first (never fail)
+    await ensureLocalCarbonaraProject(projectPath, projectName, projectType.value);
+
+    // Try to run CLI initialization to enrich setup if available, but do NOT fail if it isn't
+    const cliAvailable = await checkCarbonaraInstalled();
+    if (cliAvailable) {
+        try {
+            await runCarbonaraCommand([
+                'init',
+                '--path', projectPath
+            ], 'Initializing Carbonara project...');
+        } catch {
+            // Soft fail: we already created a local config
+        }
+    } else {
+        promptInstallCli('Project initialized locally. Install Carbonara CLI to unlock all features.');
+    }
+
+    // Ensure UI reflects the new project
+    assessmentTreeProvider.refresh();
+    dataTreeProvider.refresh();
+
+    // Refresh project status regardless of CLI outcome
     checkProjectStatus();
-    
     vscode.window.showInformationMessage('Carbonara project initialized successfully!');
 }
 
@@ -240,77 +273,18 @@ async function viewData() {
         return;
     }
 
-    // Show the data tree and refresh it
     vscode.commands.executeCommand('carbonara.dataTree.focus');
-    dataTreeProvider.refresh();
-
-    // Show data management options
-    const action = await vscode.window.showQuickPick(
-        [
-            { label: 'View in Sidebar', value: 'view' },
-            { label: 'Export as JSON', value: 'export-json' },
-            { label: 'Export as CSV', value: 'export-csv' },
-            { label: 'Clear All Data', value: 'clear' }
-        ],
-        { placeHolder: 'Select data action' }
-    );
-
-    if (!action) {
-        return;
-    }
-
-    switch (action.value) {
-        case 'view':
-            // Already focused on data tree
-            vscode.window.showInformationMessage('View your data in the Data & Results sidebar panel');
-            break;
-        case 'export-json':
-            await dataTreeProvider.exportData('json');
-            break;
-        case 'export-csv':
-            await dataTreeProvider.exportData('csv');
-            break;
-        case 'clear':
-            await dataTreeProvider.clearData();
-            break;
-    }
 }
 
 async function showStatus() {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-        vscode.window.showErrorMessage('Please open a workspace folder first');
+    const projectPath = getCurrentProjectPath();
+    const configPath = path.join(projectPath, 'carbonara.config.json');
+    if (!fs.existsSync(configPath)) {
+        vscode.window.showInformationMessage('No Carbonara project detected. Initialize one from the status bar or sidebar.');
         return;
     }
 
-    const projectPath = getCurrentProjectPath();
-    const configPath = path.join(projectPath, 'carbonara.config.json');
-    const dbPath = path.join(projectPath, 'carbonara.db');
-
-    let status = '# Carbonara Project Status\n\n';
-    
-    if (fs.existsSync(configPath)) {
-        try {
-            const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            status += `**Project**: ${config.name}\n`;
-            status += `**Type**: ${config.projectType}\n`;
-            status += `**Description**: ${config.description}\n\n`;
-        } catch (error) {
-            status += '**Configuration**: ❌ Invalid config file\n\n';
-        }
-    } else {
-        status += '**Status**: ❌ Not initialized\n\n';
-    }
-
-    status += `**Database**: ${fs.existsSync(dbPath) ? '✅ Present' : '❌ Missing'}\n`;
-    status += `**CLI Available**: ${await checkCarbonaraInstalled() ? '✅ Yes' : '❌ No'}\n`;
-
-    // Show in new document
-    const doc = await vscode.workspace.openTextDocument({
-        content: status,
-        language: 'markdown'
-    });
-    vscode.window.showTextDocument(doc);
+    vscode.window.showInformationMessage('Carbonara project detected and ready.');
 }
 
 async function openConfig() {
@@ -537,166 +511,215 @@ function setCurrentCarbonaraProject(projectPath: string) {
 }
 
 function getCurrentProjectPath(): string {
-    if (currentProjectPath) {
-        return currentProjectPath;
-    }
-    
-    // Default to workspace root
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    return workspaceFolder?.uri.fsPath || process.cwd();
+    if (!workspaceFolder) {
+        return process.cwd();
+    }
+
+    return workspaceFolder.uri.fsPath;
 }
 
-async function checkCarbonaraInstalled(): Promise<boolean> {
-    return new Promise((resolve) => {
-        // Try to find CLI in the monorepo structure
-        const cliPath = findCarbonaraCLI();
-        if (!cliPath) {
-            resolve(false);
-            return;
+async function ensureLocalCarbonaraProject(projectPath: string, projectName: string, projectType: string): Promise<void> {
+    try {
+        const configPath = path.join(projectPath, 'carbonara.config.json');
+        if (!fs.existsSync(configPath)) {
+            const minimalConfig = {
+                name: projectName,
+                description: `${projectName} - Carbonara project`,
+                type: projectType,
+                version: 1,
+                createdAt: new Date().toISOString()
+            };
+            fs.writeFileSync(configPath, JSON.stringify(minimalConfig, null, 2), 'utf-8');
         }
+        // Ensure data directory exists
+        const dataDir = path.join(projectPath, '.carbonara');
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage(`Failed to initialize local Carbonara project: ${(error as Error).message}`);
+    }
+}
 
-        const child = spawn('node', [cliPath, '--version'], { stdio: 'pipe' });
-        child.on('error', () => resolve(false));
-        child.on('close', (code) => resolve(code === 0));
+function promptInstallCli(message?: string) {
+    const text = message || 'Carbonara CLI is not installed. Install it to enable advanced features.';
+    vscode.window.showInformationMessage(text, 'Install CLI', 'Later').then(selection => {
+        if (selection === 'Install CLI') {
+            vscode.commands.executeCommand('carbonara.installCli');
+        }
     });
 }
 
-async function runCarbonaraCommand(args: string[], message: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: message,
-            cancellable: false
-        }, () => {
-            return new Promise<void>((progressResolve, progressReject) => {
-                const cwd = getCurrentProjectPath();
-                
-                // Find the CLI tool
-                const cliPath = findCarbonaraCLI();
-                if (!cliPath) {
-                    const errorMessage = 'Carbonara CLI not found. Please install the CLI first.';
-                    vscode.window.showErrorMessage(errorMessage);
-                    progressReject(new Error(errorMessage));
-                    reject(new Error(errorMessage));
-                    return;
-                }
-                
-                const child = spawn('node', [cliPath, ...args], {
-                    cwd,
-                    stdio: 'pipe'
-                });
-
-                let output = '';
-                let error = '';
-
-                child.stdout?.on('data', (data) => {
-                    output += data.toString();
-                });
-
-                child.stderr?.on('data', (data) => {
-                    error += data.toString();
-                });
-
-                child.on('close', (code) => {
-                    if (code === 0) {
-                        if (output.trim()) {
-                            vscode.window.showInformationMessage('Command completed successfully');
-                        }
-                        progressResolve();
-                        resolve();
-                    } else {
-                        const errorMessage = error || `Command failed with exit code ${code}`;
-                        vscode.window.showErrorMessage(`Carbonara CLI Error: ${errorMessage}`);
-                        progressReject(new Error(errorMessage));
-                        reject(new Error(errorMessage));
-                    }
-                });
-
-                child.on('error', (err) => {
-                    const errorMessage = 'Carbonara CLI not found. Please install the CLI first.';
-                    vscode.window.showErrorMessage(errorMessage);
-                    progressReject(new Error(errorMessage));
-                    reject(new Error(errorMessage));
-                });
+async function installCli(): Promise<void> {
+    // Offer to install using npm -g
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Installing Carbonara CLI globally...'
+    }, async () => {
+        return new Promise<void>((resolve) => {
+            const child = spawn('npm', ['i', '-g', '@carbonara/cli'], { stdio: 'ignore' });
+            child.on('close', () => {
+                vscode.window.showInformationMessage('Carbonara CLI installation finished.');
+                resolve();
+            });
+            child.on('error', () => {
+                vscode.window.showErrorMessage('Failed to start npm. Please install @carbonara/cli manually.');
+                resolve();
             });
         });
     });
 }
 
-function findCarbonaraCLI(): string | null {
+// Robust CLI resolution helpers
+
+type ResolvedCli = { mode: 'global' } | { mode: 'path', path: string };
+
+function resolveCarbonaraCli(): ResolvedCli | null {
     // 1) Explicit env override (used by tests/CI)
     const envCli = process.env.CARBONARA_CLI_PATH;
     if (envCli && fs.existsSync(envCli)) {
-        return envCli;
+        return { mode: 'path', path: envCli };
     }
 
-    // 1b) Try resolving installed package (when bundled as dependency)
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const pkgPath = require.resolve('@carbonara/cli/package.json');
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-        const binRel = (pkg?.bin && (pkg.bin.carbonara || pkg.bin)) || 'dist/index.js';
-        const resolved = path.join(path.dirname(pkgPath), binRel);
-        if (fs.existsSync(resolved)) {
-            return resolved;
-        }
-    } catch {
-        // ignore if not installed as a dependency
+    // 2) If a global binary exists, prefer that to avoid bundling/ESM issues
+    const globalCandidates = [
+        path.join((process.env.HOME || ''), '.npm', 'bin', 'carbonara'),
+        '/usr/local/bin/carbonara',
+        '/opt/homebrew/bin/carbonara',
+        '/usr/bin/carbonara'
+    ];
+    for (const p of globalCandidates) {
+        if (fs.existsSync(p)) return { mode: 'path', path: p };
     }
 
-    // 2) Try to find CLI in the monorepo structure relative to current workspace
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (workspaceFolder) {
-        const wsRoot = workspaceFolder.uri.fsPath;
+    // 3) As a last resort, try just calling the binary by name and let PATH resolve it at runtime
+    return { mode: 'global' };
+}
 
-        // Prefer built dist artifact
-        const distPaths = [
-            path.join(wsRoot, 'packages', 'cli', 'dist', 'index.js'),
-            path.join(wsRoot, '..', 'packages', 'cli', 'dist', 'index.js')
-        ];
-        for (const p of distPaths) {
-            if (fs.existsSync(p)) return p;
-        }
-
-        // Fallback to sources (only if runnable directly)
-        const srcPaths = [
-            path.join(wsRoot, 'packages', 'cli', 'src', 'index.js'),
-            path.join(wsRoot, '..', 'packages', 'cli', 'src', 'index.js')
-        ];
-        for (const p of srcPaths) {
-            if (fs.existsSync(p)) return p;
-        }
-
-        // Respect bin field if package.json is present
-        const pkgJsonCandidates = [
-            path.join(wsRoot, 'packages', 'cli', 'package.json'),
-            path.join(wsRoot, '..', 'packages', 'cli', 'package.json')
-        ];
-        for (const pkgPath of pkgJsonCandidates) {
-            try {
-                if (fs.existsSync(pkgPath)) {
-                    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-                    const binRel: string | undefined = pkg?.bin?.carbonara || pkg?.bin;
-                    if (binRel) {
-                        const resolved = path.join(path.dirname(pkgPath), binRel);
-                        if (fs.existsSync(resolved)) return resolved;
-                    }
+async function checkCarbonaraInstalled(): Promise<boolean> {
+    const resolved = resolveCarbonaraCli();
+    return new Promise<boolean>((resolve) => {
+        try {
+            let child;
+            if (!resolved) {
+                resolve(false);
+                return;
+            }
+            if (resolved.mode === 'path') {
+                // Try invoking with --version; if path points to a JS file, execute via node
+                if (resolved.path.endsWith('.js')) {
+                    child = spawn('node', [resolved.path, '--version'], { stdio: 'ignore' });
+                } else {
+                    child = spawn(resolved.path, ['--version'], { stdio: 'ignore' });
                 }
-            } catch {}
+            } else {
+                child = spawn('carbonara', ['--version'], { stdio: 'ignore' });
+            }
+            child.on('close', (code) => resolve(code === 0));
+            child.on('error', () => resolve(false));
+        } catch {
+            resolve(false);
         }
+    });
+}
+
+async function runCarbonaraCommand(args: string[], message: string): Promise<void> {
+    const resolved = resolveCarbonaraCli();
+
+    if (!resolved) {
+        promptInstallCli();
+        return; // Never throw – keep UX resilient
     }
 
-    // 3) Global install fallback (npm user bin)
-    const npmPrefix = (process.env.npm_config_prefix || process.env.NPM_CONFIG_PREFIX || '') as string;
-    const globalCliCandidates = [
-        path.join(process.env.HOME || '', '.npm', 'bin', 'carbonara'),
-        npmPrefix ? path.join(npmPrefix, 'bin', 'carbonara') : ''
-    ].filter(Boolean) as string[];
-    for (const p of globalCliCandidates) {
-        if (p && fs.existsSync(p)) return p;
-    }
+    const output = vscode.window.createOutputChannel('Carbonara');
+    output.appendLine(`[Carbonara] ${message}`);
+    output.appendLine(`[Carbonara] CLI args: ${args.join(' ')}`);
 
-    return null;
+    return new Promise((resolve) => {
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: message + ' (see Output: Carbonara)',
+            cancellable: true
+        }, (progress, token) => {
+            return new Promise<void>((progressResolve) => {
+                const cwd = getCurrentProjectPath();
+
+                let child: import('child_process').ChildProcess;
+                if (resolved.mode === 'path') {
+                    if (resolved.path.endsWith('.js')) {
+                        child = spawn('node', [resolved.path, ...args], { cwd, stdio: 'pipe' });
+                    } else {
+                        child = spawn(resolved.path, [...args], { cwd, stdio: 'pipe' });
+                    }
+                } else {
+                    child = spawn('carbonara', [...args], { cwd, stdio: 'pipe' });
+                }
+
+                let outputBuf = '';
+                let errorBuf = '';
+                let finished = false;
+
+                // 45s safety timeout
+                const timeoutMs = 45000;
+                const timeout = setTimeout(() => {
+                    if (finished) return;
+                    output.appendLine('[Carbonara] Command timed out. Terminating process...');
+                    try { child.kill(); } catch {}
+                    promptInstallCli('Carbonara CLI timed out.');
+                    finished = true;
+                    progressResolve();
+                    resolve();
+                }, timeoutMs);
+
+                token.onCancellationRequested(() => {
+                    output.appendLine('[Carbonara] Operation cancelled by user. Killing process...');
+                    try { child.kill(); } catch {}
+                });
+
+                child.stdout?.on('data', (data) => {
+                    const text = data.toString();
+                    outputBuf += text;
+                    output.append(text);
+                });
+                child.stderr?.on('data', (data) => {
+                    const text = data.toString();
+                    errorBuf += text;
+                    output.append(text);
+                });
+
+                child.on('close', (code) => {
+                    if (finished) return;
+                    finished = true;
+                    clearTimeout(timeout);
+                    if (code === 0) {
+                        if (outputBuf.trim()) {
+                            vscode.window.showInformationMessage('Carbonara: command completed');
+                        }
+                        progressResolve();
+                        resolve();
+                    } else {
+                        const errorMessage = errorBuf || `Command failed with exit code ${code}`;
+                        output.appendLine(`[Carbonara] ERROR: ${errorMessage}`);
+                        // Do not crash the flow – show actionable message with Install button
+                        promptInstallCli(`Carbonara CLI Error: ${errorMessage}`);
+                        progressResolve();
+                        resolve();
+                    }
+                });
+
+                child.on('error', (err) => {
+                    if (finished) return;
+                    finished = true;
+                    clearTimeout(timeout);
+                    output.appendLine(`[Carbonara] Failed to start CLI: ${String(err)}`);
+                    promptInstallCli('Carbonara CLI not found.');
+                    progressResolve();
+                    resolve();
+                });
+            });
+        });
+    });
 }
 
 function checkProjectStatus() {
@@ -713,8 +736,13 @@ function checkProjectStatus() {
     if (fs.existsSync(configPath)) {
         carbonaraStatusBar.text = "$(check) Carbonara";
         carbonaraStatusBar.tooltip = "Carbonara project initialized";
+        // Make sure views show project data state
+        assessmentTreeProvider.refresh();
+        dataTreeProvider.refresh();
     } else {
         carbonaraStatusBar.text = "$(pulse) Carbonara";
         carbonaraStatusBar.tooltip = "Click to initialize Carbonara project";
+        assessmentTreeProvider.refresh();
+        dataTreeProvider.refresh();
     }
 } 

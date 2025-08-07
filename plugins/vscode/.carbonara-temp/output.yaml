@@ -1,0 +1,80 @@
+name: website-carbon
+description: estimate carbon for a webpage visit
+initialize:
+  plugins:
+    green-hosting:
+      path: '@tngtech/if-webpage-plugins'
+      method: GreenHosting
+    webpage-impact:
+      path: '@tngtech/if-webpage-plugins'
+      method: WebpageImpact
+      config:
+        scrollToBottom: false
+        url: https://climateandtech.com
+    co2js:
+      path: '@tngtech/if-webpage-plugins'
+      method: Co2js
+      config:
+        type: swd
+        version: 4
+execution:
+  command: >-
+    /opt/homebrew/Cellar/node/23.10.0_1/bin/node /opt/homebrew/bin/if-run
+    --manifest
+    /Users/chris/code/carbonara/plugins/vscode/.carbonara-temp/manifest.yml
+    --output
+    /Users/chris/code/carbonara/plugins/vscode/.carbonara-temp/output.yml
+  environment:
+    if-version: 1.1.0
+    os: macOS
+    os-version: '15.6'
+    node-version: 23.10.0
+    date-time: 2025-08-07T21:21:35.105Z (UTC)
+    dependencies:
+      - '@types/glob@8.1.0 extraneous -> undefined'
+      - '@types/minimatch@5.1.2 extraneous -> undefined'
+      - carbonara-vscode@0.0.1
+      - >-
+        diff@4.0.2 extraneous ->
+        https://registry.npmjs.org/diff/-/diff-4.0.2.tgz
+  status: success
+tree:
+  children:
+    child:
+      pipeline:
+        observe:
+          - webpage-impact
+          - green-hosting
+        compute:
+          - co2js
+      inputs:
+        - options:
+            firstVisitPercentage: 0.9
+            returnVisitPercentage: 0.1
+          timestamp: '2025-08-07T21:21:36.053Z'
+          duration: 2.75
+          url: https://climateandtech.com
+          network/data/bytes: 312688
+          network/data/resources/bytes:
+            Document: 14767
+            Script: 1970
+            Image: 235943
+            Stylesheet: 11618
+            Font: 48390
+          green-web-host: false
+      outputs:
+        - options:
+            firstVisitPercentage: 0.9
+            returnVisitPercentage: 0.1
+          timestamp: '2025-08-07T21:21:36.053Z'
+          duration: 2.75
+          url: https://climateandtech.com
+          network/data/bytes: 312688
+          network/data/resources/bytes:
+            Document: 14767
+            Script: 1970
+            Image: 235943
+            Stylesheet: 11618
+            Font: 48390
+          green-web-host: false
+          estimated-carbon: 0.042

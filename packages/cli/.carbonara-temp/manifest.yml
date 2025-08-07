@@ -1,0 +1,34 @@
+name: website-carbon
+description: estimate carbon for a webpage visit
+initialize:
+  outputs:
+    - yaml
+  plugins:
+    green-hosting:
+      method: GreenHosting
+      path: '@tngtech/if-webpage-plugins'
+    webpage-impact:
+      method: WebpageImpact
+      path: '@tngtech/if-webpage-plugins'
+      config:
+        scrollToBottom: false
+        url: https://example.com
+    co2js:
+      method: Co2js
+      path: '@tngtech/if-webpage-plugins'
+      config:
+        type: swd
+        version: 4
+tree:
+  children:
+    child:
+      pipeline:
+        observe:
+          - webpage-impact
+          - green-hosting
+        compute:
+          - co2js
+      inputs:
+        - options:
+            firstVisitPercentage: 0.9
+            returnVisitPercentage: 0.1

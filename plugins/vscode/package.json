@@ -9,7 +9,6 @@
     "url": "https://github.com/carbonara/carbonara"
   },
   "license": "ISC",
-
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -111,13 +110,11 @@
       "carbonara": [
         {
           "id": "carbonara.assessmentTree",
-          "name": "CO2 Assessment",
-          "when": "workspaceFolderCount > 0"
+          "name": "CO2 Assessment"
         },
         {
           "id": "carbonara.dataTree",
-          "name": "Data & Results",
-          "when": "workspaceFolderCount > 0"
+          "name": "Data & Results"
         }
       ]
     },
@@ -175,7 +172,10 @@
         },
         "carbonara.transport": {
           "type": "string",
-          "enum": ["websocket", "http"],
+          "enum": [
+            "websocket",
+            "http"
+          ],
           "default": "websocket",
           "description": "Transport method for server communication"
         }
@@ -184,11 +184,17 @@
     "languages": [
       {
         "id": "typescript",
-        "extensions": [".ts", ".tsx"]
+        "extensions": [
+          ".ts",
+          ".tsx"
+        ]
       },
       {
         "id": "javascript",
-        "extensions": [".js", ".jsx"]
+        "extensions": [
+          ".js",
+          ".jsx"
+        ]
       }
     ]
   },
@@ -201,28 +207,28 @@
     "test": "npm run compile-tests && node ./out/test/runTest.js",
     "test:ui": "playwright test e2e --workers=1",
     "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
-    "test:ui:comprehensive": "playwright test e2e/carbonara-ui-comprehensive.spec.ts --workers=1", 
+    "test:ui:comprehensive": "playwright test e2e/carbonara-ui-comprehensive.spec.ts --workers=1",
     "test:ui:workspace-scenarios": "playwright test e2e/workspace-scenarios.spec.ts --workers=1",
     "test:ui:empty-workspace": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Empty workspace\" --workers=1",
     "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
     "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
     "test:ui:headed": "playwright test e2e --headed --workers=1",
-
     "compile-tests": "tsc -p . --outDir out",
     "pretest": "npm run build",
     "playwright:install": "playwright install"
   },
   "dependencies": {
+    "carbonara": "^0.1.3"
   },
   "devDependencies": {
-    "@types/vscode": "^1.74.0",
+    "@playwright/test": "^1.40.0",
+    "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
-    "typescript": "^4.9.4",
+    "@types/vscode": "^1.74.0",
     "@vscode/test-electron": "^2.2.0",
     "@vscode/vsce": "^2.15.0",
-    "@types/mocha": "^10.0.1",
     "mocha": "^10.2.0",
     "playwright": "^1.40.0",
-    "@playwright/test": "^1.40.0"
+    "typescript": "^4.9.4"
   }
-} 
+}

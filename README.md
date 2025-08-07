@@ -4,42 +4,16 @@ A comprehensive monorepo containing CLI tools, VS Code extension, and multi-edit
 
 ## 🌱 Overview
 
-Carbonara is a comprehensive platform for **CO2 assessment** and **web sustainability analysis**. It provides tools to measure, track, and optimize the environmental impact of digital projects through interactive assessments and automated analysis.
+Carbonara provides tools to measure, track, and optimize the environmental impact of digital projects through interactive assessments and automated analysis.
 
 ### Key Features
 
-- **🔍 CO2 Assessment**: Comprehensive questionnaires to evaluate project sustainability
-- **🌐 Web Analysis**: Greenframe integration for website carbon footprint analysis
-- **📊 Data Lake**: SQLite-based storage for all assessment data with JSON flexibility
+- **🔍 CO2 Assessment**: Interactive questionnaires to evaluate project sustainability
+- **🌐 Web Analysis**: Pluggable analyzer architecture with built-in and external tools
+- **📊 Data Lake**: SQLite-based storage with JSON flexibility and import/export
 - **🛠️ CLI Tool**: Command-line interface for all operations
 - **📝 VS Code Extension**: Native IDE integration with visual interface
 - **🔌 Multi-Editor Support**: Plugin architecture for various editors
-
-## 🧱 Architecture Overview
-
-```
-+-------------------+       +------------------------+        +--------------------+
-| VS Code Extension | <---> |                        | <----> | JetBrains Plugin   |
-| (Native UI + API) |       |                        |        | (Kotlin Plugin)    |
-+-------------------+       |                        |        +--------------------+
-                            |                        |
-+-------------------+       |     Carbonara CLI      |        +--------------------+
-| Vim/Neovim Plugin | <---> |    (Core Engine)       | <----> | Emacs Plugin       |
-| (Lua/Python/CLI)  |       |                        |        | (Elisp Client)     |
-+-------------------+       |  - CO2 Assessment      |        +--------------------+
-                            |  - Greenframe Analysis |
-+-------------------+       |  - Data Lake (SQLite) | <----> +--------------------+
-| Terminal/CLI      | <---->|  - Project Management  |        | Svelte Web UI      |
-+-------------------+       +------------------------+        | (Browser App)      |
-                                     |                        +--------------------+
-                                     v
-                          +---------------------------+
-                          | External Tools Integration |
-                          | - Greenframe CLI          |
-                          | - Future Sustainability   |
-                          |   Analysis Tools          |
-                          +---------------------------+
-```
 
 ## 📁 Project Structure
 
@@ -48,11 +22,13 @@ carbonara/
 ├── packages/                    # Core packages and services
 │   ├── cli/                    # 🔧 Carbonara CLI tool (main interface)
 │   │   ├── src/
-│   │   │   ├── index.js        # CLI entry point
-│   │   │   ├── commands/       # Assessment, Greenframe, Data management
+│   │   │   ├── index.ts        # CLI entry point
+│   │   │   ├── commands/       # Assessment, Analysis, Data, Tools, Import
+│   │   │   ├── analyzers/      # Built-in analysis tools
+│   │   │   ├── registry/       # Tool registry and detection
 │   │   │   ├── database/       # SQLite data lake implementation
 │   │   │   └── utils/          # Configuration and utilities
-│   │   ├── schemas/            # JSON schemas for assessments
+│   │   ├── schemas/            # JSON schemas for tools and assessments
 │   │   └── test/               # Comprehensive test suite
 │   ├── core-backend/           # Backend logic (Python/TypeScript)
 │   ├── rpc-protocol/           # JSON-RPC protocol definitions
@@ -61,8 +37,8 @@ carbonara/
 │   └── web-ui/                 # Svelte web application
 ├── plugins/                    # Editor integrations
 │   ├── vscode/                 # 📝 VS Code extension (ready-to-install)
-│   │   ├── src/extension.ts    # Extension logic
-│   │   ├── dist/               # Compiled extension
+│   │   ├── src/extension.ts    # Extension logic with E2E tests
+│   │   ├── e2e/               # Playwright UI tests
 │   │   └── *.vsix              # Installable package
 │   ├── jetbrains/              # JetBrains plugin (future)
 │   ├── vim/                    # Vim/Neovim plugin (future)
@@ -73,353 +49,134 @@ carbonara/
 
 ## 🚀 Quick Start
 
-### Option 1: CLI Tool (Recommended)
+### CLI Tool (Recommended)
 
-1. **Install the CLI globally:**
+```bash
+# Install globally
+npm install -g @carbonara/cli
 
-   ```bash
-   npm install -g @carbonara/cli
-   ```
+# Initialize project
+carbonara init
 
-2. **Initialize a project:**
+# Run CO2 assessment
+carbonara assess
 
-   ```bash
-   carbonara init
-   ```
+# List available analysis tools
+carbonara tools --list
 
-3. **Run CO2 assessment:**
+# Analyze with built-in tool
+carbonara analyze byte-counter https://example.com --save
 
-   ```bash
-   carbonara assess
-   ```
+# Install and use external tools
+carbonara tools --install greenframe
+carbonara analyze greenframe https://example.com --save
+```
 
-4. **Analyze a website:**
-   ```bash
-   carbonara greenframe https://example.com --save
-   ```
+### VS Code Extension
 
-### Option 2: VS Code Extension
+```bash
+# Install extension
+cd plugins/vscode
+code --install-extension carbonara-vscode-1.0.0.vsix
 
-1. **Install the extension:**
+# Usage: Click Carbonara in status bar for quick-pick menu
+```
 
-   ```bash
-   cd plugins/vscode
-   code --install-extension carbonara-vscode-1.0.0.vsix
-   ```
+### Development Setup
 
-2. **Use in VS Code:**
-   - Look for the Carbonara icon in the status bar
-   - Click to access the main menu
-   - Start with "Initialize Project"
+```bash
+npm install
+npm run build
+cd packages/cli && npm link  # Global CLI access
+npm test
+```
 
-### Option 3: Development Setup
-
-1. **Install dependencies:**
-
-   ```bash
-   npm install
-   ```
-
-2. **Build all packages:**
-
-   ```bash
-   npm run build
-   ```
-
-3. **Install CLI locally for development:**
-
-   ```bash
-   cd packages/cli
-   npm link
-   # Now you can use 'carbonara' command globally
-   ```
-
-4. **Run tests:**
-   ```bash
-   npm test
-   ```
-
-## 🔧 CLI Commands Reference
+## 🔧 CLI Commands
 
 ### Core Commands
 
-| Command            | Description                      | Example                                           |
-| ------------------ | -------------------------------- | ------------------------------------------------- |
-| `init`             | Initialize new Carbonara project | `carbonara init --path ./my-project`              |
-| `assess`           | Run CO2 assessment questionnaire | `carbonara assess`                                |
-| `greenframe <url>` | Analyze website carbon footprint | `carbonara greenframe https://example.com --save` |
-| `data`             | Manage stored assessment data    | `carbonara data --list`                           |
+| Command | Description | Example |
+|---------|-------------|---------|
+| `init` | Initialize new project | `carbonara init` |
+| `assess` | Run CO2 assessment | `carbonara assess` |
+| `analyze <tool> <url>` | Run analysis with tool | `carbonara analyze byte-counter https://example.com --save` |
+| `tools` | Manage analysis tools | `carbonara tools --list` |
+| `data` | Manage stored data | `carbonara data --list` |
+| `import` | Import data from files/databases | `carbonara import --file data.json` |
 
-### Command Details
+### Analysis Tools
 
-#### `carbonara init [options]`
+#### Built-in Tools
+- **byte-counter**: CO2 estimation from data transfer (SWD v4 + Coroama 2021 models)
 
-**Initialize a new Carbonara project**
+#### External Tools
+- **greenframe**: Website carbon footprint (`@marmelab/greenframe-cli`)
+- **impact-framework**: GSF measurement framework (`@grnsft/if @tngtech/if-webpage-plugins`)
 
-- `--path <path>` - Project directory (default: current directory)
-- Creates: `carbonara.config.json`, `carbonara.db`, `schemas/`
-- Interactive prompts for project name, description, and type
+#### Tool Management
+```bash
+carbonara tools --list                    # List all tools and status
+carbonara tools --install greenframe      # Install external tool
+carbonara tools --refresh                 # Refresh installation status
+```
 
-#### `carbonara assess [options]`
-
-**Run comprehensive CO2 assessment**
-
-- Interactive questionnaire covering:
-  - Project scope (users, traffic, lifespan)
-  - Infrastructure (hosting, location, storage)
-  - Development practices (team size, CI/CD, testing)
-  - Features (real-time, media, AI/ML, blockchain, IoT)
-  - Sustainability goals
-- Generates CO2 impact score and recommendations
-- Stores results in SQLite database
-
-#### `carbonara greenframe <url> [options]`
-
-**Analyze website carbon footprint using Greenframe**
-
-- `--save` - Save results to database
-- `--output <format>` - Output format (json|table)
-- Provides carbon footprint, energy consumption, and optimization suggestions
-
-#### `carbonara data [options]`
-
-**Manage assessment data lake**
-
-- `--list` - List all stored data
-- `--export <format>` - Export data (json|csv)
-- `--clear` - Clear all stored data
-
-### Global Options
-
-- `--help` - Show command help
-- `--version` - Show version information
+### Data Management
+```bash
+carbonara data --list                     # List stored data
+carbonara data --show                     # Show detailed analysis
+carbonara data --export json              # Export to JSON
+carbonara import --file data.json         # Import from file
+carbonara import --database other.db      # Import from database
+```
 
 ## 📝 VS Code Extension
 
 ### Features
-
-- **Status Bar Integration**: Real-time project status indicator
-- **Command Palette Integration**: Access all Carbonara commands
-- **Interactive Menus**: Visual interface for all operations
+- **Status Bar Integration**: Real-time project status
+- **Command Palette**: Access all Carbonara commands
+- **Interactive Menus**: Visual interface for operations
 - **Project Management**: Initialize and configure projects
-- **Data Visualization**: View assessment results and project status
-
-### Installation
-
-```bash
-# Method 1: Command line
-code --install-extension ./plugins/vscode/carbonara-vscode-1.0.0.vsix
-
-# Method 2: VS Code Extensions panel
-# Extensions → "..." menu → "Install from VSIX" → Select the .vsix file
-```
 
 ### Usage
-
-1. **Open workspace** in VS Code
-2. **Click Carbonara icon** in status bar (bottom-right)
-3. **Select action** from the quick-pick menu:
+1. Click **Carbonara** in status bar
+2. Select from quick-pick menu:
    - 🚀 Initialize Project
-   - ✅ Run CO2 Assessment
+   - ✅ Run CO2 Assessment  
    - 🌐 Analyze Website
    - 🗄️ View Data
    - ⚙️ Open Configuration
-   - ℹ️ Show Status
-
-### Status Indicators
-
-- **$(pulse) Carbonara**: Project not initialized
-- **$(check) Carbonara**: Project ready
 
 ## 🗄️ Database Model
 
-### Overview
+**SQLite database (`carbonara.db`) with JSON storage:**
 
-- **Type**: SQLite database (`carbonara.db`)
-- **Design**: Schemaless with JSON storage for flexibility
-- **Location**: Created in each project directory
-
-### Table Structure
-
-#### `projects` - Project Management
-
-```sql
-CREATE TABLE projects (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  path TEXT NOT NULL,
-  project_type TEXT,                    -- 'web', 'mobile', 'desktop', 'api', 'other'
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  metadata JSON,                        -- Project description, initialization data
-  co2_variables JSON                   -- CO2 assessment questionnaire results
-);
-```
-
-#### `assessment_data` - Data Lake Storage
-
-```sql
-CREATE TABLE assessment_data (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  project_id INTEGER,
-  tool_name TEXT NOT NULL,             -- 'co2-assessment', 'greenframe', etc.
-  data_type TEXT NOT NULL,             -- 'questionnaire', 'web-analysis', etc.
-  data JSON NOT NULL,                  -- All assessment results (schemaless)
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  source TEXT,                         -- 'cli', 'vscode-extension', 'web-ui'
-  FOREIGN KEY (project_id) REFERENCES projects (id)
-);
-```
-
-#### `tool_runs` - Execution History
-
-```sql
-CREATE TABLE tool_runs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  project_id INTEGER,
-  tool_name TEXT NOT NULL,             -- Tool that was executed
-  command TEXT NOT NULL,               -- Full command that was run
-  status TEXT NOT NULL,                -- 'success', 'failed', 'running'
-  output JSON,                         -- Command output/results
-  error_message TEXT,                  -- Error details if failed
-  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  completed_at DATETIME,
-  FOREIGN KEY (project_id) REFERENCES projects (id)
-);
-```
-
-### Data Examples
-
-**CO2 Assessment Data:**
-
-```json
-{
-  "projectInfo": {
-    "expectedUsers": 1000,
-    "expectedTraffic": "medium",
-    "targetAudience": "global",
-    "projectLifespan": 24
-  },
-  "infrastructure": {
-    "hostingType": "cloud",
-    "serverLocation": "global-cdn",
-    "dataStorage": "moderate"
-  },
-  "features": {
-    "realTimeFeatures": true,
-    "aiMlFeatures": false
-  },
-  "impactScore": 65,
-  "completedAt": "2024-01-01T12:00:00.000Z"
-}
-```
-
-**Greenframe Analysis Data:**
-
-```json
-{
-  "url": "https://example.com",
-  "results": {
-    "carbonFootprint": "0.45g CO2",
-    "energyConsumption": "1.2 Wh",
-    "performanceScore": 85,
-    "suggestions": ["optimize images", "reduce JS bundle"]
-  },
-  "analyzedAt": "2024-01-01T12:00:00.000Z"
-}
-```
+- `projects` - Project metadata and CO2 variables
+- `assessment_data` - All analysis results (schemaless JSON)
+- `tool_runs` - Tool execution history
 
 ## 🔧 Development
 
 ### CLI Development
-
 ```bash
 cd packages/cli
-npm install
-npm link           # Link for global 'carbonara' command
-npm test           # Run test suite
-npm run build      # Build TypeScript
-
-# For direct development testing:
-node src/index.js init    # Direct node execution
+npm install && npm link
+npm run build && npm test
 ```
 
 ### VS Code Extension Development
-
-#### Building from Source
-
 ```bash
 cd plugins/vscode
-npm install               # Install dependencies
-npm run build            # Compile TypeScript to JavaScript
+npm install && npm run build
+npm run test:ui              # Playwright E2E tests
+npm run package             # Create .vsix
 ```
-
-#### Creating Installation Package
-
-```bash
-cd plugins/vscode
-npm run package          # Creates .vsix package for installation
-```
-
-#### Installation and Testing
-
-```bash
-# Install the built extension
-code --install-extension carbonara-vscode-*.vsix
-
-# Or install directly from VS Code:
-# 1. Open VS Code
-# 2. Go to Extensions panel (Ctrl+Shift+X)
-# 3. Click "..." menu → "Install from VSIX..."
-# 4. Select the generated .vsix file
-```
-
-#### Development Workflow
-
-```bash
-# 1. Make changes to TypeScript files
-# 2. Build the extension
-npm run build
-
-# 3. Package extension
-npm run package
-
-# 4. Install/reinstall in VS Code
-code --install-extension carbonara-vscode-*.vsix
-
-# 5. Restart VS Code or reload window (Ctrl+Shift+P → "Developer: Reload Window")
-```
-
-#### Available Scripts
-
-- `npm run build` - Compile TypeScript (`tsc -p ./`)
-- `npm run watch` - Watch mode compilation (`tsc -watch -p ./`)
-- `npm run package` - Create .vsix package (`vsce package`)
-- `npm run publish` - Publish to VS Code marketplace (`vsce publish`)
-
-### Backend Development
-
-- **TypeScript**: Use `packages/core-backend/typescript/` for TypeScript services
-- **Python**: Use `packages/core-backend/python/` for Python services
 
 ### Testing
-
 ```bash
-npm test           # Run all tests
-npm run test:cli   # CLI tests only
+npm test                     # All tests
+npm run test:cli            # CLI tests only
 ```
-
-## 📚 Documentation
-
-- [JSON-RPC Protocol](./docs/protocol.md)
-- [Backend API](./docs/backend-api.md)
-- [Plugin Development](./docs/plugin-development.md)
-- [Deployment Guide](./docs/deployment.md)
-
-## 🤝 Contributing
-
-Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## 📄 License
 
-This project is licensed under the RPL License with dual licensing - see the [LICENSE](./LICENSE) file for details.
+ISC
