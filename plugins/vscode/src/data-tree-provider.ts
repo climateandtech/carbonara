@@ -375,10 +375,18 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             return;
         }
 
-        const child = spawn('node', [cliPath, 'data', '--export', 'json'], {
-            cwd: this.workspaceFolder.uri.fsPath,
-            stdio: 'pipe'
-        });
+        let child;
+        if (cliPath.endsWith('.js')) {
+            child = spawn('node', [cliPath, 'data', '--export', 'json'], {
+                cwd: this.workspaceFolder.uri.fsPath,
+                stdio: 'pipe'
+            });
+        } else {
+            child = spawn(cliPath, ['data', '--export', 'json'], {
+                cwd: this.workspaceFolder.uri.fsPath,
+                stdio: 'pipe'
+            });
+        }
 
         let output = '';
         child.stdout?.on('data', (data: Buffer) => {
@@ -516,23 +524,41 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     }
 
     private findCarbonaraCLI(): string | null {
-        if (!this.workspaceFolder) {
-            return null;
+        // 1) Explicit env override (used by tests/CI)
+        const envCli = process.env.CARBONARA_CLI_PATH;
+        if (envCli && fs.existsSync(envCli)) {
+            return envCli;
         }
 
-        // Check monorepo structure
-        const monorepoCliPath = path.join(this.workspaceFolder.uri.fsPath, 'packages', 'cli', 'src', 'index.js');
-        if (fs.existsSync(monorepoCliPath)) {
-            return monorepoCliPath;
+        // 2) Check monorepo structure (for development)
+        if (this.workspaceFolder) {
+            const monorepoCliPath = path.join(this.workspaceFolder.uri.fsPath, '..', '..', 'packages', 'cli', 'dist', 'index.js');
+            if (fs.existsSync(monorepoCliPath)) {
+                return monorepoCliPath;
+            }
+
+            // Check if we're in the CLI package itself
+            const localCliPath = path.join(this.workspaceFolder.uri.fsPath, 'packages', 'cli', 'dist', 'index.js');
+            if (fs.existsSync(localCliPath)) {
+                return localCliPath;
+            }
         }
 
-        // Check parent of monorepo
-        const parentMonorepoPath = path.join(this.workspaceFolder.uri.fsPath, '..', 'packages', 'cli', 'src', 'index.js');
-        if (fs.existsSync(parentMonorepoPath)) {
-            return parentMonorepoPath;
+        // 3) Check global installation paths
+        const globalCandidates = [
+            path.join((process.env.HOME || ''), '.npm', 'bin', 'carbonara'),
+            '/usr/local/bin/carbonara',
+            '/opt/homebrew/bin/carbonara',
+            '/usr/bin/carbonara'
+        ];
+        for (const p of globalCandidates) {
+            if (fs.existsSync(p)) {
+                return p;
+            }
         }
 
-        return null;
+        // 4) Return 'carbonara' to let shell resolve it
+        return 'carbonara';
     }
 }
 

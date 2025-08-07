@@ -1,6 +1,6 @@
 {
   "name": "carbonara-monorepo",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Multi-Editor Plugin Architecture with JSON-RPC for Carbonara",
   "private": true,
   "workspaces": [

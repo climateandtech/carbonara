@@ -1,13 +1,14 @@
 {
   "name": "@carbonara/cli",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Carbonara CLI tool for CO2 assessment and modular tool execution",
   "main": "dist/index.js",
   "bin": {
     "carbonara": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "cp -r src/registry/tools.json dist/registry/ && mkdir -p dist/schemas && cp -r schemas/* dist/schemas/",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",

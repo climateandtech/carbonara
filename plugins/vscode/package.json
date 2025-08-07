@@ -2,7 +2,7 @@
   "name": "carbonara-vscode",
   "displayName": "Carbonara",
   "description": "Multi-Editor Plugin Architecture client for VS Code",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "carbonara",
   "repository": {
     "type": "git",
@@ -95,6 +95,25 @@
         "command": "carbonara.openProject",
         "title": "Open Carbonara Project",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "carbonara.viewTools",
+        "title": "View Analysis Tools"
+      },
+      {
+        "command": "carbonara.refreshTools",
+        "title": "Refresh Tools",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "carbonara.installTool",
+        "title": "Install Tool",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "carbonara.analyzeTool",
+        "title": "Analyze with Tool",
+        "icon": "$(play)"
       }
     ],
     "viewsContainers": {
@@ -115,6 +134,10 @@
         {
           "id": "carbonara.dataTree",
           "name": "Data & Results"
+        },
+        {
+          "id": "carbonara.toolsTree",
+          "name": "Analysis Tools"
         }
       ]
     },
@@ -149,6 +172,23 @@
           "command": "carbonara.clearAllData",
           "when": "view == carbonara.dataTree",
           "group": "navigation"
+        },
+        {
+          "command": "carbonara.refreshTools",
+          "when": "view == carbonara.toolsTree",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "carbonara.installTool",
+          "when": "view == carbonara.toolsTree && viewItem == uninstalled-tool",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.analyzeTool",
+          "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
+          "group": "inline"
         }
       ]
     },

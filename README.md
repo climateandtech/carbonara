@@ -210,6 +210,22 @@ npm test                     # All tests
 npm run test:cli            # CLI tests only
 ```
 
+## 📦 Versioning
+
+This project follows [Semantic Versioning (SemVer)](https://semver.org/) principles:
+
+- **MAJOR** version: Incompatible API changes
+- **MINOR** version: New functionality (backward compatible)
+- **PATCH** version: Bug fixes (backward compatible)
+
+### Current Versions
+- **Monorepo**: 0.1.0
+- **CLI**: 0.1.0 
+- **VS Code Extension**: 0.1.0
+
+### Pre-1.0 Development
+During pre-1.0 development (0.x.x), minor versions may include breaking changes. The API is considered unstable until 1.0.0 release.
+
 ## 📄 License
 
 To be clarified - All rights reserved
