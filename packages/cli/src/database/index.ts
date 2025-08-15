@@ -1,11 +1,8 @@
 import sqlite3 from "sqlite3";
-import { promisify } from "util";
 import path from "path";
-import fs from "fs";
-import { z } from "zod";
 
 // Enable verbose mode for debugging
-sqlite3.verbose();
+// sqlite3.verbose();
 
 interface ProjectRow {
   id?: number;
@@ -86,7 +83,7 @@ export class DataLake {
           (err) => {
             if (err) reject(err);
             else resolve();
-          },
+          }
         );
       });
     });
@@ -95,7 +92,7 @@ export class DataLake {
   async createProject(
     name: string,
     projectPath: string,
-    metadata: any = {},
+    metadata: any = {}
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -114,7 +111,7 @@ export class DataLake {
 
   async updateProjectCO2Variables(
     projectId: number,
-    variables: any,
+    variables: any
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -137,7 +134,7 @@ export class DataLake {
     toolName: string,
     dataType: string,
     data: any,
-    source?: string,
+    source?: string
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -150,7 +147,7 @@ export class DataLake {
         function (err) {
           if (err) reject(err);
           else resolve(this.lastID);
-        },
+        }
       );
 
       stmt.finalize();
@@ -175,7 +172,7 @@ export class DataLake {
             }
             resolve(row || null);
           }
-        },
+        }
       );
     });
   }
@@ -196,14 +193,14 @@ export class DataLake {
             }));
             resolve(projects);
           }
-        },
+        }
       );
     });
   }
 
   async getAssessmentData(
     projectId?: number,
-    toolName?: string,
+    toolName?: string
   ): Promise<any[]> {
     let query = "SELECT * FROM assessment_data";
     const params: any[] = [];
