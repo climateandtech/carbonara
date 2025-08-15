@@ -1,40 +1,111 @@
-name: CI
+name: CLI Tests
 
 on:
   push:
     branches: [main]
+    paths:
+      - "packages/cli/**"
+      - ".github/workflows/cli-tests.yml"
   pull_request:
     branches: ["**"] # Will run pipeline for pull requests targeting any branch
+    paths:
+      - "packages/cli/**"
 
 jobs:
-  test:
+  # Fast unit tests - always run
+  unit-tests:
+    name: Unit Tests (without MegaLinter)
     runs-on: ubuntu-latest
-
-    env:
-      TURBO_TELEMETRY_DISABLED: 1
-      DO_NOT_TRACK: 1
-
+    timeout-minutes: 10
     strategy:
       matrix:
         node-version: [20.x, 22.x, 24.x]
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
 
       - name: Install dependencies
+        working-directory: packages/cli
         run: npm ci
 
-      - name: Build RPC Protocol first
-        run: cd packages/rpc-protocol && npm run build
+      - name: Build CLI
+        working-directory: packages/cli
+        run: npm run build
 
-      - name: Build project
-        run: npx turbo build --force
+      - name: Run tests (excluding MegaLinter)
+        working-directory: packages/cli
+        run: npm run test:ci
+        env:
+          CI: true
 
-      - name: Run tests
+  # MegaLinter mock tests - quick validation
+  megalinter-mock-tests:
+    name: MegaLinter Mock Tests (CI Mode)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x, 24.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        working-directory: packages/cli
+        run: npm ci
+
+      - name: Build CLI
+        working-directory: packages/cli
+        run: npm run build
+
+      - name: Run MegaLinter tests with mocks
+        working-directory: packages/cli
+        run: npm run test:megalinter
+        env:
+          CI: true
+          MOCK_MEGALINTER: true
+
+  # Full integration tests - only on main branch or manual trigger
+  integration-tests:
+    name: Full Integration Tests (with real MegaLinter)
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        working-directory: packages/cli
+        run: npm ci
+
+      - name: Install MegaLinter
+        run: npm install -g mega-linter-runner
+
+      - name: Build CLI
+        working-directory: packages/cli
+        run: npm run build
+
+      - name: Run all tests including MegaLinter
+        working-directory: packages/cli
         run: npm test
+        env:
+          CI: false # Run as if local to get full MegaLinter execution
