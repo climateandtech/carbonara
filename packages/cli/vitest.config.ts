@@ -1,16 +1,16 @@
 import { defineConfig } from "vitest/config";
 
-const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
 export default defineConfig({
   test: {
     environment: "node",
-    include: isCI
-      ? ["**/test/**/*.test.ts", "**/test/**/*.test.js", "!**/test/**/megalinter.test.ts"]
-      : ["**/test/**/*.test.ts", "**/test/**/*.test.js"],
-    exclude: isCI
-      ? ["**/node_modules/**", "**/test/**/megalinter.test.ts"]
-      : ["**/node_modules/**"],
+    // include: isCI
+    //   ? ["**/test/**/*.test.ts", "**/test/**/*.test.js", "!**/test/**/megalinter.test.ts"]
+    //   : ["**/test/**/*.test.ts", "**/test/**/*.test.js"],
+    // exclude: isCI
+    //   ? ["**/node_modules/**", "**/test/**/megalinter.test.ts"]
+    //   : ["**/node_modules/**"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.js", "src/**/*.ts"],
@@ -20,7 +20,7 @@ export default defineConfig({
     passWithNoTests: true,
     // Environment variables for tests
     env: {
-      CI: isCI ? 'true' : 'false',
+      CI: isCI ? "true" : "false",
     },
   },
 });
