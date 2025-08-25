@@ -16,6 +16,7 @@ export interface VSCodeInstance {
 export type WorkspaceFixture = 
   | 'empty-workspace'           // No carbonara project
   | 'with-carbonara-project'    // Has valid carbonara.config.json
+  | 'with-analysis-data'        // Has pre-populated analysis data in database
   | 'multiple-projects'         // Multiple carbonara projects
   | 'invalid-project'           // Corrupted carbonara.config.json
   | 'test-workspace';           // Legacy test workspace (empty)
@@ -70,7 +71,7 @@ export class VSCodeLauncher {
           '--disable-extensions-except=' + extensionDevelopmentPath,
           '--new-window',
           '--wait',
-          workspacePath
+          '--folder-uri=' + 'file://' + workspacePath
         ],
         env: {
           ...process.env,

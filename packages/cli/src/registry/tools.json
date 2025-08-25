@@ -1,6 +1,67 @@
 {
   "tools": [
     {
+      "id": "co2-assessment",
+      "name": "CO2 Assessment",
+      "description": "Interactive CO2 sustainability assessment questionnaire",
+      "command": {
+        "executable": "built-in",
+        "args": [],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "built-in",
+        "package": "built-in",
+        "global": false,
+        "instructions": "Built-in assessment tool, no installation required"
+      },
+      "detection": {
+        "method": "built-in",
+        "target": "always-available"
+      },
+      "display": {
+        "category": "Sustainability Assessment",
+        "icon": "🌍",
+        "groupName": "CO2 Assessments",
+        "entryTemplate": "📊 Assessment - {date}",
+        "descriptionTemplate": "Score: {impactScore}/100",
+        "fields": [
+          {
+            "key": "impactScore",
+            "label": "📊 Overall Score",
+            "path": "data.impactScore",
+            "type": "number",
+            "format": "{value}/100"
+          },
+          {
+            "key": "estimatedUsers",
+            "label": "👥 Users",
+            "path": "data.projectScope.estimatedUsers",
+            "type": "number"
+          },
+          {
+            "key": "expectedTraffic",
+            "label": "📈 Traffic",
+            "path": "data.projectScope.expectedTraffic",
+            "type": "string"
+          },
+          {
+            "key": "hostingProvider",
+            "label": "🏗️ Hosting",
+            "path": "data.infrastructure.hostingProvider",
+            "type": "string"
+          },
+          {
+            "key": "carbonNeutralTarget",
+            "label": "🎯 Carbon Neutral",
+            "path": "data.sustainabilityGoals.carbonNeutralityTarget",
+            "type": "string"
+          }
+        ]
+      },
+      "options": []
+    },
+    {
       "id": "byte-counter",
       "name": "Carbonara Byte Counter",
       "description": "Built-in analyzer that counts bytes transferred and estimates CO2 emissions",
@@ -18,6 +79,55 @@
       "detection": {
         "method": "built-in",
         "target": "always-available"
+      },
+      "display": {
+        "category": "Website Analysis",
+        "icon": "📊",
+        "groupName": "Byte Counter Analysis",
+        "entryTemplate": "🔍 {url} - {date}",
+        "descriptionTemplate": "{totalKB} KB transferred",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 URL",
+            "path": "data.url",
+            "type": "url"
+          },
+          {
+            "key": "totalBytes",
+            "label": "📊 Data Transfer",
+            "path": "data.results.totalBytes",
+            "type": "bytes",
+            "format": "{value} KB ({valueMB} MB)"
+          },
+          {
+            "key": "requestCount",
+            "label": "🔗 HTTP Requests",
+            "path": "data.results.requestCount",
+            "type": "number"
+          },
+          {
+            "key": "loadTime",
+            "label": "⚡ Load Time",
+            "path": "data.results.loadTime,data.results.performance.loadTime",
+            "type": "time",
+            "format": "{value}ms"
+          },
+          {
+            "key": "carbonEstimate",
+            "label": "🌱 CO2 Estimate",
+            "path": "data.results.carbonEstimate,data.results.co2Estimate",
+            "type": "carbon",
+            "format": "{value}g"
+          },
+          {
+            "key": "energyEstimate",
+            "label": "⚡ Energy",
+            "path": "data.results.energyEstimate",
+            "type": "energy",
+            "format": "{value} kWh"
+          }
+        ]
       },
       "options": [
         {
@@ -69,6 +179,49 @@
         "method": "command",
         "target": "npx greenframe --help"
       },
+      "display": {
+        "category": "Carbon Analysis",
+        "icon": "🌱",
+        "groupName": "GreenFrame Analysis",
+        "entryTemplate": "🔬 {url} - {date}",
+        "descriptionTemplate": "{carbonTotal}g CO2",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 URL",
+            "path": "data.url",
+            "type": "url"
+          },
+          {
+            "key": "carbonTotal",
+            "label": "🌱 Carbon",
+            "path": "data.results.carbon.total",
+            "type": "carbon",
+            "format": "{value}g CO2"
+          },
+          {
+            "key": "score",
+            "label": "📊 Score",
+            "path": "data.results.score",
+            "type": "number",
+            "format": "{value}/100"
+          },
+          {
+            "key": "loadTime",
+            "label": "⚡ Load Time",
+            "path": "data.results.performance.loadTime",
+            "type": "time",
+            "format": "{value}ms"
+          },
+          {
+            "key": "pageSize",
+            "label": "📊 Page Size",
+            "path": "data.results.performance.pageSize",
+            "type": "number",
+            "format": "{value}KB"
+          }
+        ]
+      },
       "options": [
         {
           "flag": "-s, --save",
@@ -101,6 +254,35 @@
       "detection": {
         "method": "command",
         "target": "if-run --help"
+      },
+      "display": {
+        "category": "Impact Analysis",
+        "icon": "⚡",
+        "groupName": "Impact Framework Analysis",
+        "entryTemplate": "🔍 {url} - {date}",
+        "descriptionTemplate": "Impact analysis",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 URL",
+            "path": "data.url",
+            "type": "url"
+          },
+          {
+            "key": "energy",
+            "label": "⚡ Energy",
+            "path": "data.results.energy",
+            "type": "energy",
+            "format": "{value} kWh"
+          },
+          {
+            "key": "carbon",
+            "label": "🌱 Carbon",
+            "path": "data.results.carbon",
+            "type": "carbon",
+            "format": "{value}g CO2"
+          }
+        ]
       },
       "options": [
         {
