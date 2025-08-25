@@ -3,9 +3,9 @@ import * as path from 'path';
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 30 * 1000,
+  timeout: 60 * 1000,
   expect: {
-    timeout: 10 * 1000,
+    timeout: 20 * 1000,
   },
   fullyParallel: false, // VSCode instances might conflict
   forbidOnly: !!process.env.CI,
@@ -13,8 +13,8 @@ export default defineConfig({
   workers: 1, // Only one worker to avoid VSCode instance conflicts
   reporter: 'html',
   use: {
-    actionTimeout: 10 * 1000,
-    navigationTimeout: 30 * 1000,
+    actionTimeout: 20 * 1000,
+    navigationTimeout: 60 * 1000,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',

@@ -26,24 +26,30 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
   });
 
   test('should show Carbonara status bar item and menu', async () => {
-    // Verify status bar item exists
-    const statusBarItem = vscode.window.locator('[title="Carbonara CO2 Assessment Tools"]');
+    // Wait for extension to load first
+    await VSCodeLauncher.waitForExtension(vscode.window);
+    
+    // Verify status bar item exists using the specific clickable button
+    const statusBarItem = vscode.window.locator('a[role="button"][aria-label="carbonara-statusbar"]');
     await expect(statusBarItem).toBeVisible();
     
     // Click status bar item to open menu
     await VSCodeLauncher.clickStatusBarCarbonara(vscode.window);
     
-    // Verify menu appears with correct title
-    const menuTitle = vscode.window.locator('text=Select a Carbonara action');
-    await expect(menuTitle).toBeVisible();
+    // Wait for quick pick menu to appear
+    await vscode.window.waitForTimeout(1000);
     
-    // Verify menu options are present
-    await expect(vscode.window.locator('text=Initialize Project')).toBeVisible();
-    await expect(vscode.window.locator('text=Run CO2 Assessment')).toBeVisible();
-    await expect(vscode.window.locator('text=Analyze Website')).toBeVisible();
-    await expect(vscode.window.locator('text=View Data')).toBeVisible();
-    await expect(vscode.window.locator('text=Open Configuration')).toBeVisible();
-    await expect(vscode.window.locator('text=Show Status')).toBeVisible();
+    // Verify quick pick menu appears with placeholder text
+    const quickPickPlaceholder = vscode.window.locator('.quick-input-widget .quick-input-box input[placeholder*="Select a Carbonara action"]');
+    await expect(quickPickPlaceholder).toBeVisible({ timeout: 10000 });
+    
+    // Verify menu options are present in the quick pick
+    await expect(vscode.window.locator('.quick-input-list .monaco-list-row:has-text("Initialize Project")')).toBeVisible();
+    await expect(vscode.window.locator('.quick-input-list .monaco-list-row:has-text("Run CO2 Assessment")')).toBeVisible();
+    await expect(vscode.window.locator('.quick-input-list .monaco-list-row:has-text("Analyze Website")')).toBeVisible();
+    await expect(vscode.window.locator('.quick-input-list .monaco-list-row:has-text("View Data")')).toBeVisible();
+    await expect(vscode.window.locator('.quick-input-list .monaco-list-row:has-text("Open Configuration")')).toBeVisible();
+    await expect(vscode.window.locator('.quick-input-list .monaco-list-row:has-text("Show Status")')).toBeVisible();
   });
 
   test('should initialize a new project', async () => {

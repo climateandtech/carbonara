@@ -41,8 +41,8 @@ export class VSCodeLauncher {
       const extensionDevelopmentPath = path.resolve(__dirname, '../../');
       
       // Ensure the extension is built
-      const distPath = path.join(extensionDevelopmentPath, 'dist');
-      if (!fs.existsSync(distPath)) {
+      const outPath = path.join(extensionDevelopmentPath, 'out');
+      if (!fs.existsSync(outPath)) {
         throw new Error('Extension not built. Run "npm run build" first.');
       }
 
@@ -56,6 +56,7 @@ export class VSCodeLauncher {
       console.log(`📁 Workspace path: ${workspacePath}`);
 
       // Launch VSCode with better isolation to prevent multiple windows
+      // TODO make sure this works on every system
       const app = await electron.launch({
         executablePath: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
         args: [
@@ -190,20 +191,45 @@ export class VSCodeLauncher {
 
   static async waitForExtension(window: Page, timeout = 20000): Promise<void> {
     // Wait for the extension to load by checking for the status bar item
+    console.log('🔍 Waiting for Carbonara extension to load...');
+    
     try {
-      await window.waitForSelector('.statusbar-item[title*="Carbonara"]', { 
-        timeout,
-        state: 'visible' 
+      // Wait for the specific clickable status bar button (not the container div)
+      await window.waitForSelector('a[role="button"][aria-label="carbonara-statusbar"]', { 
+        state: 'visible',
+        timeout 
       });
+      console.log('✅ Found Carbonara status bar button');
     } catch (error) {
-      // Try alternative selector
-      await window.waitForSelector('*[title="Carbonara CO2 Assessment Tools"]', { 
-        timeout: 5000,
-        state: 'visible' 
-      });
+      console.log('⚠️ Button not found, trying alternative selectors...');
+      
+      // Try alternative approaches
+      const alternatives = [
+        () => window.waitForSelector('.statusbar-item[aria-label="carbonara-statusbar"]', { timeout: 5000, state: 'visible' }),
+        () => window.waitForSelector('[title*="Carbonara"]', { timeout: 5000, state: 'visible' }),
+        () => window.waitForSelector('.statusbar-item:has-text("Carbonara")', { timeout: 5000, state: 'visible' })
+      ];
+      
+      let success = false;
+      for (const alt of alternatives) {
+        try {
+          await alt();
+          success = true;
+          console.log('✅ Found Carbonara status bar with alternative selector');
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!success) {
+        console.log('❌ Could not find Carbonara status bar item');
+        throw new Error('Carbonara extension status bar item not found');
+      }
     }
   }
 
+  // TODO move this
   static async clickStatusBarCarbonara(window: Page): Promise<void> {
     // Try multiple possible selectors for the status bar item
     // Prefer role/accessible name matches, then ARIA label, then text fallbacks
