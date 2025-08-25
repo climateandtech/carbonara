@@ -93,8 +93,11 @@ test.describe('Carbonara Extension User Workflows', () => {
     await expect(carbonaraStatusBar).toBeVisible({ timeout: 15000 });
     console.log('✅ Carbonara extension is active (status bar visible)');
     
-    // Since the extension is active, the sidebar should show Carbonara views
-    // Let's verify the sidebar content instead of looking for activity bar tab
+    // Use the existing openSidebar method that other tests use successfully
+    await VSCodeLauncher.openSidebar(vscode.window);
+    console.log('✅ Opened Carbonara sidebar using existing helper method');
+    
+    // Now look for Carbonara sidebar content
     console.log('🔍 Looking for Carbonara sidebar content...');
     
     // Look for the CO2 Assessment section in sidebar

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { VSCodeLauncher, VSCodeInstance, WorkspaceFixture } from './helpers/vscode-launcher';
+import { SELECTORS } from '../src/constants/ui-text';
 
 async function setupTest(workspaceFixture: WorkspaceFixture): Promise<VSCodeInstance> {
   const vscode = await VSCodeLauncher.launch(workspaceFixture);
@@ -62,9 +63,11 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
     
     try {
       // In a populated workspace there can be multiple "Carbonara" matches; select the status bar button explicitly
-      const carbonaraStatusBar = vscode.window.locator('text=Carbonara');
+      const carbonaraStatusBar = vscode.window.locator(SELECTORS.STATUS_BAR.ITEM);
       await carbonaraStatusBar.waitFor({ state: 'visible', timeout: 10000 });
+      console.log('✅ Found Carbonara status bar button');
       await carbonaraStatusBar.click();
+      console.log('✅ Clicked Carbonara status bar button');
       await vscode.window.waitForTimeout(1000);
       
       // Look for "Open Carbonara Project"
@@ -157,9 +160,11 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
     
     try {
       // Simple approach: find Carbonara status bar and click it
-      const carbonaraStatusBar = vscode.window.locator('text=Carbonara');
+      const carbonaraStatusBar = vscode.window.locator(SELECTORS.STATUS_BAR.ITEM);
       await expect(carbonaraStatusBar).toBeVisible({ timeout: 10000 });
+      console.log('✅ Found Carbonara status bar button');
       await carbonaraStatusBar.click();
+      console.log('✅ Clicked Carbonara status bar button');
       await vscode.window.waitForTimeout(1000);
       
       const openProjectOption = vscode.window.locator('text=Open Carbonara Project');

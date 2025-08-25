@@ -70,6 +70,12 @@ export const UI_TEXT = {
     }
   },
 
+  // Website analysis
+  WEBSITE_ANALYSIS: {
+    URL_PROMPT: "Enter website URL to analyze",
+    URL_PLACEHOLDER: "https://example.com"
+  },
+
   // Notifications
   NOTIFICATIONS: {
     NO_PROJECT: "No Carbonara project detected. Initialize one from the status bar or sidebar.",
@@ -80,6 +86,7 @@ export const UI_TEXT = {
 // CSS Selectors for tests
 export const SELECTORS = {
   STATUS_BAR: {
+    ITEM: `a[role="button"][aria-label="${UI_TEXT.STATUS_BAR.ARIA_LABEL}"]`,
     BUTTON: `a[role="button"][aria-label="${UI_TEXT.STATUS_BAR.ARIA_LABEL}"]`,
     CONTAINER: `[id="carbonara.carbonara-vscode"]`
   },

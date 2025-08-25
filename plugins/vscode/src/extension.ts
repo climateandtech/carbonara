@@ -246,8 +246,8 @@ async function analyzeWebsite() {
     }
 
     const url = await vscode.window.showInputBox({
-        prompt: 'Enter website URL to analyze',
-        placeHolder: 'https://example.com'
+        prompt: UI_TEXT.WEBSITE_ANALYSIS.URL_PROMPT,
+        placeHolder: UI_TEXT.WEBSITE_ANALYSIS.URL_PLACEHOLDER
     });
 
     if (!url) {
