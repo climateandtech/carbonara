@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { UI_TEXT } from './constants/ui-text';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn } from 'child_process';
@@ -17,10 +18,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Create status bar item
     carbonaraStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    carbonaraStatusBar.text = "$(pulse) Carbonara";
-    carbonaraStatusBar.tooltip = "Carbonara CO2 Assessment Tools";
+    carbonaraStatusBar.text = UI_TEXT.STATUS_BAR.TEXT;
+    carbonaraStatusBar.tooltip = UI_TEXT.STATUS_BAR.TOOLTIP;
     // Make it uniquely selectable in tests and accessible UIs
-    carbonaraStatusBar.accessibilityInformation = { label: 'carbonara-statusbar' };
+    carbonaraStatusBar.accessibilityInformation = { label: UI_TEXT.STATUS_BAR.ARIA_LABEL };
     carbonaraStatusBar.command = 'carbonara.showMenu';
     carbonaraStatusBar.show();
 
@@ -90,49 +91,49 @@ export function deactivate() {
 async function showCarbonaraMenu() {
     const items = [
         {
-            label: '$(folder-opened) Open Carbonara Project',
-            description: 'Browse and open a Carbonara project',
+            label: UI_TEXT.MENU.ITEMS.OPEN_PROJECT.LABEL,
+            description: UI_TEXT.MENU.ITEMS.OPEN_PROJECT.DESCRIPTION,
             command: 'carbonara.openProject'
         },
         {
-            label: '$(rocket) Initialize Project',
-            description: 'Set up Carbonara in this workspace',
+            label: UI_TEXT.MENU.ITEMS.INITIALIZE_PROJECT.LABEL,
+            description: UI_TEXT.MENU.ITEMS.INITIALIZE_PROJECT.DESCRIPTION,
             command: 'carbonara.initProject'
         },
         {
-            label: '$(checklist) Run CO2 Assessment',
-            description: 'Complete sustainability questionnaire',
+            label: UI_TEXT.MENU.ITEMS.RUN_ASSESSMENT.LABEL,
+            description: UI_TEXT.MENU.ITEMS.RUN_ASSESSMENT.DESCRIPTION,
             command: 'carbonara.runAssessment'
         },
         {
-            label: '$(globe) Analyze Website',
-            description: 'Run Greenframe analysis on a URL',
+            label: UI_TEXT.MENU.ITEMS.ANALYZE_WEBSITE.LABEL,
+            description: UI_TEXT.MENU.ITEMS.ANALYZE_WEBSITE.DESCRIPTION,
             command: 'carbonara.analyzeWebsite'
         },
         {
-            label: '$(database) View Data',
-            description: 'Browse collected assessment data',
+            label: UI_TEXT.MENU.ITEMS.VIEW_DATA.LABEL,
+            description: UI_TEXT.MENU.ITEMS.VIEW_DATA.DESCRIPTION,
             command: 'carbonara.viewData'
         },
         {
-            label: '$(tools) Manage Tools',
-            description: 'View and install analysis tools',
+            label: UI_TEXT.MENU.ITEMS.MANAGE_TOOLS.LABEL,
+            description: UI_TEXT.MENU.ITEMS.MANAGE_TOOLS.DESCRIPTION,
             command: 'carbonara.viewTools'
         },
         {
-            label: '$(gear) Open Configuration',
-            description: 'Edit Carbonara settings',
+            label: UI_TEXT.MENU.ITEMS.OPEN_CONFIG.LABEL,
+            description: UI_TEXT.MENU.ITEMS.OPEN_CONFIG.DESCRIPTION,
             command: 'carbonara.openConfig'
         },
         {
-            label: '$(info) Show Status',
-            description: 'Display project status',
+            label: UI_TEXT.MENU.ITEMS.SHOW_STATUS.LABEL,
+            description: UI_TEXT.MENU.ITEMS.SHOW_STATUS.DESCRIPTION,
             command: 'carbonara.showStatus'
         }
     ];
 
     const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: 'Select a Carbonara action'
+        placeHolder: UI_TEXT.MENU.PLACEHOLDER
     });
 
     if (selected) {
@@ -148,7 +149,7 @@ async function initProject() {
     }
 
     const projectName = await vscode.window.showInputBox({
-        prompt: 'Enter project name',
+        prompt: UI_TEXT.PROJECT_INIT.NAME_PROMPT,
         value: path.basename(workspaceFolder.uri.fsPath)
     });
 

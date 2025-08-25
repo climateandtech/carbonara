@@ -1,4 +1,6 @@
 import { _electron as electron, ElectronApplication, Page } from 'playwright';
+import { expect } from '@playwright/test';
+import { UI_TEXT, SELECTORS } from '../../src/constants/ui-text';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -229,7 +231,26 @@ export class VSCodeLauncher {
     }
   }
 
-  // TODO move this
+  // Helper function to select an item from Carbonara quick pick menu using UI_TEXT keys
+  static async selectFromCarbonaraMenu(window: Page, menuItemKey: keyof typeof UI_TEXT.MENU.ITEMS): Promise<void> {
+    // First open the menu
+    await this.clickStatusBarCarbonara(window);
+    
+    // Wait for quick pick to appear
+    await window.waitForTimeout(1000);
+    
+    // Get the search text for the menu item
+    const searchText = UI_TEXT.MENU.ITEMS[menuItemKey].SEARCH_TEXT;
+    
+    // Click the menu item (look for text that contains the item name, ignoring icons)
+    const menuItem = window.locator(`${SELECTORS.QUICK_PICK.LIST_ROW}:has-text("${searchText}")`);
+    await expect(menuItem).toBeVisible({ timeout: 10000 });
+    await menuItem.click();
+    
+    // Wait for menu to close
+    await window.waitForTimeout(500);
+  }
+
   static async clickStatusBarCarbonara(window: Page): Promise<void> {
     // Try multiple possible selectors for the status bar item
     // Prefer role/accessible name matches, then ARIA label, then text fallbacks
