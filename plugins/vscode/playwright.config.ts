@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import * as path from 'path';
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './tests/e2e',
   timeout: 30 * 1000,
   expect: {
     timeout: 10 * 1000,

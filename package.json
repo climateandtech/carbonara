@@ -22,14 +22,14 @@
     "start:cli": "npm run start --workspace=packages/cli"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.9",
     "typescript": "^5.0.0",
     "eslint": "^8.0.0",
     "prettier": "^3.0.0",
     "turbo": "^1.10.0"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=22.0.0",
     "npm": ">=9.0.0"
   }
-} 
+}

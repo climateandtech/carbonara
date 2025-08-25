@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "/Applications/VSCodium.app/Contents/Resources/app"
+		},
+		{
+			"path": "/Users/pes/code/carbonara/plugins/vscode/e2e/fixtures/multiple-projects"
+		}
+	]
+}

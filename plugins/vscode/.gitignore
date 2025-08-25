@@ -1,6 +1,8 @@
 # Build outputs
 dist/
 out/
+*.js
+*.js.map
 
 # Dependencies
 node_modules/

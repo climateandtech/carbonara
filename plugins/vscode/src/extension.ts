@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn } from 'child_process';
-import { AssessmentTreeProvider } from './assessment-tree-provider';
-import { DataTreeProvider } from './data-tree-provider';
+import { AssessmentTreeProvider } from './assessment-tree-provider.js';
+import { DataTreeProvider } from './data-tree-provider.js';
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
