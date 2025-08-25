@@ -430,4 +430,59 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
     
     console.log('🎉 Data management options test completed successfully!');
   });
+
+  test('should show Carbonara sidebar when clicking activity bar', async () => {
+    console.log('🔍 Testing Carbonara sidebar activity bar interaction...');
+    
+    // Wait for VSCode to fully load and extension to activate
+    await vscode.window.waitForTimeout(2000);
+    console.log('⏳ Waiting for extension to fully activate...');
+    
+    // Wait for Carbonara extension to activate - check status bar first
+    const carbonaraStatusBar = vscode.window.locator('[aria-label="carbonara-statusbar"]').first();
+    await expect(carbonaraStatusBar).toBeVisible({ timeout: 15000 });
+    console.log('✅ Carbonara extension is active (status bar visible)');
+    
+    // Use the existing openSidebar method that other tests use successfully
+    await VSCodeLauncher.openSidebar(vscode.window);
+    console.log('✅ Opened Carbonara sidebar using activity bar');
+    
+    // Look for the CO2 Assessment section in sidebar
+    const co2Section = vscode.window.locator('text=CO2 ASSESSMENT').or(
+      vscode.window.locator('text=CO2 Assessment')
+    );
+    
+    // Look for the Data & Results section in sidebar  
+    const dataSection = vscode.window.locator('text=DATA & RESULTS').or(
+      vscode.window.locator('text=Data & Results')
+    );
+    
+    // Check if either section is visible (proving the extension views are working)
+    const co2Visible = await co2Section.isVisible();
+    const dataVisible = await dataSection.isVisible();
+    
+    console.log(`📊 CO2 Assessment section visible: ${co2Visible}`);
+    console.log(`📊 Data & Results section visible: ${dataVisible}`);
+    
+    if (!co2Visible && !dataVisible) {
+      console.log('❌ Carbonara sidebar sections not visible, debugging...');
+      
+      // Log what we can find related to Carbonara
+      const carbonaraElements = await vscode.window.locator('*:has-text("Carbonara")').count();
+      console.log(`🔍 Found ${carbonaraElements} elements containing "Carbonara"`);
+    }
+    
+    // At least one section should be visible
+    const anySectionVisible = co2Visible || dataVisible;
+    expect(anySectionVisible).toBe(true);
+    
+    if (co2Visible) {
+      console.log('✅ Found CO2 Assessment section in sidebar');
+    }
+    if (dataVisible) {
+      console.log('✅ Found Data & Results section in sidebar');
+    }
+    
+    console.log('🎉 Sidebar activity bar test completed successfully!');
+  });
 }); 
