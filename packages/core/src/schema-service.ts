@@ -51,21 +51,35 @@ export class SchemaService {
         }
       }
       
-      if (registryPath) {
-        const registryContent = fs.readFileSync(registryPath, 'utf8');
-        const registry = JSON.parse(registryContent);
-        
-        if (registry.tools && Array.isArray(registry.tools)) {
-          registry.tools.forEach((tool: AnalysisToolSchema) => {
-            this.toolSchemas.set(tool.id, tool);
-          });
-        }
-      }
+      // Skip registry loading - use fallback schemas only
+      console.log('📋 Using fallback tool schemas (no registry system)');
+      this.loadFallbackSchemas();
     } catch (error) {
       console.warn('Failed to load tool schemas:', error);
+      this.loadFallbackSchemas();
     }
     
     return this.toolSchemas;
+  }
+
+  private loadFallbackSchemas(): void {
+    // Basic fallback schemas for common tools (no registry dependency)
+    const fallbackSchemas: AnalysisToolSchema[] = [
+      {
+        id: 'co2-assessment',
+        name: 'CO2 Assessment',
+        description: 'Interactive CO2 sustainability assessment questionnaire'
+      },
+      {
+        id: 'greenframe',
+        name: 'GreenFrame',
+        description: 'Website carbon footprint analysis'
+      }
+    ];
+    
+    fallbackSchemas.forEach(schema => {
+      this.toolSchemas.set(schema.id, schema);
+    });
   }
 
   getToolSchema(toolId: string): AnalysisToolSchema | null {
