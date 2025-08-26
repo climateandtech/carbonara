@@ -614,13 +614,21 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
             name: "CO2 Assessment",
             display: { category: "Sustainability Assessment", icon: "🌍", groupName: "CO2 Assessments" }
           },
-
+          {
+            id: "byte-counter", 
+            name: "Carbonara Byte Counter",
+            display: { category: "Website Analysis", icon: "📊", groupName: "Byte Counter Analysis" }
+          },
           {
             id: "greenframe",
             name: "GreenFrame", 
             display: { category: "Carbon Analysis", icon: "🌱", groupName: "GreenFrame Analysis" }
           },
-
+          {
+            id: "impact-framework",
+            name: "Impact Framework",
+            display: { category: "Impact Analysis", icon: "⚡", groupName: "Impact Framework Analysis" }
+          }
         ]
       };
       
@@ -877,7 +885,7 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
       // Step 4: Look for specific data entries
       console.log('🔍 Looking for specific data entries...');
       
-      // Look for example.com URL (from greenframe test data)
+      // Look for example.com URL (from byte-counter test data)
       const exampleComEntry = vscode.window.locator('text=/.*example\.com.*/i');
       let foundExampleCom = false;
       if (await exampleComEntry.isVisible({ timeout: 3000 })) {
