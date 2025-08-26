@@ -7,7 +7,7 @@ import yaml from 'js-yaml';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake } from '../database/index.js';
 import { loadProjectConfig } from '../utils/config.js';
-import { ByteCounterAnalyzer } from '../analyzers/byte-counter.js';
+// Built-in analyzers will be imported when added via separate PRs
 
 interface AnalyzeOptions {
   save: boolean;
@@ -75,9 +75,7 @@ export async function analyzeCommand(toolId: string, url: string, options: Analy
     
     let results: any;
     
-    if (toolId === 'byte-counter') {
-      results = await runByteCounter(url, options, tool);
-    } else if (toolId === 'impact-framework') {
+    if (toolId === 'impact-framework') {
       results = await runImpactFramework(url, options, tool);
     } else {
       results = await runGenericTool(url, options, tool);
@@ -100,17 +98,7 @@ export async function analyzeCommand(toolId: string, url: string, options: Analy
   }
 }
 
-async function runByteCounter(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
-  const analyzer = new ByteCounterAnalyzer();
-  
-  const analyzeOptions: any = {
-    timeout: options.timeout || 30000,
-    gridIntensity: options.gridIntensity || 473,
-    returningVisitor: options.returningVisitor || false
-  };
-  
-  return await analyzer.analyze(url, analyzeOptions);
-}
+
 
 async function runGenericTool(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   // Replace placeholders in command args
@@ -221,10 +209,7 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
   }
 
   // Tool-specific result display logic
-  if (tool.id === 'byte-counter') {
-    const analyzer = new ByteCounterAnalyzer();
-    console.log(analyzer.formatResults(results));
-  } else if (tool.id === 'impact-framework') {
+  if (tool.id === 'impact-framework') {
     displayImpactFrameworkResults(results);
   } else if (tool.id === 'greenframe') {
     displayGreenframeResults(results);
