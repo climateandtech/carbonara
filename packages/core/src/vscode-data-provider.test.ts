@@ -32,15 +32,15 @@ describe('VSCodeDataProvider', () => {
     it('should load assessment data for a project', async () => {
       const projectId = await dataService.createProject('Test Project', '/test/path');
       
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         url: 'https://example.com',
-        results: { totalBytes: 524288, requestCount: 25 }
+        results: { carbon: { total: 0.245 }, performance: { loadTime: 1250 } }
       });
 
       const data = await dataProvider.loadDataForProject('/test/path');
       
       expect(data).toHaveLength(1);
-      expect(data[0].tool_name).toBe('byte-counter');
+      expect(data[0].tool_name).toBe('greenframe');
       expect(data[0].data.url).toBe('https://example.com');
     });
 
@@ -57,7 +57,7 @@ describe('VSCodeDataProvider', () => {
       projectId = await dataService.createProject('Test Project', '/test/path');
       
       // Add test data for different tools
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         url: 'https://example.com',
         results: { totalBytes: 524288, requestCount: 25, loadTime: 1250, carbonEstimate: 0.245 }
       });
@@ -79,18 +79,18 @@ describe('VSCodeDataProvider', () => {
       
       expect(groups).toHaveLength(3); // 3 different tools
       
-      // Find byte-counter group
-      const byteCounterGroup = groups.find(g => g.toolName === 'byte-counter');
-      expect(byteCounterGroup).toBeDefined();
-      expect(byteCounterGroup?.displayName).toBe('📊 Byte Counter Analysis');
-      expect(byteCounterGroup?.entries).toHaveLength(1);
+      // Find greenframe group
+      const greenframeGroup = groups.find(g => g.toolName === 'greenframe');
+      expect(greenframeGroup).toBeDefined();
+      expect(greenframeGroup?.displayName).toBe('🌱 GreenFrame Analysis');
+      expect(greenframeGroup?.entries).toHaveLength(1);
     });
 
     it('should create schema-based entry labels', async () => {
       const groups = await dataProvider.createGroupedItems('/test/path');
       
-      const byteCounterGroup = groups.find(g => g.toolName === 'byte-counter');
-      const entry = byteCounterGroup?.entries[0];
+      const greenframeGroup = groups.find(g => g.toolName === 'greenframe');
+      const entry = greenframeGroup?.entries[0];
       
       expect(entry?.label).toContain('example.com');
       expect(entry?.label).toContain('🔍'); // Icon from schema
@@ -98,9 +98,9 @@ describe('VSCodeDataProvider', () => {
 
     it('should create detailed field items from schema', async () => {
       const data = await dataProvider.loadDataForProject('/test/path');
-      const byteCounterEntry = data.find(d => d.tool_name === 'byte-counter');
+      const greenframeEntry = data.find(d => d.tool_name === 'greenframe');
       
-      const details = await dataProvider.createDataDetails(byteCounterEntry!);
+      const details = await dataProvider.createDataDetails(greenframeEntry!);
       
       expect(details.length).toBeGreaterThan(0);
       
@@ -136,7 +136,7 @@ describe('VSCodeDataProvider', () => {
       expect(data).toHaveLength(0);
       
       // Add data
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         url: 'https://example.com'
       });
       
@@ -160,7 +160,7 @@ describe('VSCodeDataProvider', () => {
       const projectId = await dataService.createProject('Test Project', '/test/path');
       
       // Store valid data
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         url: 'https://example.com',
         results: { totalBytes: 524288 }
       });

@@ -835,17 +835,17 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
       // Step 3: Look for specific data from our test database
       console.log('🔍 Looking for specific analysis data...');
       
-      // Look for Byte Counter Analysis group (from our test data)
-      const byteCounterGroup = vscode.window.locator('text=📊 Byte Counter Analysis').or(
-        vscode.window.locator('text=Byte Counter Analysis')
+      // Look for GreenFrame Analysis group (from our test data)
+      const greenframeGroup = vscode.window.locator('text=🌱 GreenFrame Analysis').or(
+        vscode.window.locator('text=GreenFrame Analysis')
       );
       
-      let foundByteCounter = false;
-      if (await byteCounterGroup.isVisible({ timeout: 5000 })) {
-        console.log('✅ Found Byte Counter Analysis group');
-        foundByteCounter = true;
+      let foundGreenFrame = false;
+      if (await greenframeGroup.isVisible({ timeout: 5000 })) {
+        console.log('✅ Found GreenFrame Analysis group');
+        foundGreenFrame = true;
       } else {
-        console.log('⚠️ Byte Counter Analysis group not found');
+        console.log('⚠️ GreenFrame Analysis group not found');
       }
       
       // Look for CO2 Assessment group (from our test data) 
@@ -925,12 +925,12 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
       }
       
       // Step 6: Test assertions
-      const foundAnyData = foundByteCounter || foundCO2 || foundGreenFrame || foundExampleCom || foundTestSite || foundDataTransfer;
+      const foundAnyData = foundGreenFrame || foundCO2 || foundExampleCom || foundTestSite || foundDataTransfer;
       const dataIsNotEmpty = !await noDataMessage.isVisible({ timeout: 1000 });
       
       console.log(`\n📊 Test Results:`);
       console.log(`  Data not empty: ${dataIsNotEmpty}`);
-      console.log(`  Found Byte Counter: ${foundByteCounter}`);
+      console.log(`  Found GreenFrame: ${foundGreenFrame}`);
       console.log(`  Found CO2 Assessment: ${foundCO2}`);  
       console.log(`  Found GreenFrame: ${foundGreenFrame}`);
       console.log(`  Found example.com: ${foundExampleCom}`);

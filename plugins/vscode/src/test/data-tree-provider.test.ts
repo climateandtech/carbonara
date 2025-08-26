@@ -14,16 +14,16 @@ suite('DataTreeProvider Unit Tests', () => {
         test('should create group items with correct properties', () => {
             const groupItem = new DataItem(
                 '📊 Byte Counter Analysis',
-                'byte-counter',
+                'greenframe',
                 vscode.TreeItemCollapsibleState.Expanded,
                 'group',
-                'byte-counter'
+                'greenframe'
             );
 
             assert.strictEqual(groupItem.label, '📊 Byte Counter Analysis');
-            assert.strictEqual(groupItem.description, 'byte-counter');
+            assert.strictEqual(groupItem.description, 'greenframe');
             assert.strictEqual(groupItem.type, 'group');
-            assert.strictEqual(groupItem.toolName, 'byte-counter');
+            assert.strictEqual(groupItem.toolName, 'greenframe');
             assert.strictEqual(groupItem.collapsibleState, vscode.TreeItemCollapsibleState.Expanded);
             assert.strictEqual(groupItem.contextValue, 'carbonara-data-group');
         });
@@ -34,14 +34,14 @@ suite('DataTreeProvider Unit Tests', () => {
                 'Byte counter analysis',
                 vscode.TreeItemCollapsibleState.Collapsed,
                 'entry',
-                'byte-counter',
+                'greenframe',
                 123
             );
 
             assert.strictEqual(entryItem.label, 'https://example.com - 2024-01-15');
             assert.strictEqual(entryItem.description, 'Byte counter analysis');
             assert.strictEqual(entryItem.type, 'entry');
-            assert.strictEqual(entryItem.toolName, 'byte-counter');
+            assert.strictEqual(entryItem.toolName, 'greenframe');
             assert.strictEqual(entryItem.entryId, 123);
             assert.strictEqual(entryItem.collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
             assert.strictEqual(entryItem.contextValue, 'carbonara-data-entry');

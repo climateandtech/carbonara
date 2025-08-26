@@ -16,7 +16,7 @@ describe('SchemaService', () => {
       expect(schemas.size).toBeGreaterThan(0);
       
       // Check for expected tools
-      expect(schemas.has('byte-counter')).toBe(true);
+      expect(schemas.has('greenframe')).toBe(true);
       expect(schemas.has('greenframe')).toBe(true);
       expect(schemas.has('co2-assessment')).toBe(true);
     });
@@ -24,11 +24,11 @@ describe('SchemaService', () => {
     it('should return tool schema by id', async () => {
       await schemaService.loadToolSchemas();
       
-      const byteCounterSchema = schemaService.getToolSchema('byte-counter');
-      expect(byteCounterSchema).toBeDefined();
-      expect(byteCounterSchema?.id).toBe('byte-counter');
-      expect(byteCounterSchema?.name).toBe('Carbonara Byte Counter');
-      expect(byteCounterSchema?.display).toBeDefined();
+      const greenframeSchema = schemaService.getToolSchema('greenframe');
+      expect(greenframeSchema).toBeDefined();
+      expect(greenframeSchema?.id).toBe('greenframe');
+      expect(greenframeSchema?.name).toBe('GreenFrame');
+      expect(greenframeSchema?.display).toBeDefined();
     });
 
     it('should return null for non-existent tool schema', async () => {
@@ -131,7 +131,7 @@ describe('SchemaService', () => {
     it('should validate tool schema structure', async () => {
       await schemaService.loadToolSchemas();
       
-      const schema = schemaService.getToolSchema('byte-counter');
+      const schema = schemaService.getToolSchema('greenframe');
       expect(schema).toBeDefined();
       
       // Validate required fields

@@ -28,7 +28,7 @@ describe('Carbonara Core Integration', () => {
       expect(projectId).toBeGreaterThan(0);
 
       // 2. Store assessment data for different tools
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         url: 'https://example.com',
         results: {
           totalBytes: 524288,
@@ -69,12 +69,12 @@ describe('Carbonara Core Integration', () => {
       
       expect(groups).toHaveLength(3);
       
-      // Check byte-counter group
-      const byteCounterGroup = groups.find((g: any) => g.toolName === 'byte-counter');
-      expect(byteCounterGroup).toBeDefined();
-      expect(byteCounterGroup?.displayName).toBe('📊 Byte Counter Analysis');
-      expect(byteCounterGroup?.entries).toHaveLength(1);
-      expect(byteCounterGroup?.entries[0].label).toContain('example.com');
+      // Check greenframe group
+      const greenframeGroup = groups.find((g: any) => g.toolName === 'greenframe');
+      expect(greenframeGroup).toBeDefined();
+      expect(greenframeGroup?.displayName).toBe('🌱 GreenFrame Analysis');
+      expect(greenframeGroup?.entries).toHaveLength(1);
+      expect(greenframeGroup?.entries[0].label).toContain('example.com');
 
       // Check greenframe group
       const greenframeGroup = groups.find((g: any) => g.toolName === 'greenframe');
@@ -91,9 +91,9 @@ describe('Carbonara Core Integration', () => {
 
       // 4. Test detailed data extraction
       const assessmentData = await vscodeProvider.loadDataForProject('/test/e2e');
-      const byteCounterEntry = assessmentData.find((d: any) => d.tool_name === 'byte-counter');
+      const greenframeEntry = assessmentData.find((d: any) => d.tool_name === 'greenframe');
       
-      const details = await vscodeProvider.createDataDetails(byteCounterEntry!);
+      const details = await vscodeProvider.createDataDetails(greenframeEntry!);
       expect(details.length).toBeGreaterThan(0);
       
       // Verify schema-based formatting
@@ -108,7 +108,7 @@ describe('Carbonara Core Integration', () => {
       // 5. Test project stats
       const stats = await vscodeProvider.getProjectStats('/test/e2e');
       expect(stats.totalEntries).toBe(3);
-      expect(stats.toolCounts['byte-counter']).toBe(1);
+      expect(stats.toolCounts['greenframe']).toBe(1);
       expect(stats.toolCounts['greenframe']).toBe(1);
       expect(stats.toolCounts['co2-assessment']).toBe(1);
       expect(stats.latestEntry).toBeDefined();
@@ -120,7 +120,7 @@ describe('Carbonara Core Integration', () => {
       const projectId = await dataService.createProject('Search Test', '/test/search');
       
       // Add searchable data
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         url: 'https://example.com',
         results: { totalBytes: 524288 }
       });
@@ -131,9 +131,9 @@ describe('Carbonara Core Integration', () => {
       });
 
       // Search by tool name
-      const byteCounterResults = await vscodeProvider.searchData('/test/search', 'byte-counter');
-      expect(byteCounterResults).toHaveLength(1);
-      expect(byteCounterResults[0].tool_name).toBe('byte-counter');
+      const greenframeResults = await vscodeProvider.searchData('/test/search', 'greenframe');
+      expect(greenframeResults).toHaveLength(1);
+      expect(greenframeResults[0].tool_name).toBe('greenframe');
 
       // Search by URL
       const exampleResults = await vscodeProvider.searchData('/test/search', 'example.com');
@@ -155,7 +155,7 @@ describe('Carbonara Core Integration', () => {
 
       const projectId = await dataService.createProject('Export Test', '/test/export');
       
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         url: 'https://example.com',
         results: { totalBytes: 524288 }
       });
@@ -165,12 +165,12 @@ describe('Carbonara Core Integration', () => {
       const parsedJson = JSON.parse(jsonExport);
       expect(Array.isArray(parsedJson)).toBe(true);
       expect(parsedJson).toHaveLength(1);
-      expect(parsedJson[0].tool_name).toBe('byte-counter');
+      expect(parsedJson[0].tool_name).toBe('greenframe');
 
       // Test CSV export
       const csvExport = await vscodeProvider.exportData('/test/export', 'csv');
       expect(csvExport).toContain('id,tool_name,data_type,timestamp,source');
-      expect(csvExport).toContain('byte-counter');
+      expect(csvExport).toContain('greenframe');
       expect(csvExport).toContain('web-analysis');
     });
 
@@ -225,7 +225,7 @@ describe('Carbonara Core Integration', () => {
       const projectId = await dataService.createProject('Malformed Test', '/test/malformed');
       
       // Store data with missing expected fields
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
         // Missing url and results
         someOtherField: 'value'
       });
@@ -265,7 +265,7 @@ describe('Carbonara Core Integration', () => {
       const promises = [];
       for (let i = 0; i < 100; i++) {
         promises.push(
-          dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', {
+          dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
             url: `https://example-${i}.com`,
             results: { totalBytes: 1024 * i, requestCount: i }
           })

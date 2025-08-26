@@ -65,7 +65,7 @@ carbonara assess
 carbonara tools --list
 
 # Analyze with built-in tool
-carbonara analyze byte-counter https://example.com --save
+carbonara analyze greenframe https://example.com --save
 
 # Install and use external tools
 carbonara tools --install greenframe
@@ -99,7 +99,7 @@ npm test
 |---------|-------------|---------|
 | `init` | Initialize new project | `carbonara init` |
 | `assess` | Run CO2 assessment questionnaire | `carbonara assess` |
-| `analyze <tool> <url>` | Run analysis with registered tool | `carbonara analyze byte-counter https://example.com --save` |
+| `analyze <tool> <url>` | Run analysis with registered tool | `carbonara analyze greenframe https://example.com --save` |
 | `tools` | Manage analysis tools | `carbonara tools --list` |
 | `data` | Manage stored assessment data | `carbonara data --list` |
 | `import` | Import data from files/databases | `carbonara import --file data.json` |
@@ -140,7 +140,7 @@ carbonara import --database <path>       # Import from another Carbonara databas
 ### Analysis Tools
 
 #### Built-in Tools
-- **byte-counter**: CO2 estimation from data transfer (SWD v4 + Coroama 2021 models)
+- **greenframe**: Website carbon footprint analysis
 
 #### External Tools
 - **greenframe**: Website carbon footprint (`@marmelab/greenframe-cli`)

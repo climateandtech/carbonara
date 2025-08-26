@@ -70,7 +70,7 @@ describe('DataService', () => {
 
       const dataId = await dataService.storeAssessmentData(
         projectId,
-        'byte-counter',
+        'greenframe',
         'web-analysis',
         testData,
         'test'
@@ -80,7 +80,7 @@ describe('DataService', () => {
 
       const assessmentData = await dataService.getAssessmentData(projectId);
       expect(assessmentData).toHaveLength(1);
-      expect(assessmentData[0].tool_name).toBe('byte-counter');
+      expect(assessmentData[0].tool_name).toBe('greenframe');
       expect(assessmentData[0].data_type).toBe('web-analysis');
       expect(assessmentData[0].data.url).toBe('https://example.com');
       expect(assessmentData[0].data.results.totalBytes).toBe(524288);
@@ -88,13 +88,13 @@ describe('DataService', () => {
 
     it('should filter assessment data by tool name', async () => {
       // Store data for different tools
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', { url: 'test1.com' });
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', { url: 'test1.com' });
       await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', { url: 'test2.com' });
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', { url: 'test3.com' });
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', { url: 'test3.com' });
 
-      const byteCounterData = await dataService.getAssessmentData(projectId, 'byte-counter');
-      expect(byteCounterData).toHaveLength(2);
-      expect(byteCounterData.every(d => d.tool_name === 'byte-counter')).toBe(true);
+      const greenframeData = await dataService.getAssessmentData(projectId, 'greenframe');
+      expect(greenframeData).toHaveLength(2);
+      expect(greenframeData.every(d => d.tool_name === 'greenframe')).toBe(true);
 
       const greenframeData = await dataService.getAssessmentData(projectId, 'greenframe');
       expect(greenframeData).toHaveLength(1);
@@ -103,11 +103,11 @@ describe('DataService', () => {
 
     it('should return assessment data ordered by timestamp (newest first)', async () => {
       // Store data with slight delays to ensure different timestamps
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', { order: 1 });
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', { order: 1 });
       await new Promise(resolve => setTimeout(resolve, 50));
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', { order: 2 });
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', { order: 2 });
       await new Promise(resolve => setTimeout(resolve, 50));
-      await dataService.storeAssessmentData(projectId, 'byte-counter', 'web-analysis', { order: 3 });
+      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', { order: 3 });
 
       const data = await dataService.getAssessmentData(projectId);
       expect(data).toHaveLength(3);

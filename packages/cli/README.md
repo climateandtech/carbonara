@@ -37,7 +37,7 @@ carbonara tools --list
 carbonara tools --install greenframe
 
 # Run analysis with any registered tool
-carbonara analyze byte-counter https://example.com --save
+carbonara analyze greenframe https://example.com --save
 carbonara analyze greenframe https://example.com --save
 carbonara analyze impact-framework https://example.com --save
 ```
@@ -53,7 +53,7 @@ carbonara assess
 
 ### Built-in Tools
 
-- **byte-counter**: Estimates CO2 emissions from data transfer using scientific models (SWD v4 + Coroama 2021)
+- **greenframe**: Measures the carbon footprint of web applications
 
 ### External Tools
 
@@ -118,7 +118,7 @@ Run interactive CO2 assessment questionnaire.
 Run analysis with a registered tool.
 
 **Arguments:**
-- `<tool-id>` - ID of the analysis tool (e.g., "byte-counter", "greenframe", "impact-framework")
+- `<tool-id>` - ID of the analysis tool (e.g., "greenframe", "impact-framework")
 - `<url>` - URL to analyze
 
 **Options:**
@@ -128,7 +128,7 @@ Run analysis with a registered tool.
 
 **Examples:**
 ```bash
-carbonara analyze byte-counter https://example.com --save
+carbonara analyze greenframe https://example.com --save
 carbonara analyze greenframe https://example.com --output json
 carbonara analyze impact-framework https://example.com --scroll-to-bottom --save
 ```

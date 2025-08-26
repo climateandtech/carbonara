@@ -23,7 +23,7 @@
   {
     "id": 1,
     "project_id": 1,
-    "tool_name": "byte-counter",
+    "tool_name": "greenframe",
     "data_type": "web-analysis",
     "data": {
       "url": "https://example.com",

@@ -176,11 +176,11 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     private getDefaultTools(): AnalysisTool[] {
         return [
             {
-                id: 'byte-counter',
-                name: 'Carbonara Byte Counter',
-                description: 'Built-in analyzer that counts bytes transferred and estimates CO2 emissions',
-                type: 'built-in',
-                command: 'runByteCounter'
+                id: 'greenframe',
+                name: 'GreenFrame',
+                description: 'Carbon footprint analyzer for web applications',
+                type: 'external',
+                command: 'runGreenFrame'
             },
             {
                 id: 'greenframe',
