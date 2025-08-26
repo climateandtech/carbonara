@@ -8,6 +8,7 @@ interface DataOptions {
   list: boolean;
   show: boolean;
   export?: 'json' | 'csv';
+  json: boolean;  // Raw JSON output to stdout
   clear: boolean;
 }
 
@@ -21,6 +22,11 @@ export async function dataCommand(options: DataOptions) {
 
     const dataLake = createDataLake();
     await dataLake.initialize();
+
+    if (options.json) {
+      await outputJsonData(dataLake, config.projectId);
+      return;
+    }
 
     if (options.list) {
       await listData(dataLake, config.projectId);
@@ -283,4 +289,11 @@ function convertToCSV(data: any[]): string {
   });
 
   return csvRows.join('\n');
+}
+
+async function outputJsonData(dataLake: any, projectId: number) {
+  const assessmentData = await dataLake.getAssessmentData(projectId);
+  
+  // Output raw JSON to stdout (no formatting or colors)
+  console.log(JSON.stringify(assessmentData));
 } 

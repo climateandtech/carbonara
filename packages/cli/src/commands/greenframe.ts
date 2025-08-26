@@ -69,13 +69,15 @@ export async function greenframeCommand(url: string, options: GreenframeOptions)
 }
 
 function displayResults(results: any, format: 'json' | 'table') {
-  console.log(chalk.blue('\n📊 Greenframe Analysis Results'));
-  console.log('═'.repeat(50));
-
   if (format === 'json') {
-    console.log(JSON.stringify(results, null, 2));
+    // Raw JSON output for programmatic consumption (no formatting or headers)
+    console.log(JSON.stringify(results));
     return;
   }
+
+  // Table format with headers
+  console.log(chalk.blue('\n📊 Greenframe Analysis Results'));
+  console.log('═'.repeat(50));
 
   // Table format
   if (results.url) {

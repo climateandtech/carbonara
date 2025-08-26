@@ -41,6 +41,7 @@ program
   .description('Manage data lake')
   .option('-l, --list', 'List all stored data')
   .option('-e, --export <format>', 'Export data (json|csv)')
+  .option('-j, --json', 'Output raw JSON to stdout')
   .option('-c, --clear', 'Clear all data')
   .action(dataCommand);
 
