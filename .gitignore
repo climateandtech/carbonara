@@ -203,7 +203,16 @@ Thumbs.db
 .turbo
 .npmrc 
 
-# Carbonara
+# Carbonara - User-generated files
 carbonara.config.json
 carbonara.db
+.carbonara-progress.json
+carbonara-assessment.json
+carbonara-export-*.json
+.carbonara-temp/
+
+# Carbonara - Keep test fixtures
+!plugins/vscode/e2e/fixtures/**/carbonara-export-*.json
+!test/fixtures/**/carbonara-export-*.json
+
 test/*
