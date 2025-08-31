@@ -76,12 +76,12 @@ describe('Carbonara Core Integration', () => {
       expect(greenframeGroup?.entries).toHaveLength(1);
       expect(greenframeGroup?.entries[0].label).toContain('example.com');
 
-      // Check greenframe group
-      const greenframeGroup = groups.find((g: any) => g.toolName === 'greenframe');
-      expect(greenframeGroup).toBeDefined();
-      expect(greenframeGroup?.displayName).toBe('🌱 GreenFrame Analysis');
-      expect(greenframeGroup?.entries).toHaveLength(1);
-      expect(greenframeGroup?.entries[0].label).toContain('test-site.com');
+      // Check another greenframe group
+      const secondGreenframeGroup = groups.find((g: any) => g.toolName === 'greenframe');
+      expect(secondGreenframeGroup).toBeDefined();
+      expect(secondGreenframeGroup?.displayName).toBe('🌱 GreenFrame Analysis');
+      expect(secondGreenframeGroup?.entries).toHaveLength(1);
+      expect(secondGreenframeGroup?.entries[0].label).toContain('test-site.com');
 
       // Check CO2 assessment group
       const co2Group = groups.find((g: any) => g.toolName === 'co2-assessment');
