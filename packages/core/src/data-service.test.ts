@@ -96,9 +96,9 @@ describe('DataService', () => {
       expect(greenframeData).toHaveLength(2);
       expect(greenframeData.every(d => d.tool_name === 'greenframe')).toBe(true);
 
-      const greenframeData = await dataService.getAssessmentData(projectId, 'greenframe');
-      expect(greenframeData).toHaveLength(1);
-      expect(greenframeData[0].tool_name).toBe('greenframe');
+      const greenframeDataFiltered = await dataService.getAssessmentData(projectId, 'greenframe');
+      expect(greenframeDataFiltered).toHaveLength(1);
+      expect(greenframeDataFiltered[0].tool_name).toBe('greenframe');
     });
 
     it('should return assessment data ordered by timestamp (newest first)', async () => {
