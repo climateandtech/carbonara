@@ -4,8 +4,6 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { initCommand } from './commands/init.js';
 import { assessCommand } from './commands/assess.js';
-import { analyzeCommand } from './commands/analyze.js';
-import { toolsCommand } from './commands/tools.js';
 import { dataCommand } from './commands/data.js';
 import { importCommand } from './commands/import.js';
 import packageJson from '../package.json' with { type: 'json' };
@@ -29,25 +27,6 @@ program
   .option('-i, --interactive', 'Interactive mode', true)
   .option('-f, --file <file>', 'Load from configuration file')
   .action(assessCommand);
-
-program
-  .command('analyze')
-  .description('Run carbon analysis with specified tool')
-  .argument('<tool>', 'Analysis tool to use (greenframe, impact-framework, etc.)')
-  .argument('<url>', 'URL to analyze')
-  .option('-s, --save', 'Save results to data lake')
-  .option('-o, --output <format>', 'Output format (json|table)', 'table')
-  .option('--scroll-to-bottom', 'Scroll to bottom of page during analysis (Impact Framework)')
-  .action(analyzeCommand);
-
-program
-  .command('tools')
-  .description('Manage analysis tools')
-  .option('-l, --list', 'List all available tools')
-  .option('-i, --install <tool>', 'Install an analysis tool')
-  .option('-u, --uninstall <tool>', 'Show uninstall instructions for a tool')
-  .option('-r, --refresh', 'Refresh tool installation status')
-  .action(toolsCommand);
 
 program
   .command('data')
