@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { downloadAndUnzipVSCode, resolveCliArgsFromVSCodeExecutablePath } from '@vscode/test-electron';
 
 const execAsync = promisify(exec);
 
@@ -21,9 +22,47 @@ export type WorkspaceFixture =
   | 'invalid-project'           // Corrupted carbonara.config.json
   | 'test-workspace';           // Legacy test workspace (empty)
 
+interface VSCodePaths {
+  executablePath: string;
+  cliArgs: string[];
+}
+
 export class VSCodeLauncher {
   private static activeInstances: VSCodeInstance[] = [];
   private static isLaunching = false;
+  private static vscodeDownloadPath: string | null = null;
+
+  private static async getVSCodePaths(): Promise<VSCodePaths> {
+    const isCI = process.env.CI === 'true';
+    const platform = process.platform;
+
+    if (isCI || platform === 'linux') {
+      // Use @vscode/test-electron to download VSCode for CI/Linux
+      console.log('🔧 Using @vscode/test-electron to download VSCode...');
+      
+      if (!this.vscodeDownloadPath) {
+        this.vscodeDownloadPath = await downloadAndUnzipVSCode('stable');
+        console.log(`✅ VSCode downloaded to: ${this.vscodeDownloadPath}`);
+      }
+
+      const cliArgs = resolveCliArgsFromVSCodeExecutablePath(this.vscodeDownloadPath);
+      
+      return {
+        executablePath: this.vscodeDownloadPath,
+        cliArgs: cliArgs
+      };
+    } else if (platform === 'darwin') {
+      // Use local macOS installation
+      console.log('🍎 Using local macOS VSCode installation...');
+      
+      return {
+        executablePath: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
+        cliArgs: ['/Applications/Visual Studio Code.app/Contents/Resources/app']
+      };
+    } else {
+      throw new Error(`Unsupported platform: ${platform}. E2E tests currently support macOS and Linux/CI only.`);
+    }
+  }
 
   static async launch(workspaceFixture: WorkspaceFixture = 'test-workspace'): Promise<VSCodeInstance> {
     // Wait if another instance is currently launching
@@ -58,12 +97,15 @@ export class VSCodeLauncher {
       console.log(`🧪 Using workspace fixture: ${workspaceFixture}`);
       console.log(`📁 Workspace path: ${workspacePath}`);
 
-      // Launch VSCode with better isolation to prevent multiple windows
-      // TODO make sure this works on every system
+      // Get cross-platform VSCode paths
+      const vscodeConfig = await this.getVSCodePaths();
+      console.log(`🚀 VSCode executable: ${vscodeConfig.executablePath}`);
+
+      // Launch VSCode with cross-platform support
       const app = await electron.launch({
-        executablePath: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
+        executablePath: vscodeConfig.executablePath,
         args: [
-          '/Applications/Visual Studio Code.app/Contents/Resources/app',
+          ...vscodeConfig.cliArgs,
           '--extensionDevelopmentPath=' + extensionDevelopmentPath,
           '--disable-workspace-trust',
           '--no-sandbox',
