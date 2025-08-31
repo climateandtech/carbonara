@@ -67,33 +67,19 @@ describe('Carbonara Core Integration', () => {
       // 3. Test VSCode data provider
       const groups = await vscodeProvider.createGroupedItems('/test/e2e');
       
-      expect(groups).toHaveLength(3);
+      expect(groups).toHaveLength(1);
       
-      // Check greenframe group
-      const greenframeGroup = groups.find((g: any) => g.toolName === 'greenframe');
-      expect(greenframeGroup).toBeDefined();
-      expect(greenframeGroup?.displayName).toBe('🌱 GreenFrame Analysis');
-      expect(greenframeGroup?.entries).toHaveLength(1);
-      expect(greenframeGroup?.entries[0].label).toContain('example.com');
-
-      // Check greenframe group
-      const greenframeGroup = groups.find((g: any) => g.toolName === 'greenframe');
-      expect(greenframeGroup).toBeDefined();
-      expect(greenframeGroup?.displayName).toBe('🌱 GreenFrame Analysis');
-      expect(greenframeGroup?.entries).toHaveLength(1);
-      expect(greenframeGroup?.entries[0].label).toContain('test-site.com');
-
       // Check CO2 assessment group
       const co2Group = groups.find((g: any) => g.toolName === 'co2-assessment');
       expect(co2Group).toBeDefined();
-      expect(co2Group?.displayName).toBe('🌍 CO2 Assessments');
+      expect(co2Group?.displayName).toBe('CO2 Assessment');
       expect(co2Group?.entries).toHaveLength(1);
 
       // 4. Test detailed data extraction
       const assessmentData = await vscodeProvider.loadDataForProject('/test/e2e');
-      const greenframeEntry = assessmentData.find((d: any) => d.tool_name === 'greenframe');
+      const co2Entry = assessmentData.find((d: any) => d.tool_name === 'co2-assessment');
       
-      const details = await vscodeProvider.createDataDetails(greenframeEntry!);
+      const details = await vscodeProvider.createDataDetails(co2Entry!);
       expect(details.length).toBeGreaterThan(0);
       
       // Verify schema-based formatting

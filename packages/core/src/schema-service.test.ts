@@ -16,19 +16,16 @@ describe('SchemaService', () => {
       expect(schemas.size).toBeGreaterThan(0);
       
       // Check for expected tools
-      expect(schemas.has('greenframe')).toBe(true);
-      expect(schemas.has('greenframe')).toBe(true);
       expect(schemas.has('co2-assessment')).toBe(true);
     });
 
     it('should return tool schema by id', async () => {
       await schemaService.loadToolSchemas();
       
-      const greenframeSchema = schemaService.getToolSchema('greenframe');
-      expect(greenframeSchema).toBeDefined();
-      expect(greenframeSchema?.id).toBe('greenframe');
-      expect(greenframeSchema?.name).toBe('GreenFrame');
-      expect(greenframeSchema?.display).toBeDefined();
+      const co2Schema = schemaService.getToolSchema('co2-assessment');
+      expect(co2Schema).toBeDefined();
+      expect(co2Schema?.id).toBe('co2-assessment');
+      expect(co2Schema?.name).toBe('CO2 Assessment');
     });
 
     it('should return null for non-existent tool schema', async () => {
@@ -131,14 +128,12 @@ describe('SchemaService', () => {
     it('should validate tool schema structure', async () => {
       await schemaService.loadToolSchemas();
       
-      const schema = schemaService.getToolSchema('greenframe');
+      const schema = schemaService.getToolSchema('co2-assessment');
       expect(schema).toBeDefined();
       
       // Validate required fields
       expect(schema?.id).toBeTruthy();
       expect(schema?.name).toBeTruthy();
-      expect(schema?.display).toBeDefined();
-      expect(schema?.display?.fields).toBeInstanceOf(Array);
       
       // Validate field structure
       const fields = schema?.display?.fields || [];

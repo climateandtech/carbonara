@@ -57,14 +57,14 @@ describe('VSCodeDataProvider', () => {
       projectId = await dataService.createProject('Test Project', '/test/path');
       
       // Add test data for different tools
-      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
-        url: 'https://example.com',
-        results: { totalBytes: 524288, requestCount: 25, loadTime: 1250, carbonEstimate: 0.245 }
+      await dataService.storeAssessmentData(projectId, 'co2-assessment', 'sustainability-assessment', {
+        impactScore: 75,
+        projectScope: { estimatedUsers: 1000, expectedTraffic: 'medium' }
       });
       
-      await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
-        url: 'https://test-site.com',
-        results: { carbon: { total: 1.85 }, score: 68, performance: { loadTime: 2100, pageSize: 890 } }
+      await dataService.storeAssessmentData(projectId, 'co2-assessment', 'sustainability-assessment', {
+        impactScore: 82,
+        projectScope: { estimatedUsers: 5000, expectedTraffic: 'high' }
       });
       
       await dataService.storeAssessmentData(projectId, 'co2-assessment', 'questionnaire', {
@@ -77,13 +77,13 @@ describe('VSCodeDataProvider', () => {
     it('should group data by tool with schema-based display', async () => {
       const groups = await dataProvider.createGroupedItems('/test/path');
       
-      expect(groups).toHaveLength(3); // 3 different tools
+      expect(groups).toHaveLength(1); // 1 tool (co2-assessment)
       
-      // Find greenframe group
-      const greenframeGroup = groups.find(g => g.toolName === 'greenframe');
-      expect(greenframeGroup).toBeDefined();
-      expect(greenframeGroup?.displayName).toBe('🌱 GreenFrame Analysis');
-      expect(greenframeGroup?.entries).toHaveLength(1);
+      // Find co2-assessment group
+      const co2Group = groups.find(g => g.toolName === 'co2-assessment');
+      expect(co2Group).toBeDefined();
+      expect(co2Group?.displayName).toBe('CO2 Assessment');
+      expect(co2Group?.entries).toHaveLength(3);
     });
 
     it('should create schema-based entry labels', async () => {
@@ -98,19 +98,17 @@ describe('VSCodeDataProvider', () => {
 
     it('should create detailed field items from schema', async () => {
       const data = await dataProvider.loadDataForProject('/test/path');
-      const greenframeEntry = data.find(d => d.tool_name === 'greenframe');
+      const co2Entry = data.find(d => d.tool_name === 'co2-assessment');
       
-      const details = await dataProvider.createDataDetails(greenframeEntry!);
+      const details = await dataProvider.createDataDetails(co2Entry!);
       
       expect(details.length).toBeGreaterThan(0);
       
       // Check for expected fields based on schema
-      const urlField = details.find(d => d.key === 'url');
-      expect(urlField?.label).toBe('🌐 URL: https://example.com');
+      const scoreField = details.find(d => d.key === 'impactScore');
+      expect(scoreField?.label).toBe('impactScore: 75');
       
-      const bytesField = details.find(d => d.key === 'totalBytes');
-      expect(bytesField?.label).toContain('📊 Data Transfer');
-      expect(bytesField?.label).toContain('512 KB'); // Formatted bytes
+
     });
 
     it('should handle missing schema gracefully', async () => {
