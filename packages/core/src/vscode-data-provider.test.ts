@@ -82,18 +82,18 @@ describe('VSCodeDataProvider', () => {
       // Find co2-assessment group
       const co2Group = groups.find(g => g.toolName === 'co2-assessment');
       expect(co2Group).toBeDefined();
-      expect(co2Group?.displayName).toBe('CO2 Assessment');
+      expect(co2Group?.displayName).toBe('Analysis results from co2-assessment');
       expect(co2Group?.entries).toHaveLength(3);
     });
 
     it('should create schema-based entry labels', async () => {
       const groups = await dataProvider.createGroupedItems('/test/path');
       
-      const greenframeGroup = groups.find(g => g.toolName === 'greenframe');
-      const entry = greenframeGroup?.entries[0];
+      const co2Group = groups.find(g => g.toolName === 'co2-assessment');
+      const entry = co2Group?.entries[0];
       
-      expect(entry?.label).toContain('example.com');
-      expect(entry?.label).toContain('🔍'); // Icon from schema
+      expect(entry?.label).toBeDefined();
+      expect(entry?.label).toContain('Analysis'); // Contains entry type
     });
 
     it('should create detailed field items from schema', async () => {

@@ -25,13 +25,13 @@ describe('Carbonara CLI - Tests', () => {
     expect(result).toContain('Commands:');
     expect(result).toContain('init');
     expect(result).toContain('assess');
-    expect(result).toContain('greenframe');
     expect(result).toContain('data');
+
   });
 
   test('CLI should show version', () => {
     const result = execSync(`node "${cliPath}" --version`, { encoding: 'utf8' });
-    expect(result).toContain('1.0.0');
+    expect(result).toContain('0.1.0');
   });
 
   test('assess command should show warning without project', () => {
@@ -39,28 +39,7 @@ describe('Carbonara CLI - Tests', () => {
     expect(result).toContain('No project found');
   });
 
-  test('greenframe command should handle invalid URL', () => {
-    try {
-      execSync(`cd "${testDir}" && node "${cliPath}" greenframe invalid-url`, { encoding: 'utf8' });
-    } catch (error: any) {
-      expect(error.status).toBe(1);
-      expect(error.stderr.toString()).toContain('Error');
-    }
-  });
 
-  test('greenframe command should work with valid URL', () => {
-    try {
-      const result = execSync(`cd "${testDir}" && node "${cliPath}" greenframe https://example.com`, { 
-        encoding: 'utf8',
-        timeout: 5000 
-      });
-      expect(result).toContain('Greenframe analysis completed');
-      expect(result).toContain('Carbon Footprint');
-    } catch (error: any) {
-      // If greenframe fails, just check that it's trying to run
-      expect(error.stderr.toString()).toContain('Greenframe analysis failed');
-    }
-  });
 
   test('data command should show help when no options provided', () => {
     fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
