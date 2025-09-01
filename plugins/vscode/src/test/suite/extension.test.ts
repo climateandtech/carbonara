@@ -147,7 +147,7 @@ suite('CLI Integration Tests', () => {
 		this.timeout(5000);
 		
 		// Check if CLI exists at expected location
-		const cliPath = path.join(testWorkspaceRoot, '..', 'packages', 'cli', 'src', 'index.js');
+		const cliPath = path.join(testWorkspaceRoot, '..', '..', '..', 'packages', 'cli', 'src', 'index.ts');
 		assert.ok(fs.existsSync(cliPath), `CLI should exist at ${cliPath}`);
 	});
 

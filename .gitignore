@@ -215,4 +215,4 @@ carbonara-export-*.json
 !plugins/vscode/e2e/fixtures/**/carbonara-export-*.json
 !test/fixtures/**/carbonara-export-*.json
 
-test/*
+test/*.cursor/
