@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { VSCodeLauncher, VSCodeInstance, WorkspaceFixture } from './helpers/vscode-launcher';
-import { SELECTORS } from '../src/constants/ui-text';
+import { SELECTORS, UI_TEXT } from '../src/constants/ui-text';
 
 async function setupTest(workspaceFixture: WorkspaceFixture): Promise<VSCodeInstance> {
   const vscode = await VSCodeLauncher.launch(workspaceFixture);
@@ -25,7 +25,7 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
     
     try {
       // Click Carbonara in status bar (simple and fast)
-      const carbonaraStatusBar = vscode.window.locator('text=Carbonara');
+      const carbonaraStatusBar = vscode.window.locator(SELECTORS.STATUS_BAR.ITEM);
       await expect(carbonaraStatusBar).toBeVisible({ timeout: 10000 });
       await carbonaraStatusBar.click();
       await vscode.window.waitForTimeout(1000);
@@ -37,8 +37,8 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
         await vscode.window.waitForTimeout(2000);
         
         // Should see initialization options in the quick pick menu
-        const initOption = vscode.window.locator('[role="option"]:has-text("Initialize Carbonara in current workspace")');
-        const searchOption = vscode.window.locator('[role="option"]:has-text("Search current workspace for projects")');
+        const initOption = vscode.window.locator(`[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.INITIALIZE.LABEL}")`);
+        const searchOption = vscode.window.locator(`[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.LABEL}")`);
         
         await expect(initOption).toBeVisible({ timeout: 5000 });
         await expect(searchOption).toBeVisible({ timeout: 5000 });
@@ -92,7 +92,7 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
         await vscode.window.waitForTimeout(2000);
         
         // Look for assessment data from our fixture
-        const assessmentPanel = vscode.window.locator('text=CO2 Assessment');
+        const assessmentPanel = vscode.window.locator('h3:has-text("CO2 Assessment")');
         if (await assessmentPanel.isVisible({ timeout: 3000 })) {
           console.log('✅ CO2 Assessment panel visible with existing project');
           
@@ -118,7 +118,7 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
     
     try {
       // Click Carbonara in status bar (simple and fast)
-      const carbonaraStatusBar = vscode.window.locator('text=Carbonara');
+      const carbonaraStatusBar = vscode.window.locator(SELECTORS.STATUS_BAR.ITEM);
       await expect(carbonaraStatusBar).toBeVisible({ timeout: 10000 });
       await carbonaraStatusBar.click();
       await vscode.window.waitForTimeout(1000);
@@ -129,7 +129,7 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
         await vscode.window.waitForTimeout(2000);
         
         // Click "Search current workspace for projects"
-        const searchOption = vscode.window.locator('[role="option"]:has-text("Search current workspace for projects")');
+        const searchOption = vscode.window.locator(`[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.LABEL}")`);
         if (await searchOption.isVisible({ timeout: 3000 })) {
           await searchOption.click();
           await vscode.window.waitForTimeout(3000);
@@ -173,14 +173,14 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
         await vscode.window.waitForTimeout(2000);
         
         // Should show warning about invalid config or treat as no project
-        const searchOption = vscode.window.locator('[role="option"]:has-text("Search current workspace for projects")');
+        const searchOption = vscode.window.locator(`[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.LABEL}")`);
         if (await searchOption.isVisible({ timeout: 3000 })) {
           await searchOption.click();
           await vscode.window.waitForTimeout(3000);
           
           // Should either show no projects or show error message
           const noProjectsMessage = vscode.window.locator('text=/No.*Carbonara.*projects.*found/i').first();
-          const errorMessage = vscode.window.locator('text=/invalid/i');
+          const errorMessage = vscode.window.locator('span:has-text("Found carbonara.config.json but it appears to be")');
           
           const hasNoProjects = await noProjectsMessage.isVisible({ timeout: 3000 });
           const hasErrorMessage = await errorMessage.isVisible({ timeout: 3000 });

@@ -78,11 +78,13 @@ suite('Extension Test Suite', () => {
 			await extension!.activate();
 		}
 
-		// The status bar item creation is tested indirectly by checking if the showMenu command works
-		await assert.doesNotReject(async () => {
-			// This command is bound to the status bar item
-			await vscode.commands.executeCommand('carbonara.showMenu');
-		}, 'Status bar menu command should be available');
+		// Verify the showMenu command is registered (status bar item should trigger this)
+		const commands = await vscode.commands.getCommands();
+		const hasShowMenuCommand = commands.includes('carbonara.showMenu');
+		assert.ok(hasShowMenuCommand, 'Status bar showMenu command should be registered');
+		
+		// Note: We don't execute the command as it shows an interactive QuickPick
+		// that would hang in test environment waiting for user input
 	});
 });
 
@@ -141,13 +143,13 @@ suite('Tree Provider Tests', () => {
 });
 
 suite('CLI Integration Tests', () => {
-	const testWorkspaceRoot = path.join(__dirname, '..', '..', '..', '..', 'test');
+	const testWorkspaceRoot = path.join(__dirname, '..', '..', '..', 'e2e', 'fixtures', 'with-carbonara-project');
 	
 	test('Should find CLI in monorepo structure', function() {
 		this.timeout(5000);
 		
 		// Check if CLI exists at expected location
-		const cliPath = path.join(testWorkspaceRoot, '..', '..', '..', 'packages', 'cli', 'src', 'index.ts');
+		const cliPath = path.join(testWorkspaceRoot, '..', '..', '..', '..', '..', 'packages', 'cli', 'src', 'index.ts');
 		assert.ok(fs.existsSync(cliPath), `CLI should exist at ${cliPath}`);
 	});
 

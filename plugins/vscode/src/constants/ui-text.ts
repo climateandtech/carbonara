@@ -30,11 +30,13 @@ export const UI_TEXT = {
         DESCRIPTION: "Complete sustainability questionnaire", 
         SEARCH_TEXT: "Run CO2 Assessment"
       },
+
       ANALYZE_WEBSITE: {
         LABEL: "$(globe) Analyze Website",
-        DESCRIPTION: "Run Greenframe analysis on a URL",
+        DESCRIPTION: "Run website analysis (demo mode)",
         SEARCH_TEXT: "Analyze Website"
       },
+
       VIEW_DATA: {
         LABEL: "$(database) View Data",
         DESCRIPTION: "Browse collected assessment data",
@@ -66,9 +68,44 @@ export const UI_TEXT = {
     }
   },
 
+  // Project opening options
+  PROJECT_OPEN: {
+    PLACEHOLDER: "How would you like to set up Carbonara?",
+    OPTIONS: {
+      INITIALIZE: {
+        LABEL: "🚀 Initialize Carbonara in current workspace",
+        DESCRIPTION: "Set up Carbonara in the current workspace",
+        SEARCH_TEXT: "Initialize Carbonara in current workspace"
+      },
+      SEARCH: {
+        LABEL: "🔍 Search current workspace for projects",
+        DESCRIPTION: "Find existing Carbonara projects in subdirectories", 
+        SEARCH_TEXT: "Search current workspace for projects"
+      },
+      BROWSE: {
+        LABEL: "📁 Browse for existing config (new window)",
+        DESCRIPTION: "Select a carbonara.config.json file to open its project",
+        SEARCH_TEXT: "Browse for existing config"
+      }
+    }
+  },
+
+
+
+  // Data tree messages
+  DATA_TREE: {
+    LOADING: "🔄 Loading analysis data...",
+    LOADING_DESCRIPTION: "Please wait while we load your data",
+    NO_DATA: "No data available",
+    NO_DATA_DESCRIPTION: "",
+    ERROR_LOADING: "❌ Error loading data",
+    ERROR_LOADING_DESCRIPTION: "Unknown error",
+    DATABASE_NOT_FOUND: "❌ Database not found"
+  },
+
   // Website analysis
   WEBSITE_ANALYSIS: {
-    URL_PROMPT: "Enter website URL to analyze",
+    URL_PROMPT: "Enter website URL to analyze (demo mode)",
     URL_PLACEHOLDER: "https://example.com"
   },
 

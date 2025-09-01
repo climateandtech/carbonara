@@ -116,9 +116,8 @@ suite('Carbonara Extension Integration Tests', () => {
   test('Extension should handle command execution gracefully', async function() {
     this.timeout(10000);
     
-    // Test commands that should work without setup
+    // Test commands that should work without setup (non-interactive only)
     const safeCommands = [
-      'carbonara.showMenu',
       'carbonara.showStatus',
       'carbonara.refreshAssessment',
       'carbonara.refreshData'

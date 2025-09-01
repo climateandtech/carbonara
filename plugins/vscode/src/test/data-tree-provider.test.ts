@@ -1,13 +1,30 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { DataTreeProvider, DataItem } from '../data-tree-provider';
+import { UI_TEXT } from '../constants/ui-text';
 import { type AssessmentDataEntry } from '@carbonara/core';
 
 suite('DataTreeProvider Unit Tests', () => {
     let provider: DataTreeProvider;
+    let originalWorkspaceFolders: readonly vscode.WorkspaceFolder[] | undefined;
 
     setup(() => {
+        // Mock workspace folders to avoid database initialization
+        originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+        Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+            value: undefined,
+            configurable: true
+        });
+        
         provider = new DataTreeProvider();
+    });
+
+    teardown(() => {
+        // Restore original workspace folders
+        Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+            value: originalWorkspaceFolders,
+            configurable: true
+        });
     });
 
     suite('DataItem Creation', () => {
@@ -64,26 +81,26 @@ suite('DataTreeProvider Unit Tests', () => {
 
         test('should create info items with correct properties', () => {
             const infoItem = new DataItem(
-                'No data available',
-                '',
+                UI_TEXT.DATA_TREE.NO_DATA,
+                UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION,
                 vscode.TreeItemCollapsibleState.None,
                 'info'
             );
 
-            assert.strictEqual(infoItem.label, 'No data available');
+            assert.strictEqual(infoItem.label, UI_TEXT.DATA_TREE.NO_DATA);
             assert.strictEqual(infoItem.type, 'info');
             assert.strictEqual(infoItem.contextValue, 'carbonara-data-item');
         });
 
         test('should create error items with correct properties', () => {
             const errorItem = new DataItem(
-                'Error loading data',
+                UI_TEXT.DATA_TREE.ERROR_LOADING,
                 'Connection failed',
                 vscode.TreeItemCollapsibleState.None,
                 'error'
             );
 
-            assert.strictEqual(errorItem.label, 'Error loading data');
+            assert.strictEqual(errorItem.label, UI_TEXT.DATA_TREE.ERROR_LOADING);
             assert.strictEqual(errorItem.description, 'Connection failed');
             assert.strictEqual(errorItem.type, 'error');
             assert.strictEqual(errorItem.contextValue, 'carbonara-data-item');
@@ -136,10 +153,10 @@ suite('DataTreeProvider Unit Tests', () => {
             // Verify all required methods exist
             assert.ok(typeof provider.getTreeItem === 'function');
             assert.ok(typeof provider.getChildren === 'function');
-            assert.ok(typeof provider.onDidChangeTreeData === 'object');
+            assert.ok(typeof provider.onDidChangeTreeData === 'function');
             
             // Verify event emitter
-            assert.ok(typeof provider.onDidChangeTreeData === 'object');
+            assert.ok(typeof provider.onDidChangeTreeData === 'function');
             assert.ok(typeof provider.refresh === 'function');
         });
 

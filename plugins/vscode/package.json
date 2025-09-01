@@ -42,7 +42,7 @@
       },
       {
         "command": "carbonara.analyzeWebsite",
-        "title": "Analyze Website"
+        "title": "Analyze Website (Demo)"
       },
       {
         "command": "carbonara.viewData",

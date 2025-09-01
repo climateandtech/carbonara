@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { DataTreeProvider, DataItem } from '../data-tree-provider';
+import { UI_TEXT } from '../constants/ui-text';
 
 suite('DataTreeProvider Integration Tests', () => {
     let provider: DataTreeProvider;
@@ -10,8 +11,8 @@ suite('DataTreeProvider Integration Tests', () => {
     let testDbPath: string;
 
     setup(async () => {
-        // Create a temporary workspace folder for testing
-        const tempDir = path.join('/tmp', `carbonara-test-${Date.now()}`);
+        // Create a unique temporary workspace folder for testing
+        const tempDir = path.join('/tmp', `carbonara-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
         fs.mkdirSync(tempDir, { recursive: true });
         
         testDbPath = path.join(tempDir, 'carbonara.db');
@@ -31,8 +32,8 @@ suite('DataTreeProvider Integration Tests', () => {
 
         provider = new DataTreeProvider();
         
-        // Give time for core services to initialize
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Give more time for core services to initialize and avoid race conditions
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // Restore original workspace folders
         Object.defineProperty(vscode.workspace, 'workspaceFolders', {
@@ -41,16 +42,23 @@ suite('DataTreeProvider Integration Tests', () => {
         });
     });
 
-    teardown(() => {
-        // Clean up test database
-        if (fs.existsSync(testDbPath)) {
-            fs.unlinkSync(testDbPath);
-        }
+    teardown(async () => {
+        // Give time for any pending database operations to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Clean up temp directory
-        const tempDir = path.dirname(testDbPath);
-        if (fs.existsSync(tempDir)) {
-            fs.rmSync(tempDir, { recursive: true, force: true });
+        try {
+            // Clean up test database
+            if (fs.existsSync(testDbPath)) {
+                fs.unlinkSync(testDbPath);
+            }
+            
+            // Clean up temp directory
+            const tempDir = path.dirname(testDbPath);
+            if (fs.existsSync(tempDir)) {
+                fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+        } catch (error) {
+            console.warn('Failed to clean up test files:', error);
         }
     });
 
@@ -58,9 +66,27 @@ suite('DataTreeProvider Integration Tests', () => {
         test('should show "No data available" when no data exists', async () => {
             const children = await provider.getChildren();
             
-            assert.strictEqual(children.length, 1);
-            assert.strictEqual(children[0].label, 'No data available');
-            assert.strictEqual(children[0].type, 'info');
+            // If we get loading state, wait for the async load to complete
+            if (children.length === 1 && children[0].label === UI_TEXT.DATA_TREE.LOADING) {
+                // Wait for the async loading to complete and refresh event to fire
+                await new Promise<void>((resolve) => {
+                    const disposable = provider.onDidChangeTreeData(() => {
+                        disposable.dispose();
+                        resolve();
+                    });
+                });
+                
+                // Get children again after async load completes
+                const updatedChildren = await provider.getChildren();
+                assert.strictEqual(updatedChildren.length, 1);
+                assert.strictEqual(updatedChildren[0].label, UI_TEXT.DATA_TREE.NO_DATA);
+                assert.strictEqual(updatedChildren[0].type, 'info');
+            } else {
+                // Direct case - no loading state
+                assert.strictEqual(children.length, 1);
+                assert.strictEqual(children[0].label, UI_TEXT.DATA_TREE.NO_DATA);
+                assert.strictEqual(children[0].type, 'info');
+            }
         });
 
         test('should display grouped data when data exists', async () => {
@@ -261,7 +287,7 @@ suite('DataTreeProvider Integration Tests', () => {
             // Verify the provider implements the correct interface
             assert.ok(typeof provider.getTreeItem === 'function');
             assert.ok(typeof provider.getChildren === 'function');
-            assert.ok(typeof provider.onDidChangeTreeData === 'object');
+            assert.ok(typeof provider.onDidChangeTreeData === 'function');
             assert.ok(typeof provider.refresh === 'function');
         });
 

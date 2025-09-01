@@ -231,11 +231,10 @@ async function runAssessment() {
     }
 }
 
-async function analyzeWebsite() {
-    if (!await checkCarbonaraInstalled()) {
-        return;
-    }
 
+
+async function analyzeWebsite() {
+    // Dummy implementation for database branch - doesn't require greenframe CLI
     const url = await vscode.window.showInputBox({
         prompt: UI_TEXT.WEBSITE_ANALYSIS.URL_PROMPT,
         placeHolder: UI_TEXT.WEBSITE_ANALYSIS.URL_PLACEHOLDER
@@ -253,22 +252,24 @@ async function analyzeWebsite() {
         return;
     }
 
-    const saveResults = await vscode.window.showQuickPick(
-        [
-            { label: 'Yes', value: true },
-            { label: 'No', value: false }
-        ],
-        { placeHolder: 'Save results to data lake?' }
+    // Show dummy analysis results instead of calling CLI
+    const dummyResults = {
+        url: url,
+        co2Score: Math.floor(Math.random() * 100),
+        loadTime: (Math.random() * 3 + 1).toFixed(2),
+        timestamp: new Date().toISOString()
+    };
+
+    vscode.window.showInformationMessage(
+        `🌍 Website Analysis (Demo)\n` +
+        `URL: ${dummyResults.url}\n` +
+        `CO2 Score: ${dummyResults.co2Score}/100\n` +
+        `Load Time: ${dummyResults.loadTime}s\n` +
+        `Analyzed at: ${new Date().toLocaleString()}`,
+        { modal: false }
     );
 
-    const args = ['greenframe', url];
-    if (saveResults?.value) {
-        args.push('--save');
-    }
-
-    await runCarbonaraCommand(args, `Analyzing ${url}...`);
-    
-    vscode.window.showInformationMessage('Website analysis completed!');
+    console.log('🎭 Dummy website analysis completed:', dummyResults);
 }
 
 async function viewData() {
@@ -344,22 +345,22 @@ async function openCarbonaraProject() {
     // Show options for setting up Carbonara in current workspace
     const action = await vscode.window.showQuickPick([
         { 
-            label: '🚀 Initialize Carbonara in current workspace', 
+            label: UI_TEXT.PROJECT_OPEN.OPTIONS.INITIALIZE.LABEL, 
             value: 'init',
-            description: 'Set up Carbonara in the current workspace'
+            description: UI_TEXT.PROJECT_OPEN.OPTIONS.INITIALIZE.DESCRIPTION
         },
         { 
-            label: '🔍 Search current workspace for projects', 
+            label: UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.LABEL, 
             value: 'search',
-            description: 'Find existing Carbonara projects in subdirectories'
+            description: UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.DESCRIPTION
         },
         { 
-            label: '📁 Browse for existing config (new window)', 
+            label: UI_TEXT.PROJECT_OPEN.OPTIONS.BROWSE.LABEL, 
             value: 'browse',
-            description: 'Select a carbonara.config.json file to open its project'
+            description: UI_TEXT.PROJECT_OPEN.OPTIONS.BROWSE.DESCRIPTION
         }
     ], {
-        placeHolder: 'How would you like to set up Carbonara?'
+        placeHolder: UI_TEXT.PROJECT_OPEN.PLACEHOLDER
     });
 
     if (!action) {

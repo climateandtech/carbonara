@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { setupCarbonaraCore, type DataGroup, type DataEntry as CoreDataEntry, type DataDetail } from '@carbonara/core';
+import { UI_TEXT } from './constants/ui-text';
 
 export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<DataItem | undefined | null | void> = new vscode.EventEmitter<DataItem | undefined | null | void>();
@@ -211,11 +212,11 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             this._onDidChangeTreeData.fire();
         }).catch(error => {
             console.error('❌ Async load failed:', error);
-            this.cachedItems = [new DataItem('❌ Error loading data', error.message, vscode.TreeItemCollapsibleState.None, 'error')];
+            this.cachedItems = [new DataItem(UI_TEXT.DATA_TREE.ERROR_LOADING, error.message, vscode.TreeItemCollapsibleState.None, 'error')];
             this._onDidChangeTreeData.fire();
         });
         
-        return [new DataItem('🔄 Loading analysis data...', 'Please wait while we load your data', vscode.TreeItemCollapsibleState.None, 'info')];
+        return [new DataItem(UI_TEXT.DATA_TREE.LOADING, UI_TEXT.DATA_TREE.LOADING_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
     }
 
     private async loadRootItemsAsync(): Promise<DataItem[]> {
@@ -236,7 +237,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             console.log(`📊 Found ${assessmentData.length} assessment entries`);
             
             if (assessmentData.length === 0) {
-                return [new DataItem('⚠️ No assessment data', 'Database exists but contains no assessment data', vscode.TreeItemCollapsibleState.None, 'info')];
+                return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
             }
             
             // Create grouped items
@@ -281,7 +282,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     private async createGroupedItems(): Promise<DataItem[]> {
         if (!this.coreServices || !this.workspaceFolder) {
             console.log('⚠️ createGroupedItems: No core services or workspace folder');
-            return [new DataItem('No data available', '', vscode.TreeItemCollapsibleState.None, 'info')];
+            return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
         }
 
         try {
@@ -310,7 +311,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             
             if (assessmentData.length === 0) {
                 console.log('⚠️ No assessment data found in database');
-                return [new DataItem('⚠️ No assessment data', 'Database exists but contains no assessment data', vscode.TreeItemCollapsibleState.None, 'info')];
+                return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
             }
             
             // Step 2: Create grouped items
@@ -326,7 +327,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             
             if (groups.length === 0) {
                 console.log('⚠️ createGroupedItems: No groups found, returning "No data available"');
-                return [new DataItem('No data available', '', vscode.TreeItemCollapsibleState.None, 'info')];
+                return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
             }
 
             // Step 3: Convert groups to DataItems
