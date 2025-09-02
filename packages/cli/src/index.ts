@@ -5,6 +5,8 @@ import chalk from 'chalk';
 import { initCommand } from './commands/init.js';
 import { assessCommand } from './commands/assess.js';
 import { dataCommand } from './commands/data.js';
+import { analyzeCommand } from './commands/analyze.js';
+import { toolsCommand } from './commands/tools.js';
 
 import packageJson from '../package.json' with { type: 'json' };
 
@@ -37,6 +39,25 @@ program
   .option('-j, --json', 'Output raw JSON to stdout')
   .option('-c, --clear', 'Clear all data')
   .action(dataCommand);
+
+program
+  .command('analyze')
+  .description('Run analysis with specified tool')
+  .argument('<tool>', 'Analysis tool to use')
+  .argument('<url>', 'URL to analyze')
+  .option('-s, --save', 'Save results to data lake')
+  .option('-o, --output <format>', 'Output format (json|table)', 'table')
+  .option('--timeout <ms>', 'Analysis timeout in milliseconds', '30000')
+  .action(analyzeCommand);
+
+program
+  .command('tools')
+  .description('Manage analysis tools')
+  .option('-l, --list', 'List all available tools')
+  .option('-i, --install <tool>', 'Install analysis tool')
+  .option('-u, --uninstall <tool>', 'Uninstall analysis tool')
+  .option('-r, --refresh', 'Refresh tool installation status')
+  .action(toolsCommand);
 
 
 

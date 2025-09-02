@@ -15,8 +15,10 @@ describe('SchemaService', () => {
       expect(schemas).toBeDefined();
       expect(schemas.size).toBeGreaterThan(0);
       
-      // Check for expected tools
+      // Check for expected tools from registry
       expect(schemas.has('co2-assessment')).toBe(true);
+      expect(schemas.has('greenframe')).toBe(true);
+      // Note: byte-counter will be added in separate step
     });
 
     it('should return tool schema by id', async () => {
@@ -26,6 +28,12 @@ describe('SchemaService', () => {
       expect(co2Schema).toBeDefined();
       expect(co2Schema?.id).toBe('co2-assessment');
       expect(co2Schema?.name).toBe('CO2 Assessment');
+
+      const greenframeSchema = schemaService.getToolSchema('greenframe');
+      expect(greenframeSchema).toBeDefined();
+      expect(greenframeSchema?.id).toBe('greenframe');
+      expect(greenframeSchema?.name).toBe('GreenFrame');
+      expect(greenframeSchema?.display).toBeDefined();
     });
 
     it('should return null for non-existent tool schema', async () => {

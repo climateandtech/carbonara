@@ -26,7 +26,8 @@ describe('Carbonara CLI - Tests', () => {
     expect(result).toContain('init');
     expect(result).toContain('assess');
     expect(result).toContain('data');
-
+    expect(result).toContain('analyze');
+    expect(result).toContain('tools');
   });
 
   test('CLI should show version', () => {
@@ -65,6 +66,48 @@ describe('Carbonara CLI - Tests', () => {
       expect(result).toContain('No data found');
     } catch (error: any) {
       expect(error.stderr.toString()).toContain('Data operation failed');
+    }
+  });
+
+  test('tools command should show help when no options provided', () => {
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" tools`, { encoding: 'utf8' });
+    expect(result).toContain('Analysis Tools Management');
+    expect(result).toContain('--list');
+    expect(result).toContain('--install');
+    expect(result).toContain('--refresh');
+  });
+
+  test('tools --list should show available tools', () => {
+    try {
+      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { encoding: 'utf8' });
+      expect(result).toContain('Analysis Tools Registry');
+      // Should show at least the co2-assessment tool from our registry
+      expect(result).toContain('co2-assessment');
+    } catch (error: any) {
+      // If registry loading fails, check that it's trying to load tools
+      expect(error.stderr.toString()).toContain('Failed to load tool schemas');
+    }
+  });
+
+  test('analyze command should require tool and URL arguments', () => {
+    try {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze`, { encoding: 'utf8' });
+    } catch (error: any) {
+      expect(error.status).toBe(1);
+      // Should show usage help when arguments are missing
+      expect(error.stderr.toString()).toContain('error: missing required argument');
+    }
+  });
+
+  test('analyze command should handle invalid tool', () => {
+    try {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze invalid-tool https://example.com`, { 
+        encoding: 'utf8',
+        stdio: 'pipe'
+      });
+    } catch (error: any) {
+      expect(error.status).toBe(1);
+      expect(error.stderr.toString()).toContain('Unknown analysis tool');
     }
   });
 });

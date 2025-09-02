@@ -5,11 +5,13 @@ import * as fs from 'fs';
 import { spawn } from 'child_process';
 import { AssessmentTreeProvider } from './assessment-tree-provider';
 import { DataTreeProvider } from './data-tree-provider';
+import { ToolsTreeProvider } from './tools-tree-provider';
 
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
+let toolsTreeProvider: ToolsTreeProvider;
 
 let currentProjectPath: string | null = null;
 
@@ -28,8 +30,10 @@ export function activate(context: vscode.ExtensionContext) {
     // Create and register tree views
     assessmentTreeProvider = new AssessmentTreeProvider();
     dataTreeProvider = new DataTreeProvider();
+    toolsTreeProvider = new ToolsTreeProvider();
     vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
     vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
+    vscode.window.registerTreeDataProvider('carbonara.toolsTree', toolsTreeProvider);
 
     // Register commands
     const commands = [
@@ -49,6 +53,10 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('carbonara.clearAllData', () => dataTreeProvider.clearData()),
         vscode.commands.registerCommand('carbonara.openProject', openCarbonaraProject),
         vscode.commands.registerCommand('carbonara.installCli', installCli),
+        vscode.commands.registerCommand('carbonara.viewTools', viewTools),
+        vscode.commands.registerCommand('carbonara.refreshTools', () => toolsTreeProvider.refresh()),
+        vscode.commands.registerCommand('carbonara.installTool', (toolId) => toolsTreeProvider.installTool(toolId)),
+        vscode.commands.registerCommand('carbonara.analyzeTool', (toolId) => toolsTreeProvider.analyzeTool(toolId))
 
     ];
 
@@ -109,6 +117,11 @@ async function showCarbonaraMenu() {
             label: UI_TEXT.MENU.ITEMS.VIEW_DATA.LABEL,
             description: UI_TEXT.MENU.ITEMS.VIEW_DATA.DESCRIPTION,
             command: 'carbonara.viewData'
+        },
+        {
+            label: UI_TEXT.MENU.ITEMS.MANAGE_TOOLS.LABEL,
+            description: UI_TEXT.MENU.ITEMS.MANAGE_TOOLS.DESCRIPTION,
+            command: 'carbonara.viewTools'
         },
 
         {
@@ -280,6 +293,16 @@ async function viewData() {
     }
 
     vscode.commands.executeCommand('carbonara.dataTree.focus');
+}
+
+async function viewTools() {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+        vscode.window.showErrorMessage('Please open a workspace folder first');
+        return;
+    }
+
+    vscode.commands.executeCommand('carbonara.toolsTree.focus');
 }
 
 

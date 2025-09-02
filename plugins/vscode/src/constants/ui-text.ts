@@ -43,6 +43,12 @@ export const UI_TEXT = {
         SEARCH_TEXT: "View Data"
       },
 
+      MANAGE_TOOLS: {
+        LABEL: "$(tools) Manage Tools",
+        DESCRIPTION: "View and install analysis tools",
+        SEARCH_TEXT: "Manage Tools"
+      },
+
       OPEN_CONFIG: {
         LABEL: "$(gear) Open Configuration",
         DESCRIPTION: "Edit Carbonara settings",

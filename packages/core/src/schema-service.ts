@@ -51,36 +51,26 @@ export class SchemaService {
         }
       }
       
-      // Load built-in tool schemas
+      // Load tool schemas from registry
       console.log('📋 Loading tool schemas');
-      this.loadBuiltInSchemas();
+      if (registryPath) {
+        const registryContent = fs.readFileSync(registryPath, 'utf8');
+        const registry = JSON.parse(registryContent);
+        
+        if (registry.tools && Array.isArray(registry.tools)) {
+          registry.tools.forEach((tool: AnalysisToolSchema) => {
+            this.toolSchemas.set(tool.id, tool);
+          });
+        }
+      }
     } catch (error) {
       console.warn('Failed to load tool schemas:', error);
-      this.loadBuiltInSchemas();
     }
     
     return this.toolSchemas;
   }
 
-  private loadBuiltInSchemas(): void {
-    // Built-in tool schemas
-    const builtInSchemas: AnalysisToolSchema[] = [
-      {
-        id: 'co2-assessment',
-        name: 'CO2 Assessment',
-        description: 'Interactive CO2 sustainability assessment questionnaire'
-      },
-      {
-        id: 'greenframe',
-        name: 'GreenFrame',
-        description: 'Website carbon footprint analysis'
-      }
-    ];
-    
-    builtInSchemas.forEach(schema => {
-      this.toolSchemas.set(schema.id, schema);
-    });
-  }
+
 
   getToolSchema(toolId: string): AnalysisToolSchema | null {
     return this.toolSchemas.get(toolId) || null;
