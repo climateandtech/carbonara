@@ -30,10 +30,13 @@ export function activate(context: vscode.ExtensionContext) {
     // Create and register tree views
     assessmentTreeProvider = new AssessmentTreeProvider();
     dataTreeProvider = new DataTreeProvider();
+    console.log('🔧 Creating ToolsTreeProvider...');
     toolsTreeProvider = new ToolsTreeProvider();
+    console.log('🔧 Registering tree data providers...');
     vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
     vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
     vscode.window.registerTreeDataProvider('carbonara.toolsTree', toolsTreeProvider);
+    console.log('✅ All tree providers registered');
 
     // Register commands
     const commands = [

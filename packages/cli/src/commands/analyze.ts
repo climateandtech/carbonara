@@ -75,7 +75,9 @@ export async function analyzeCommand(toolId: string, url: string, options: Analy
     
     let results: any;
     
-    if (toolId === 'impact-framework') {
+    if (toolId === 'test-analyzer') {
+      results = await runTestAnalyzer(url, options, tool);
+    } else if (toolId === 'impact-framework') {
       results = await runImpactFramework(url, options, tool);
     } else {
       results = await runGenericTool(url, options, tool);
@@ -115,6 +117,32 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
   } else {
     return { output: result.stdout };
   }
+}
+
+async function runTestAnalyzer(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+  // Built-in test analyzer that returns predictable hardcoded results for E2E testing
+  // Simulate a brief analysis delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Return predictable test results
+  return {
+    url: url,
+    timestamp: new Date().toISOString(),
+    tool: 'test-analyzer',
+    result: 'success',
+    data: {
+      testScore: 85,
+      testMetric: 'A+',
+      testValue: 42,
+      analysisTime: '0.5s',
+      testSite: new URL(url).hostname
+    },
+    summary: {
+      status: 'completed',
+      message: 'Test analysis completed successfully',
+      details: `Analyzed ${url} with test analyzer`
+    }
+  };
 }
 
 async function runImpactFramework(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
@@ -277,13 +305,41 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
     const dataLake = createDataLake();
     await dataLake.initialize();
 
+    // Ensure we have a valid project ID
+    let projectId = config.projectId;
+    
+    if (!projectId) {
+      console.log(chalk.blue('🔧 No project ID found, creating project in database...'));
+      
+      // Create project in database
+      const projectPath = process.cwd();
+      projectId = await dataLake.createProject(
+        config.name || 'Unnamed Project',
+        projectPath,
+        {
+          description: config.description,
+          projectType: config.projectType || 'web',
+          initialized: new Date().toISOString()
+        }
+      );
+      
+      // Update config with new project ID
+      const { saveProjectConfig } = await import('../utils/config.js');
+      const updatedConfig = { ...config, projectId };
+      saveProjectConfig(updatedConfig, projectPath);
+      
+      console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
+    }
+
     const assessmentData = {
       url: url,
       raw_results: JSON.stringify(results),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Extract commonly needed fields for schema templates
+      ...results  // Spread the results to make fields directly accessible
     };
 
-    await dataLake.storeAssessmentData(config.projectId, toolId, 'web-analysis', assessmentData, url);
+    await dataLake.storeAssessmentData(projectId, toolId, 'web-analysis', assessmentData, url);
     await dataLake.close();
 
     console.log(chalk.green('\n✅ Results saved to project database'));

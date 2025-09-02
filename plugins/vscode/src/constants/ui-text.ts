@@ -109,6 +109,16 @@ export const UI_TEXT = {
     DATABASE_NOT_FOUND: "❌ Database not found"
   },
 
+  // Tools tree messages
+  TOOLS_TREE: {
+    LOADING: "🔄 Loading analysis tools...",
+    LOADING_DESCRIPTION: "Please wait while we load available tools",
+    NO_TOOLS: "No analysis tools available",
+    NO_TOOLS_DESCRIPTION: "Install tools or check configuration",
+    ERROR_LOADING: "❌ Error loading tools",
+    ERROR_LOADING_DESCRIPTION: "Failed to load analysis tools"
+  },
+
   // Website analysis
   WEBSITE_ANALYSIS: {
     URL_PROMPT: "Enter website URL to analyze (demo mode)",
@@ -118,7 +128,18 @@ export const UI_TEXT = {
   // Notifications
   NOTIFICATIONS: {
     NO_PROJECT: "No Carbonara project detected. Initialize one from the status bar or sidebar.",
-    PROJECT_INITIALIZED: "Carbonara project initialized successfully!"
+    PROJECT_INITIALIZED: "Carbonara project initialized successfully!",
+    
+    // Analysis notifications
+    ANALYSIS_RUNNING: (toolName: string) => `Running ${toolName} analysis...`,
+    ANALYSIS_COMPLETED: (toolName: string) => `${toolName} analysis completed!`,
+    ANALYSIS_FAILED: "Analysis failed:",
+    
+    // Tool management notifications
+    CLI_NOT_FOUND: "Carbonara CLI not found",
+    TOOL_INSTALLING: (toolName: string) => `Installing ${toolName}...`,
+    TOOL_INSTALLED: (toolName: string) => `${toolName} installed successfully!`,
+    TOOL_INSTALL_FAILED: (toolName: string) => `Failed to install ${toolName}:`
   }
 } as const;
 

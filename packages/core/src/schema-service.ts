@@ -134,6 +134,23 @@ export class SchemaService {
           return format.replace('{value}', value.toString());
         }
         return `${value} kWh`;
+      
+      case 'url':
+        if (format === 'domain-only') {
+          try {
+            const url = new URL(value);
+            // Return hostname + pathname, removing protocol
+            return url.hostname + url.pathname;
+          } catch {
+            // If URL parsing fails, try to strip protocol manually
+            const cleaned = String(value).replace(/^https?:\/\//, '');
+            return cleaned;
+          }
+        }
+        if (format) {
+          return format.replace('{value}', value.toString());
+        }
+        return String(value);
     }
 
     return String(value);

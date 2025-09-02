@@ -137,7 +137,8 @@
         },
         {
           "id": "carbonara.toolsTree",
-          "name": "Analysis Tools"
+          "name": "Analysis Tools",
+          "visibility": "visible"
         }
       ]
     },

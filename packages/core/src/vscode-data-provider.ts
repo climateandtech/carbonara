@@ -114,7 +114,7 @@ export class VSCodeDataProvider {
         const placeholder = `{${field.key}}`;
         const formattedValue = this.schemaService.formatValue(value, field.type, field.format);
         
-        label = label.replace(placeholder, String(value));
+        label = label.replace(placeholder, formattedValue);
         description = description.replace(placeholder, formattedValue);
         
         // Special handling for common fields

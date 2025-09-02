@@ -15,3 +15,4 @@ alwaysApply: true
 - Keep tests simple but powerful
 - Ensure tests actually test something
 - Keep test files DRY
+- IMPORTANT use existing test helpers and tools 
