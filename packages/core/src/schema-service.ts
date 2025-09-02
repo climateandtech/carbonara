@@ -51,20 +51,20 @@ export class SchemaService {
         }
       }
       
-      // Skip registry loading - use fallback schemas only
-      console.log('📋 Using fallback tool schemas (no registry system)');
-      this.loadFallbackSchemas();
+      // Load built-in tool schemas
+      console.log('📋 Loading tool schemas');
+      this.loadBuiltInSchemas();
     } catch (error) {
       console.warn('Failed to load tool schemas:', error);
-      this.loadFallbackSchemas();
+      this.loadBuiltInSchemas();
     }
     
     return this.toolSchemas;
   }
 
-  private loadFallbackSchemas(): void {
-    // Basic fallback schemas for common tools (no registry dependency)
-    const fallbackSchemas: AnalysisToolSchema[] = [
+  private loadBuiltInSchemas(): void {
+    // Built-in tool schemas
+    const builtInSchemas: AnalysisToolSchema[] = [
       {
         id: 'co2-assessment',
         name: 'CO2 Assessment',
@@ -77,7 +77,7 @@ export class SchemaService {
       }
     ];
     
-    fallbackSchemas.forEach(schema => {
+    builtInSchemas.forEach(schema => {
       this.toolSchemas.set(schema.id, schema);
     });
   }
