@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setupCarbonaraCore } from './index.js';
 import fs from 'fs';
 import path from 'path';
@@ -195,6 +195,9 @@ describe('Carbonara Core Integration', () => {
     it('should handle database connection errors', async () => {
       const { dataService, vscodeProvider } = services;
 
+      // Mock console.error to suppress expected error output
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       // Close database to simulate error
       await dataService.close();
 
@@ -204,6 +207,16 @@ describe('Carbonara Core Integration', () => {
 
       const groups = await vscodeProvider.createGroupedItems('/test/path');
       expect(groups).toEqual([]);
+
+      // Verify that errors were logged (but suppressed from output)
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load data for project:',
+        expect.any(Error)
+      );
+
+      // Restore console.error
+      consoleErrorSpy.mockRestore();
     });
   });
 
