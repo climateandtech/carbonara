@@ -223,8 +223,7 @@
     "playwright:install": "playwright install"
   },
   "dependencies": {
-    "@carbonara/core": "file:../../packages/core",
-    "carbonara": "^0.1.3"
+    "@carbonara/core": "file:../../packages/core"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
