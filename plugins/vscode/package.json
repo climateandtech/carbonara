@@ -208,7 +208,7 @@
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-1.0.0.vsix",
     "test": "npm run test:ci-check",
-    "test:local": "npm run compile-tests && node ./out/test/runTest.js",
+    "test:local": "npm run clean-test && npm run compile-tests && node ./test-build/test/runTest.js",
     "test:ci-check": "if [ \"$CI\" = \"true\" ]; then echo 'Skipping VSCode tests in CI environment'; exit 0; else npm run test:local; fi",
     "test:ui": "playwright test e2e --workers=1",
     "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
@@ -218,7 +218,8 @@
     "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
     "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
     "test:ui:headed": "playwright test e2e --headed --workers=1",
-    "compile-tests": "tsc -p . --outDir out",
+    "compile-tests": "tsc -p . --outDir test-build",
+    "clean-test": "rm -rf test-build/",
     "pretest": "npm run build",
     "playwright:install": "playwright install"
   },
