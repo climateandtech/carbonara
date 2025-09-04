@@ -28,6 +28,7 @@ export interface Project {
 export class DataService {
   private db: sqlite3.Database;
   private dbPath: string;
+  private isClosed: boolean = false;
 
   constructor(config: DatabaseConfig = {}) {
     this.dbPath = config.dbPath || path.join(process.cwd(), 'carbonara.db');
@@ -107,6 +108,10 @@ export class DataService {
   }
 
   async getProject(projectPath: string): Promise<Project | null> {
+    if (this.isClosed) {
+      return null;
+    }
+    
     return new Promise((resolve, reject) => {
       this.db.get(
         'SELECT * FROM projects WHERE path = ?',
@@ -202,11 +207,12 @@ export class DataService {
 
   async close(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.db) {
+      if (!this.db || this.isClosed) {
         resolve();
         return;
       }
       
+      this.isClosed = true;
       this.db.close((err) => {
         if (err && (err as any).code !== 'SQLITE_MISUSE') {
           reject(err);

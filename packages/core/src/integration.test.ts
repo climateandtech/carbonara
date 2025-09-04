@@ -208,12 +208,8 @@ describe('Carbonara Core Integration', () => {
       const groups = await vscodeProvider.createGroupedItems('/test/path');
       expect(groups).toEqual([]);
 
-      // Verify that errors were logged (but suppressed from output)
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to load data for project:',
-        expect.any(Error)
-      );
+      // Since database connection check was added, no errors should be logged
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(0);
 
       // Restore console.error
       consoleErrorSpy.mockRestore();
