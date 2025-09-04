@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { VSCodeDataProvider } from './vscode-data-provider.js';
-import { DataService } from './data-service.js';
-import { SchemaService } from './schema-service.js';
+import { VSCodeDataProvider } from '../src/vscode-data-provider.js';
+import { DataService } from '../src/data-service.js';
+import { SchemaService } from '../src/schema-service.js';
 import fs from 'fs';
 import path from 'path';
 

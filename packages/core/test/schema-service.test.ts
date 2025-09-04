@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SchemaService } from './schema-service.js';
+import { SchemaService } from '../src/schema-service.js';
 
 describe('SchemaService', () => {
   let schemaService: SchemaService;

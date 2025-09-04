@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { setupCarbonaraCore } from './index.js';
+import { setupCarbonaraCore } from '../src/index.js';
 import fs from 'fs';
 import path from 'path';
 
