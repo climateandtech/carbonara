@@ -60,7 +60,7 @@ export async function assessCommand(options: AssessOptions) {
     const config = await loadProjectConfig();
     if (!config) {
       console.log(
-        chalk.yellow('⚠️  No project found. Run "carbonara init" first.'),
+        chalk.yellow('⚠️  No project found. Run "carbonara init" first.')
       );
       return;
     }
@@ -100,7 +100,7 @@ export async function assessCommand(options: AssessOptions) {
         ...validated,
         impactScore,
         completedAt: new Date().toISOString(),
-      },
+      }
     );
 
     // Generate report
@@ -368,14 +368,14 @@ function calculateCO2Impact(data: z.infer<typeof CO2AssessmentSchema>): number {
 
 function generateAssessmentReport(
   data: z.infer<typeof CO2AssessmentSchema>,
-  impactScore: number,
+  impactScore: number
 ) {
   console.log(chalk.green("\n📋 Assessment Report"));
   console.log("═".repeat(50));
 
   console.log(chalk.blue("\n🎯 Project Overview:"));
   console.log(
-    `Expected Users: ${data.projectInfo.expectedUsers.toLocaleString()}`,
+    `Expected Users: ${data.projectInfo.expectedUsers.toLocaleString()}`
   );
   console.log(`Traffic Level: ${data.projectInfo.expectedTraffic}`);
   console.log(`Target Audience: ${data.projectInfo.targetAudience}`);
@@ -405,13 +405,13 @@ function generateAssessmentReport(
 
   console.log(chalk.blue("\n🌍 Sustainability:"));
   console.log(
-    `Carbon Neutrality Target: ${data.sustainabilityGoals.carbonNeutralityTarget ? "Yes" : "No"}`,
+    `Carbon Neutrality Target: ${data.sustainabilityGoals.carbonNeutralityTarget ? "Yes" : "No"}`
   );
   console.log(
-    `Green Hosting: ${data.sustainabilityGoals.greenHostingRequired ? "Yes" : "No"}`,
+    `Green Hosting: ${data.sustainabilityGoals.greenHostingRequired ? "Yes" : "No"}`
   );
   console.log(
-    `Optimization Priority: ${data.sustainabilityGoals.optimizationPriority}`,
+    `Optimization Priority: ${data.sustainabilityGoals.optimizationPriority}`
   );
 
   // Impact score and recommendations

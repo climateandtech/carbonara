@@ -25,6 +25,8 @@ export async function megalinterCommand(options: MegalinterOptions) {
     const args = [
       "mega-linter-runner",
       "-e",
+      "'DISABLE_ERRORS=true'",
+      "-e",
       "'JSON_REPORTER=true'",
       "-e",
       "'DISABLE=SPELL,JAVASCRIPT,RUBY,SQL,TYPESCRIPT,CSS,HTML,JSON,MARKDOWN'",
@@ -33,20 +35,15 @@ export async function megalinterCommand(options: MegalinterOptions) {
     ];
 
     // Run MegaLinter
-    let megalinterRan = false;
+    let megalinterFailed = false;
+    let megalinterError: any = null;
+    
     try {
       const megalinterResult = await execa("npx", args, {
         stdio: "ignore",
         cwd: process.cwd(),
       });
-      megalinterRan = true;
-    } catch (execError: any) {
-      // MegaLinter often returns non-zero exit codes when linting issues are found
-      // This is normal behavior and doesn't mean the command failed
-      megalinterRan = true;
-    }
-
-    if (megalinterRan) {
+      
       spinner.succeed("MegaLinter analysis completed!");
       // Since MegaLinter outputs to files, we need to read the results
       const results = await parseMegalinterResults();
@@ -56,23 +53,34 @@ export async function megalinterCommand(options: MegalinterOptions) {
       if (options.save !== false) {
         await saveToDatabase(results);
       }
+    } catch (execError: any) {
+      // MegaLinter might fail due to missing installation or other issues
+      // but we still want to attempt cleanup and provide helpful feedback
+      megalinterFailed = true;
+      megalinterError = execError;
+      spinner.fail("MegaLinter analysis failed");
+      
+      if (execError.message.includes("mega-linter-runner") || 
+          execError.message.includes("command not found") ||
+          execError.stderr?.includes("mega-linter-runner: command not found")) {
+        console.error(chalk.yellow("MegaLinter not found. You can install it with:"));
+        console.error(chalk.white("npm install -g mega-linter-runner"));
+        console.error(chalk.gray("or it will be downloaded automatically when run with npx"));
+      } else {
+        console.error(chalk.red("Error:"), execError.message);
+      }
+    }
 
-      // Clean up megalinter-reports folder after processing
-      await cleanupReportsFolder();
+    // Clean up megalinter-reports folder after processing (always run)
+    await cleanupReportsFolder();
+    
+    // Re-throw error after cleanup if megalinter failed
+    if (megalinterFailed && megalinterError) {
+      throw megalinterError;
     }
   } catch (error: any) {
-    spinner.fail("MegaLinter analysis failed");
-    if (error.message.includes("mega-linter-runner")) {
-      console.log(
-        chalk.yellow("\n💡 MegaLinter not found. You can install it with:")
-      );
-      console.log(chalk.white("npm install -g mega-linter-runner"));
-      console.log(
-        chalk.gray("or it will be downloaded automatically when run with npx")
-      );
-    } else {
-      console.error(chalk.red("Error:"), error.message);
-    }
+    spinner.fail("MegaLinter setup failed");
+    console.error(chalk.red("Error:"), error.message);
     process.exit(1);
   }
 }
