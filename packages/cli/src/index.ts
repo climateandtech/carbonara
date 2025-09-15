@@ -4,9 +4,9 @@ import { program } from "commander";
 import chalk from "chalk";
 import { initCommand } from "./commands/init.js";
 import { assessCommand } from "./commands/assess.js";
-import { greenframeCommand } from "./commands/greenframe.js";
-import { megalinterCommand } from "./commands/megalinter.js";
 import { dataCommand } from "./commands/data.js";
+import { megalinterCommand } from "./commands/megalinter.js";
+
 import packageJson from "../package.json" with { type: "json" };
 
 const { version } = packageJson;
@@ -30,29 +30,27 @@ program
   .action(assessCommand);
 
 program
-  .command("greenframe")
-  .description("Run Greenframe web analysis")
-  .argument("<url>", "URL to analyze")
-  .option("-s, --save", "Save results to data lake")
-  .option("-o, --output <format>", "Output format (json|table)", "table")
-  .action(greenframeCommand);
+  .command("data")
+  .description("Manage data lake")
+  .option("-l, --list", "List all stored data")
+  .option("-s, --show", "Show detailed project analysis")
+  .option("-e, --export <format>", "Export data (json|csv)")
+  .option("-j, --json", "Output raw JSON to stdout")
+  .option("-c, --clear", "Clear all data")
+  .action(dataCommand);
 
 program
   .command("megalinter")
   .description("Run MegaLinter code analysis")
   .action(megalinterCommand);
 
-program
-  .command("data")
-  .description("Manage data lake")
-  .option("-l, --list", "List all stored data")
-  .option("-e, --export <format>", "Export data (json|csv)")
-  .option("-c, --clear", "Clear all data")
-  .action(dataCommand);
-
 program.on("command:*", () => {
-  console.error(chalk.red(`Invalid command: ${program.args.join(" ")}`));
-  console.log(chalk.yellow("See --help for a list of available commands."));
+  console.error(
+    chalk.red(
+      "Invalid command: %s\nSee --help for a list of available commands."
+    ),
+    program.args.join(" ")
+  );
   process.exit(1);
 });
 

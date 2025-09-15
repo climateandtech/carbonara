@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Analysis Tools Registry",
+  "description": "Registry of available carbon analysis tools",
+  "type": "object",
+  "properties": {
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AnalysisTool"
+      }
+    }
+  },
+  "definitions": {
+    "AnalysisTool": {
+      "type": "object",
+      "required": ["id", "name", "command", "installation"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the tool"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the tool"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of what the tool does"
+        },
+        "command": {
+          "$ref": "#/definitions/ToolCommand"
+        },
+        "installation": {
+          "$ref": "#/definitions/InstallationConfig"
+        },
+        "detection": {
+          "$ref": "#/definitions/DetectionConfig"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ToolOption"
+          }
+        }
+      }
+    },
+    "ToolCommand": {
+      "type": "object",
+      "required": ["executable", "args"],
+      "properties": {
+        "executable": {
+          "type": "string",
+          "description": "Command to execute"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments template (use {url} for URL placeholder)"
+        },
+        "outputFormat": {
+          "type": "string",
+          "enum": ["json", "yaml", "text"],
+          "default": "json"
+        }
+      }
+    },
+    "InstallationConfig": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["npm", "pip", "binary", "docker"]
+        },
+        "package": {
+          "type": "string",
+          "description": "Package name or download URL"
+        },
+        "global": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to install globally"
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Custom installation instructions"
+        }
+      }
+    },
+    "DetectionConfig": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["command", "npm", "file"]
+        },
+        "target": {
+          "type": "string",
+          "description": "Command to check, npm package, or file path"
+        },
+        "expectedOutput": {
+          "type": "string",
+          "description": "Expected output pattern for command detection"
+        }
+      }
+    },
+    "ToolOption": {
+      "type": "object",
+      "required": ["flag", "description"],
+      "properties": {
+        "flag": {
+          "type": "string",
+          "description": "Command line flag"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the option"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["boolean", "string", "number"],
+          "default": "boolean"
+        },
+        "default": {
+          "description": "Default value"
+        }
+      }
+    }
+  }
+}

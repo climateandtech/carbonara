@@ -1,0 +1,17 @@
+---
+description: How to write tests and how to fix tests
+globs:
+alwaysApply: true
+---
+
+
+- Ensure you know and ask the user in doubt wether the test or the code is the source of truth
+- New code should have a test first
+- Bugs need to be reproduced with a test
+- If new code breaks an existing test then never assume that you need to change the code without asking the user
+- Augment existing test files rather than creating new testfiles
+- Align with the user if you think test-files should be split
+- Always ask the user, if you can't make a test pass before you try a different or simpler approach with a risk assessment
+- Keep tests simple but powerful
+- Ensure tests actually test something
+- Keep test files DRY

@@ -1,0 +1,9 @@
+---
+description: Use this rule when  writing or formatting a commit message
+alwaysApply: true
+---
+- Always first git status and see if this all makes sense, ask in doubt
+- Reference the tickets
+- Stay clean and factual
+- Don't include things that a third party doesn't need to know
+- Include changes, very brief, max one line per change
