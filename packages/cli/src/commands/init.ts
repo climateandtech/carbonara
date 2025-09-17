@@ -1,4 +1,4 @@
-import inquirer from 'inquirer';
+import { input, select } from '@inquirer/prompts';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
@@ -20,33 +20,29 @@ export async function initCommand(options: InitOptions) {
     }
 
     // Get project details
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'name',
-        message: 'Project name:',
-        default: path.basename(projectPath),
-        validate: (input: string) => input.length > 0 ? true : 'Project name is required'
-      },
-      {
-        type: 'input',
-        name: 'description',
-        message: 'Project description:',
-        default: 'A Carbonara CO2 assessment project'
-      },
-      {
-        type: 'list',
-        name: 'projectType',
-        message: 'Project type:',
-        choices: [
-          { name: 'Web Application', value: 'web' },
-          { name: 'Mobile Application', value: 'mobile' },
-          { name: 'Desktop Application', value: 'desktop' },
-          { name: 'API/Backend Service', value: 'api' },
-          { name: 'Other', value: 'other' }
-        ]
-      }
-    ]);
+    const name = await input({
+      message: 'Project name:',
+      default: path.basename(projectPath),
+      validate: (input: string) => input.length > 0 ? true : 'Project name is required'
+    });
+
+    const description = await input({
+      message: 'Project description:',
+      default: 'A Carbonara CO2 assessment project'
+    });
+
+    const projectType = await select({
+      message: 'Project type:',
+      choices: [
+        { name: 'Web Application', value: 'web' },
+        { name: 'Mobile Application', value: 'mobile' },
+        { name: 'Desktop Application', value: 'desktop' },
+        { name: 'API/Backend Service', value: 'api' },
+        { name: 'Other', value: 'other' }
+      ]
+    });
+
+    const answers = { name, description, projectType };
 
     // Initialize database
     const dataLake = createDataLake({
