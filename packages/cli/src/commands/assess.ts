@@ -281,6 +281,7 @@ async function runInteractiveAssessment() {
   ]);
 
   console.log(chalk.green('\n🌍 Sustainability Goals'));
+  // @ts-ignore
   const sustainabilityGoals = await inquirer.prompt([
     {
       type: 'confirm',
@@ -315,7 +316,7 @@ async function runInteractiveAssessment() {
         { name: 'High budget', value: 'high' }
       ]
     }
-  ]);
+  ] as any);
 
   return {
     projectInfo,
