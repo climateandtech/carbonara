@@ -247,14 +247,13 @@ async function clearData(dataLake: any, projectId: number) {
   console.log(chalk.gray('Use with caution in production!'));
   
   // TODO: Implement actual deletion with confirmation
-  // const confirmed = await inquirer.prompt([{
-  //   type: 'confirm',
-  //   name: 'confirm',
+  // import { confirm } from '@inquirer/prompts';
+  // const confirmed = await confirm({
   //   message: 'Are you sure you want to delete all data?',
   //   default: false
-  // }]);
-  
-  // if (confirmed.confirm) {
+  // });
+
+  // if (confirmed) {
   //   // Delete data from database
   //   console.log(chalk.green('✅ Data cleared successfully'));
   // }

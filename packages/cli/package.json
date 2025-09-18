@@ -20,7 +20,7 @@
     "commander": "^11.1.0",
     "cypress": "^13.17.0",
     "execa": "^5.1.1",
-    "inquirer": "^8.2.6",
+    "@inquirer/prompts": "^7.8.6",
     "js-yaml": "^4.1.0",
     "ora": "^6.3.1",
     "playwright": "^1.40.0",
@@ -38,7 +38,6 @@
   "license": "To be clarified - All rights reserved",
   "type": "module",
   "devDependencies": {
-    "@types/inquirer": "^8.2.6",
     "@types/js-yaml": "^4.0.5",
     "@vitest/ui": "^3.2.4",
     "typescript": "^5.0.0",
