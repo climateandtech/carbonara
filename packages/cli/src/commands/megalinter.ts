@@ -10,7 +10,7 @@ interface MegalinterOptions {
   env?: string;
 }
 export async function megalinterCommand(options: MegalinterOptions) {
-  const spinner = ora("Running MegaLinter analysis...").start();
+  const spinner = ora("MegaLinter ").start();
   try {
     // Check if npx is available
     try {
@@ -22,16 +22,40 @@ export async function megalinterCommand(options: MegalinterOptions) {
     }
 
     // Prepare command arguments
+    // NOTE: I haven't yet found a way to run megalinter with a config file - P.
     const args = [
       "mega-linter-runner",
       "-e",
+      "'APPLY_FIXES=none'",
+      "-e",
       "'DISABLE_ERRORS=true'",
+      "-e",
+      "'PRINT_ALL_FILES=false",
+      "-e",
+      "'SHOW_ELAPSED_TIME=true'",
+      "-e",
+      "'FLAVOR_SUGGESTIONS=false'",
       "-e",
       "'JSON_REPORTER=true'",
       "-e",
-      "'DISABLE=SPELL,JAVASCRIPT,RUBY,SQL,TYPESCRIPT,CSS,HTML,JSON,MARKDOWN'",
+      "'REPORT_OUTPUT_FOLDER=none'",
       "-e",
-      "'DISABLE_LINTERS=COPYPASTE_JSCPD,CREDENTIALS_SECRETLINT,REPOSITORY_SECRETLINT,REPOSITORY_DEVSKIM,REPOSITORY_TRIVY,REPOSITORY_GRYPE,REPOSITORY_KICS,JSON_V8R,REPOSITORY_TRIVY_SBOM,CSS_STYLELINT,REPOSITORY_CHECKOV'",
+      "'SHOW_SKIPPED_LINTERS=false'",
+      "-e",
+      "'VALIDATE_ALL_CODEBASE=true'",
+      "-e",
+      "'DISABLE_ERRORS=true'",
+      "-e",
+      "'LOG_LEVEL=INFO'",
+      "-e",
+      "'PRINT_ALPACA=false'",
+      // "-e",
+      // "MEGALINTER_CONFIG=/Users/pes/code/carbonara/packages/cli/src/utils/.mega-linter.yml",
+      "-e",
+      "'DISABLE=BASH,C,CLOJURE,COFFEE,CPP,CSHARP,DART,GO,GROOVY,JAVA,JAVASCRIPT,JSX,KOTLIN,LUA,MAKEFILE,\
+      PERL,PHP,POWERSHELL,PYTHON,R,RAKU,RUBY,RUST,SALESFORCE,SCALA,SQL,SWIFT,TSX,TYPESCRIPT,VBDOTNET,CSS,\
+      ENV,GRAPHQL,HTML,JSON,LATEX,MARKDOWN,PROTOBUF,RST,XML,YAML,ACTION,ANSIBLE,API,ARM,BICEP,CLOUDFORMATION,\
+      DOCKERFILE,EDITORCONFIG,GHERKIN,KUBERNETES,PUPPET,SNAKEMAKE,TEKTON,TERRAFORM,COPYPASTE,REPOSITORY,SPELL'",
     ];
 
     // Run MegaLinter
@@ -40,7 +64,7 @@ export async function megalinterCommand(options: MegalinterOptions) {
 
     try {
       const megalinterResult = await execa("npx", args, {
-        stdio: "ignore",
+        stdio: "inherit",
         cwd: process.cwd(),
       });
 
