@@ -1,4 +1,4 @@
-import { execa } from "execa";
+import execa from "execa";
 import chalk from "chalk";
 import ora from "ora";
 import { createDataLake } from "../database/index.js";

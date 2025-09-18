@@ -1,4 +1,4 @@
-import { execa } from "execa";
+import execa from "execa";
 import chalk from "chalk";
 import ora from "ora";
 import { createDataLake } from "../database/index.js";
@@ -37,13 +37,13 @@ export async function megalinterCommand(options: MegalinterOptions) {
     // Run MegaLinter
     let megalinterFailed = false;
     let megalinterError: any = null;
-    
+
     try {
       const megalinterResult = await execa("npx", args, {
         stdio: "ignore",
         cwd: process.cwd(),
       });
-      
+
       spinner.succeed("MegaLinter analysis completed!");
       // Since MegaLinter outputs to files, we need to read the results
       const results = await parseMegalinterResults();
@@ -59,13 +59,19 @@ export async function megalinterCommand(options: MegalinterOptions) {
       megalinterFailed = true;
       megalinterError = execError;
       spinner.fail("MegaLinter analysis failed");
-      
-      if (execError.message.includes("mega-linter-runner") || 
-          execError.message.includes("command not found") ||
-          execError.stderr?.includes("mega-linter-runner: command not found")) {
-        console.error(chalk.yellow("MegaLinter not found. You can install it with:"));
+
+      if (
+        execError.message.includes("mega-linter-runner") ||
+        execError.message.includes("command not found") ||
+        execError.stderr?.includes("mega-linter-runner: command not found")
+      ) {
+        console.error(
+          chalk.yellow("MegaLinter not found. You can install it with:")
+        );
         console.error(chalk.white("npm install -g mega-linter-runner"));
-        console.error(chalk.gray("or it will be downloaded automatically when run with npx"));
+        console.error(
+          chalk.gray("or it will be downloaded automatically when run with npx")
+        );
       } else {
         console.error(chalk.red("Error:"), execError.message);
       }
@@ -73,7 +79,7 @@ export async function megalinterCommand(options: MegalinterOptions) {
 
     // Clean up megalinter-reports folder after processing (always run)
     await cleanupReportsFolder();
-    
+
     // Re-throw error after cleanup if megalinter failed
     if (megalinterFailed && megalinterError) {
       throw megalinterError;

@@ -10,7 +10,7 @@
   },
   "license": "To be clarified - All rights reserved",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.85.0"
   },
   "categories": [
     "Other",
@@ -231,8 +231,8 @@
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
-    "@types/vscode": "^1.74.0",
-    "@vscode/test-electron": "^2.2.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.15.0",
     "glob": "^11.0.3",
     "mocha": "^10.2.0",
