@@ -17,7 +17,7 @@ describe("Carbonara CLI - MegaLinter Tests", () => {
     testDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "carbonara-megalinter-test-")
     );
-    cliPath = path.resolve("./dist/index.js");
+    cliPath = path.resolve(__dirname, "../dist/index.js");
 
     // Create a mock project config
     fs.writeFileSync(
@@ -43,7 +43,9 @@ describe("Carbonara CLI - MegaLinter Tests", () => {
       );
     } catch (error: any) {
       // If megalinter fails, that's ok for this test
-      console.log("MegaLinter execution may have failed, checking file creation");
+      console.log(
+        "MegaLinter execution may have failed, checking file creation"
+      );
       megalinterResult = null;
     }
 
