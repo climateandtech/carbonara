@@ -22,13 +22,13 @@
     "chalk": "^5.6.2",
     "commander": "^11.1.0",
     "cypress": "^15.2.0",
-    "execa": "^5.1.1",
     "@inquirer/prompts": "^7.8.6",
     "js-yaml": "^4.1.0",
     "ora": "^9.0.0",
     "playwright": "^1.40.0",
     "sqlite3": "^5.1.7",
-    "zod": "^4.0.15"
+    "zod": "^4.0.15",
+    "mega-linter-runner": "^8.8.0"
   },
   "keywords": [
     "cli",
