@@ -2,16 +2,15 @@
   "name": "carbonara-vscode",
   "displayName": "Carbonara",
   "description": "Multi-Editor Plugin Architecture client for VS Code",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "carbonara",
   "repository": {
     "type": "git",
     "url": "https://github.com/carbonara/carbonara"
   },
-  "license": "ISC",
-
+  "license": "To be clarified - All rights reserved",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.85.0"
   },
   "categories": [
     "Other",
@@ -26,7 +25,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./dist/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
@@ -43,7 +42,7 @@
       },
       {
         "command": "carbonara.analyzeWebsite",
-        "title": "Analyze Website"
+        "title": "Analyze Website (Demo)"
       },
       {
         "command": "carbonara.viewData",
@@ -111,13 +110,11 @@
       "carbonara": [
         {
           "id": "carbonara.assessmentTree",
-          "name": "CO2 Assessment",
-          "when": "workspaceFolderCount > 0"
+          "name": "CO2 Assessment"
         },
         {
           "id": "carbonara.dataTree",
-          "name": "Data & Results",
-          "when": "workspaceFolderCount > 0"
+          "name": "Data & Results"
         }
       ]
     },
@@ -153,6 +150,9 @@
           "when": "view == carbonara.dataTree",
           "group": "navigation"
         }
+      ],
+      "view/item/context": [
+
       ]
     },
     "configuration": {
@@ -175,7 +175,10 @@
         },
         "carbonara.transport": {
           "type": "string",
-          "enum": ["websocket", "http"],
+          "enum": [
+            "websocket",
+            "http"
+          ],
           "default": "websocket",
           "description": "Transport method for server communication"
         }
@@ -184,11 +187,17 @@
     "languages": [
       {
         "id": "typescript",
-        "extensions": [".ts", ".tsx"]
+        "extensions": [
+          ".ts",
+          ".tsx"
+        ]
       },
       {
         "id": "javascript",
-        "extensions": [".js", ".jsx"]
+        "extensions": [
+          ".js",
+          ".jsx"
+        ]
       }
     ]
   },
@@ -198,15 +207,36 @@
     "package": "vsce package",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-1.0.0.vsix",
-    "test": "echo 'No tests configured for VSCode plugin'"
+    "test": "npm run test:ci-check",
+    "test:local": "npm run clean-test && npm run compile-tests && node ./test-build/test/runTest.js",
+    "test:ci-check": "if [ \"$CI\" = \"true\" ]; then echo 'Skipping VSCode tests in CI environment'; exit 0; else npm run test:local; fi",
+    "test:ui": "playwright test e2e --workers=1",
+    "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
+    "test:ui:comprehensive": "playwright test e2e/carbonara-ui-comprehensive.spec.ts --workers=1",
+    "test:ui:workspace-scenarios": "playwright test e2e/workspace-scenarios.spec.ts --workers=1",
+    "test:ui:empty-workspace": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Empty workspace\" --workers=1",
+    "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
+    "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
+    "test:ui:headed": "playwright test e2e --headed --workers=1",
+    "compile-tests": "tsc -p . --outDir test-build",
+    "clean-test": "rm -rf test-build/",
+    "pretest": "npm run build",
+    "playwright:install": "playwright install"
   },
   "dependencies": {
+    "@carbonara/core": "file:../../packages/core"
   },
   "devDependencies": {
-    "@types/vscode": "^1.74.0",
+    "@playwright/test": "^1.40.0",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
-    "typescript": "^4.9.4",
-    "@vscode/test-electron": "^2.2.0",
-    "@vscode/vsce": "^2.15.0"
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^2.15.0",
+    "glob": "^11.0.3",
+    "mocha": "^10.2.0",
+    "playwright": "^1.40.0",
+    "typescript": "^4.9.4"
   }
-} 
+}

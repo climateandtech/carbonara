@@ -1,4 +1,4 @@
-import inquirer from "inquirer";
+import { input, select, confirm } from "@inquirer/prompts";
 import chalk from "chalk";
 import path from "path";
 import fs from "fs";
@@ -115,216 +115,231 @@ export async function assessCommand(options: AssessOptions) {
 
 async function runInteractiveAssessment() {
   console.log(chalk.green("\n📊 Project Information"));
-  const projectInfo = await inquirer.prompt([
-    {
-      type: "number",
-      name: "expectedUsers",
-      message: "Expected number of users:",
-      default: 1000,
-      validate: (value: number) =>
-        value > 0 ? true : "Must be greater than 0",
+
+  const expectedUsers = await input({
+    message: "Expected number of users:",
+    default: "1000",
+    validate: (value: string) => {
+      const num = parseInt(value);
+      return !isNaN(num) && num > 0 ? true : "Must be a number greater than 0";
     },
-    {
-      type: "list",
-      name: "expectedTraffic",
-      message: "Expected traffic level:",
-      choices: [
-        { name: "Low (< 1K visits/month)", value: "low" },
-        { name: "Medium (1K-10K visits/month)", value: "medium" },
-        { name: "High (10K-100K visits/month)", value: "high" },
-        { name: "Very High (> 100K visits/month)", value: "very-high" },
-      ],
+  });
+
+  const expectedTraffic = await select({
+    message: "Expected traffic level:",
+    choices: [
+      { name: "Low (< 1K visits/month)", value: "low" },
+      { name: "Medium (1K-10K visits/month)", value: "medium" },
+      { name: "High (10K-100K visits/month)", value: "high" },
+      { name: "Very High (> 100K visits/month)", value: "very-high" },
+    ],
+  });
+
+  const targetAudience = await select({
+    message: "Target audience:",
+    choices: [
+      { name: "Local (same city/region)", value: "local" },
+      { name: "National (same country)", value: "national" },
+      { name: "Global (worldwide)", value: "global" },
+    ],
+  });
+
+  const projectLifespan = await input({
+    message: "Project lifespan (months):",
+    default: "12",
+    validate: (value: string) => {
+      const num = parseInt(value);
+      return !isNaN(num) && num > 0 ? true : "Must be a number greater than 0";
     },
-    {
-      type: "list",
-      name: "targetAudience",
-      message: "Target audience:",
-      choices: [
-        { name: "Local (same city/region)", value: "local" },
-        { name: "National (same country)", value: "national" },
-        { name: "Global (worldwide)", value: "global" },
-      ],
-    },
-    {
-      type: "number",
-      name: "projectLifespan",
-      message: "Project lifespan (months):",
-      default: 12,
-      validate: (value: number) =>
-        value > 0 ? true : "Must be greater than 0",
-    },
-  ] as any);
+  });
+
+  const projectInfo = {
+    expectedUsers: parseInt(expectedUsers as string),
+    expectedTraffic,
+    targetAudience,
+    projectLifespan: parseInt(projectLifespan as string),
+  };
 
   console.log(chalk.green("\n🏗️  Infrastructure"));
-  const infrastructure = await inquirer.prompt([
-    {
-      type: "list",
-      name: "hostingType",
-      message: "Hosting type:",
-      choices: [
-        { name: "Shared hosting", value: "shared" },
-        { name: "Virtual Private Server (VPS)", value: "vps" },
-        { name: "Dedicated server", value: "dedicated" },
-        { name: "Cloud (AWS/Azure/GCP)", value: "cloud" },
-        { name: "Hybrid setup", value: "hybrid" },
-      ],
-    },
-    {
-      type: "input",
-      name: "cloudProvider",
+
+  const hostingType = await select({
+    message: "Hosting type:",
+    choices: [
+      { name: "Shared hosting", value: "shared" },
+      { name: "Virtual Private Server (VPS)", value: "vps" },
+      { name: "Dedicated server", value: "dedicated" },
+      { name: "Cloud (AWS/Azure/GCP)", value: "cloud" },
+      { name: "Hybrid setup", value: "hybrid" },
+    ],
+  });
+
+  let cloudProvider;
+  if (hostingType === "cloud") {
+    cloudProvider = await input({
       message: "Cloud provider (if applicable):",
-      when: (answers: any) => answers.hostingType === "cloud",
-    },
-    {
-      type: "list",
-      name: "serverLocation",
-      message: "Server location relative to users:",
-      choices: [
-        { name: "Same continent", value: "same-continent" },
-        { name: "Different continent", value: "different-continent" },
-        { name: "Global CDN", value: "global-cdn" },
-      ],
-    },
-    {
-      type: "list",
-      name: "dataStorage",
-      message: "Data storage requirements:",
-      choices: [
-        { name: "Minimal (< 1GB)", value: "minimal" },
-        { name: "Moderate (1-10GB)", value: "moderate" },
-        { name: "Heavy (10-100GB)", value: "heavy" },
-        { name: "Massive (> 100GB)", value: "massive" },
-      ],
-    },
-    {
-      type: "list",
-      name: "backupStrategy",
-      message: "Backup strategy:",
-      choices: [
-        { name: "No backups", value: "none" },
-        { name: "Weekly backups", value: "weekly" },
-        { name: "Daily backups", value: "daily" },
-        { name: "Real-time backups", value: "real-time" },
-      ],
-    },
-  ]);
+    });
+  }
+
+  const serverLocation = await select({
+    message: "Server location relative to users:",
+    choices: [
+      { name: "Same continent", value: "same-continent" },
+      { name: "Different continent", value: "different-continent" },
+      { name: "Global CDN", value: "global-cdn" },
+    ],
+  });
+
+  const dataStorage = await select({
+    message: "Data storage requirements:",
+    choices: [
+      { name: "Minimal (< 1GB)", value: "minimal" },
+      { name: "Moderate (1-10GB)", value: "moderate" },
+      { name: "Heavy (10-100GB)", value: "heavy" },
+      { name: "Massive (> 100GB)", value: "massive" },
+    ],
+  });
+
+  const backupStrategy = await select({
+    message: "Backup strategy:",
+    choices: [
+      { name: "No backups", value: "none" },
+      { name: "Weekly backups", value: "weekly" },
+      { name: "Daily backups", value: "daily" },
+      { name: "Real-time backups", value: "real-time" },
+    ],
+  });
+
+  const infrastructure = {
+    hostingType,
+    cloudProvider,
+    serverLocation,
+    dataStorage,
+    backupStrategy,
+  };
 
   console.log(chalk.green("\n👥 Development"));
-  const development = await inquirer.prompt([
-    {
-      type: "number",
-      name: "teamSize",
-      message: "Development team size:",
-      default: 3,
-      validate: (value: number) =>
-        value > 0 ? true : "Must be greater than 0",
+
+  const teamSize = await input({
+    message: "Development team size:",
+    default: "3",
+    validate: (value: string) => {
+      const num = parseInt(value);
+      return !isNaN(num) && num > 0 ? true : "Must be a number greater than 0";
     },
-    {
-      type: "number",
-      name: "developmentDuration",
-      message: "Development duration (months):",
-      default: 6,
-      validate: (value: number) =>
-        value > 0 ? true : "Must be greater than 0",
+  });
+
+  const developmentDuration = await input({
+    message: "Development duration (months):",
+    default: "6",
+    validate: (value: string) => {
+      const num = parseInt(value);
+      return !isNaN(num) && num > 0 ? true : "Must be a number greater than 0";
     },
-    {
-      type: "confirm",
-      name: "cicdPipeline",
-      message: "Using CI/CD pipeline?",
-      default: true,
-    },
-    {
-      type: "list",
-      name: "testingStrategy",
-      message: "Testing strategy:",
-      choices: [
-        { name: "Minimal testing", value: "minimal" },
-        { name: "Moderate testing", value: "moderate" },
-        { name: "Comprehensive testing", value: "comprehensive" },
-      ],
-    },
-    {
-      type: "list",
-      name: "codeQuality",
-      message: "Code quality standards:",
-      choices: [
-        { name: "Basic", value: "basic" },
-        { name: "Good", value: "good" },
-        { name: "Excellent", value: "excellent" },
-      ],
-    },
-  ] as any);
+  });
+
+  const cicdPipeline = await confirm({
+    message: "Using CI/CD pipeline?",
+    default: true,
+  });
+
+  const testingStrategy = await select({
+    message: "Testing strategy:",
+    choices: [
+      { name: "Minimal testing", value: "minimal" },
+      { name: "Moderate testing", value: "moderate" },
+      { name: "Comprehensive testing", value: "comprehensive" },
+    ],
+  });
+
+  const codeQuality = await select({
+    message: "Code quality standards:",
+    choices: [
+      { name: "Basic", value: "basic" },
+      { name: "Good", value: "good" },
+      { name: "Excellent", value: "excellent" },
+    ],
+  });
+
+  const development = {
+    teamSize: parseInt(teamSize),
+    developmentDuration: parseInt(developmentDuration),
+    cicdPipeline,
+    testingStrategy,
+    codeQuality,
+  };
 
   console.log(chalk.green("\n⚡ Features"));
-  const features = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "realTimeFeatures",
-      message: "Real-time features (WebSocket, live updates)?",
-      default: false,
-    },
-    {
-      type: "confirm",
-      name: "mediaProcessing",
-      message: "Media processing (images, videos)?",
-      default: false,
-    },
-    {
-      type: "confirm",
-      name: "aiMlFeatures",
-      message: "AI/ML features?",
-      default: false,
-    },
-    {
-      type: "confirm",
-      name: "blockchainIntegration",
-      message: "Blockchain integration?",
-      default: false,
-    },
-    {
-      type: "confirm",
-      name: "iotIntegration",
-      message: "IoT integration?",
-      default: false,
-    },
-  ]);
+
+  const realTimeFeatures = await confirm({
+    message: "Real-time features (WebSocket, live updates)?",
+    default: false,
+  });
+
+  const mediaProcessing = await confirm({
+    message: "Media processing (images, videos)?",
+    default: false,
+  });
+
+  const aiMlFeatures = await confirm({
+    message: "AI/ML features?",
+    default: false,
+  });
+
+  const blockchainIntegration = await confirm({
+    message: "Blockchain integration?",
+    default: false,
+  });
+
+  const iotIntegration = await confirm({
+    message: "IoT integration?",
+    default: false,
+  });
+
+  const features = {
+    realTimeFeatures,
+    mediaProcessing,
+    aiMlFeatures,
+    blockchainIntegration,
+    iotIntegration,
+  };
 
   console.log(chalk.green("\n🌍 Sustainability Goals"));
-  const sustainabilityGoals = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "carbonNeutralityTarget",
-      message: "Carbon neutrality target?",
-      default: false,
-    },
-    {
-      type: "confirm",
-      name: "greenHostingRequired",
-      message: "Green hosting required?",
-      default: false,
-    },
-    {
-      type: "list",
-      name: "optimizationPriority",
-      message: "Optimization priority:",
-      choices: [
-        { name: "Performance first", value: "performance" },
-        { name: "Sustainability first", value: "sustainability" },
-        { name: "Balanced approach", value: "balanced" },
-      ],
-    },
-    {
-      type: "list",
-      name: "budgetForGreenTech",
-      message: "Budget for green technology:",
-      choices: [
-        { name: "No budget", value: "none" },
-        { name: "Low budget", value: "low" },
-        { name: "Medium budget", value: "medium" },
-        { name: "High budget", value: "high" },
-      ],
-    },
-  ]);
+
+  const carbonNeutralityTarget = await confirm({
+    message: "Carbon neutrality target?",
+    default: false,
+  });
+
+  const greenHostingRequired = await confirm({
+    message: "Green hosting required?",
+    default: false,
+  });
+
+  const optimizationPriority = await select({
+    message: "Optimization priority:",
+    choices: [
+      { name: "Performance first", value: "performance" },
+      { name: "Sustainability first", value: "sustainability" },
+      { name: "Balanced approach", value: "balanced" },
+    ],
+  });
+
+  const budgetForGreenTech = await select({
+    message: "Budget for green technology:",
+    choices: [
+      { name: "No budget", value: "none" },
+      { name: "Low budget", value: "low" },
+      { name: "Medium budget", value: "medium" },
+      { name: "High budget", value: "high" },
+    ],
+  });
+
+  const sustainabilityGoals = {
+    carbonNeutralityTarget,
+    greenHostingRequired,
+    optimizationPriority,
+    budgetForGreenTech,
+  };
 
   return {
     projectInfo,

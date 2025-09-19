@@ -8,6 +8,7 @@ interface DataOptions {
   list: boolean;
   show: boolean;
   export?: 'json' | 'csv';
+  json: boolean;
   clear: boolean;
 }
 
@@ -34,11 +35,15 @@ export async function dataCommand(options: DataOptions) {
       await exportData(dataLake, config.projectId, options.export);
     }
 
+    if (options.json) {
+      await outputJSON(dataLake, config.projectId);
+    }
+
     if (options.clear) {
       await clearData(dataLake, config.projectId);
     }
 
-    if (!options.list && !options.show && !options.export && !options.clear) {
+    if (!options.list && !options.show && !options.export && !options.json && !options.clear) {
       // Show help
       console.log(chalk.blue('📊 Data Lake Management'));
       console.log('');
@@ -46,6 +51,7 @@ export async function dataCommand(options: DataOptions) {
       console.log('  --list      List all stored data');
       console.log('  --show      Show detailed project analysis');
       console.log('  --export    Export data (json|csv)');
+      console.log('  --json      Output raw JSON to stdout');
       console.log('  --clear     Clear all data');
     }
 
@@ -223,6 +229,13 @@ async function exportData(dataLake: any, projectId: number, format: 'json' | 'cs
   console.log(chalk.gray(`📁 Location: ${path.resolve(filename)}`));
 }
 
+async function outputJSON(dataLake: any, projectId: number) {
+  const assessmentData = await dataLake.getAssessmentData(projectId);
+  
+  // Output raw JSON to stdout (no formatting or colors)
+  console.log(JSON.stringify(assessmentData));
+}
+
 async function clearData(dataLake: any, projectId: number) {
   console.log(chalk.yellow('⚠️  This will delete all stored data for this project.'));
   
@@ -234,14 +247,13 @@ async function clearData(dataLake: any, projectId: number) {
   console.log(chalk.gray('Use with caution in production!'));
   
   // TODO: Implement actual deletion with confirmation
-  // const confirmed = await inquirer.prompt([{
-  //   type: 'confirm',
-  //   name: 'confirm',
+  // import { confirm } from '@inquirer/prompts';
+  // const confirmed = await confirm({
   //   message: 'Are you sure you want to delete all data?',
   //   default: false
-  // }]);
-  
-  // if (confirmed.confirm) {
+  // });
+
+  // if (confirmed) {
   //   // Delete data from database
   //   console.log(chalk.green('✅ Data cleared successfully'));
   // }

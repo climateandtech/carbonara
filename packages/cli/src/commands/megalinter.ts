@@ -1,4 +1,7 @@
-import { execa } from "execa";
+// import execa from "execa";
+// @ts-ignore
+import { MegaLinterRunnerCli } from "../../../../node_modules/mega-linter-runner/lib/index.js";
+// import MegaLinterRunner from "mega-linter-runner";
 import chalk from "chalk";
 import ora from "ora";
 import { createDataLake } from "../database/index.js";
@@ -10,40 +13,58 @@ interface MegalinterOptions {
   env?: string;
 }
 export async function megalinterCommand(options: MegalinterOptions) {
-  const spinner = ora("Running MegaLinter analysis...").start();
+  const spinner = ora("MegaLinter ").start();
   try {
-    // Check if npx is available
-    try {
-      await execa("npx", ["--version"]);
-    } catch {
-      throw new Error(
-        "npx is required to run MegaLinter. Please install Node.js"
-      );
-    }
-
-    // Prepare command arguments
+    // // Prepare command arguments
+    // // NOTE: I haven't yet found a way to run megalinter with a config file - P.
     const args = [
-      "mega-linter-runner",
+      "-e",
+      "'APPLY_FIXES=none'",
       "-e",
       "'DISABLE_ERRORS=true'",
       "-e",
+      "'PRINT_ALL_FILES=false'",
+      "-e",
+      "'SHOW_ELAPSED_TIME=true'",
+      "-e",
+      "'FLAVOR_SUGGESTIONS=false'",
+      "-e",
       "'JSON_REPORTER=true'",
       "-e",
-      "'DISABLE=SPELL,JAVASCRIPT,RUBY,SQL,TYPESCRIPT,CSS,HTML,JSON,MARKDOWN'",
+      "'REPORT_OUTPUT_FOLDER=none'",
       "-e",
-      "'DISABLE_LINTERS=COPYPASTE_JSCPD,CREDENTIALS_SECRETLINT,REPOSITORY_SECRETLINT,REPOSITORY_DEVSKIM,REPOSITORY_TRIVY,REPOSITORY_GRYPE,REPOSITORY_KICS,JSON_V8R,REPOSITORY_TRIVY_SBOM,CSS_STYLELINT,REPOSITORY_CHECKOV'",
+      "'SHOW_SKIPPED_LINTERS=false'",
+      "-e",
+      "'VALIDATE_ALL_CODEBASE=true'",
+      "-e",
+      "'DISABLE_ERRORS=true'",
+      "-e",
+      "'LOG_LEVEL=INFO'",
+      "-e",
+      "'PRINT_ALPACA=false'",
+      // "-e",
+      // "MEGALINTER_CONFIG=/Users/pes/code/carbonara/packages/cli/src/utils/.mega-linter.yml",
+      "-e",
+      "'DISABLE=BASH,C,CLOJURE,COFFEE,CPP,CSHARP,DART,GO,GROOVY,JAVA,JAVASCRIPT,JSX,KOTLIN,LUA,MAKEFILE,\
+      PERL,PHP,POWERSHELL,PYTHON,R,RAKU,RUBY,RUST,SALESFORCE,SCALA,SQL,SWIFT,TSX,TYPESCRIPT,VBDOTNET,CSS,\
+      ENV,GRAPHQL,HTML,JSON,LATEX,MARKDOWN,PROTOBUF,RST,XML,YAML,ACTION,ANSIBLE,API,ARM,BICEP,CLOUDFORMATION,\
+      DOCKERFILE,EDITORCONFIG,GHERKIN,KUBERNETES,PUPPET,SNAKEMAKE,TEKTON,TERRAFORM,COPYPASTE,REPOSITORY,SPELL'",
     ];
 
-    // Run MegaLinter
+    // // Run MegaLinter
     let megalinterFailed = false;
     let megalinterError: any = null;
-    
+
     try {
-      const megalinterResult = await execa("npx", args, {
-        stdio: "ignore",
-        cwd: process.cwd(),
-      });
-      
+      (async () => {
+        await new MegaLinterRunnerCli().run(args);
+      })();
+
+      // const megalinterResult = await execa("npx", args, {
+      //   stdio: "inherit",
+      //   cwd: process.cwd(),
+      // });
+
       spinner.succeed("MegaLinter analysis completed!");
       // Since MegaLinter outputs to files, we need to read the results
       const results = await parseMegalinterResults();
@@ -59,21 +80,11 @@ export async function megalinterCommand(options: MegalinterOptions) {
       megalinterFailed = true;
       megalinterError = execError;
       spinner.fail("MegaLinter analysis failed");
-      
-      if (execError.message.includes("mega-linter-runner") || 
-          execError.message.includes("command not found") ||
-          execError.stderr?.includes("mega-linter-runner: command not found")) {
-        console.error(chalk.yellow("MegaLinter not found. You can install it with:"));
-        console.error(chalk.white("npm install -g mega-linter-runner"));
-        console.error(chalk.gray("or it will be downloaded automatically when run with npx"));
-      } else {
-        console.error(chalk.red("Error:"), execError.message);
-      }
     }
 
     // Clean up megalinter-reports folder after processing (always run)
-    await cleanupReportsFolder();
-    
+    // await cleanupReportsFolder();
+
     // Re-throw error after cleanup if megalinter failed
     if (megalinterFailed && megalinterError) {
       throw megalinterError;
@@ -173,20 +184,20 @@ async function saveToDatabase(results: any) {
   }
 }
 
-async function cleanupReportsFolder() {
-  try {
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    const reportsDir = path.join(process.cwd(), "megalinter-reports");
+// async function cleanupReportsFolder() {
+//   try {
+//     const fs = await import("fs/promises");
+//     const path = await import("path");
+//     const reportsDir = path.join(process.cwd(), "megalinter-reports");
 
-    // Check if the directory exists before trying to remove it
-    try {
-      await fs.access(reportsDir);
-      await fs.rm(reportsDir, { recursive: true, force: true });
-    } catch {
-      // Directory doesn't exist, nothing to clean up
-    }
-  } catch (error: any) {
-    // Silently ignore cleanup errors to not disrupt the main flow
-  }
-}
+//     // Check if the directory exists before trying to remove it
+//     try {
+//       await fs.access(reportsDir);
+//       await fs.rm(reportsDir, { recursive: true, force: true });
+//     } catch {
+//       // Directory doesn't exist, nothing to clean up
+//     }
+//   } catch (error: any) {
+//     // Silently ignore cleanup errors to not disrupt the main flow
+//   }
+// }
