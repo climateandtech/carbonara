@@ -49,6 +49,10 @@ export async function megalinterCommand(options: MegalinterOptions) {
       PERL,PHP,POWERSHELL,PYTHON,R,RAKU,RUBY,RUST,SALESFORCE,SCALA,SQL,SWIFT,TSX,TYPESCRIPT,VBDOTNET,CSS,\
       ENV,GRAPHQL,HTML,JSON,LATEX,MARKDOWN,PROTOBUF,RST,XML,YAML,ACTION,ANSIBLE,API,ARM,BICEP,CLOUDFORMATION,\
       DOCKERFILE,EDITORCONFIG,GHERKIN,KUBERNETES,PUPPET,SNAKEMAKE,TEKTON,TERRAFORM,COPYPASTE,REPOSITORY,SPELL'",
+      "-e",
+      "'PLUGINS=https://raw.githubusercontent.com/climateandtech/carbonara/main/packages/core/mega-linter-plugin-fasterer/fasterer.megalinter-descriptor.yml'",
+      // "'PLUGINS=file://../../../core/mega-linter-plugin-fasterer/fasterer.megalinter-descriptor.yml'",
+      // "'PLUGINS=file:///Users/pes/code/carbonara/packages/core/mega-linter-plugin-fasterer/fasterer.megalinter-descriptor.yml'",
     ];
 
     // // Run MegaLinter
