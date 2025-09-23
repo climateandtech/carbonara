@@ -8,7 +8,7 @@ interface DataOptions {
   list: boolean;
   show: boolean;
   export?: 'json' | 'csv';
-  json: boolean;
+  json: boolean;  // Raw JSON output to stdout
   clear: boolean;
 }
 
@@ -23,6 +23,11 @@ export async function dataCommand(options: DataOptions) {
     const dataLake = createDataLake();
     await dataLake.initialize();
 
+    if (options.json) {
+      await outputJsonData(dataLake, config.projectId);
+      return;
+    }
+
     if (options.list) {
       await listData(dataLake, config.projectId);
     }
@@ -33,10 +38,6 @@ export async function dataCommand(options: DataOptions) {
 
     if (options.export) {
       await exportData(dataLake, config.projectId, options.export);
-    }
-
-    if (options.json) {
-      await outputJSON(dataLake, config.projectId);
     }
 
     if (options.clear) {
@@ -229,13 +230,6 @@ async function exportData(dataLake: any, projectId: number, format: 'json' | 'cs
   console.log(chalk.gray(`📁 Location: ${path.resolve(filename)}`));
 }
 
-async function outputJSON(dataLake: any, projectId: number) {
-  const assessmentData = await dataLake.getAssessmentData(projectId);
-  
-  // Output raw JSON to stdout (no formatting or colors)
-  console.log(JSON.stringify(assessmentData));
-}
-
 async function clearData(dataLake: any, projectId: number) {
   console.log(chalk.yellow('⚠️  This will delete all stored data for this project.'));
   
@@ -295,4 +289,11 @@ function convertToCSV(data: any[]): string {
   });
 
   return csvRows.join('\n');
+}
+
+async function outputJsonData(dataLake: any, projectId: number) {
+  const assessmentData = await dataLake.getAssessmentData(projectId);
+  
+  // Output raw JSON to stdout (no formatting or colors)
+  console.log(JSON.stringify(assessmentData));
 } 
