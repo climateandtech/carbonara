@@ -73,16 +73,20 @@ export class AnalysisToolRegistry {
     this.installedTools.clear();
     
     // Run all tool checks in parallel with a global timeout
+    type ToolCheckResult = { tool: AnalysisTool; isInstalled: boolean };
+    
     const checks = this.registry.tools.map(tool => 
-      Promise.race([
+      Promise.race<ToolCheckResult>([
         this.checkToolInstallation(tool).then(isInstalled => ({ tool, isInstalled })),
-        new Promise(resolve => setTimeout(() => resolve({ tool, isInstalled: false }), 3000)) // Increased timeout for CI
+        new Promise<ToolCheckResult>(resolve => 
+          setTimeout(() => resolve({ tool, isInstalled: false }), 3000) // Increased timeout for CI
+        )
       ])
     );
     
     const results = await Promise.all(checks);
-    results.forEach(({ tool, isInstalled }) => {
-      this.installedTools.set(tool.id, isInstalled);
+    results.forEach((result: ToolCheckResult) => {
+      this.installedTools.set(result.tool.id, result.isInstalled);
     });
     
     this.toolsRefreshed = true;
