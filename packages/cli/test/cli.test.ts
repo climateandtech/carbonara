@@ -10,7 +10,7 @@ describe('Carbonara CLI - Tests', () => {
 
   beforeEach(() => {
     testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbonara-test-'));
-    cliPath = path.resolve('./dist/index.js');
+    cliPath = path.resolve(__dirname, '../dist/index.js');
   });
 
   afterEach(() => {

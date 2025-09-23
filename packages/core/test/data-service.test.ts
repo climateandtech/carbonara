@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { DataService } from './data-service.js';
+import { DataService } from '../src/data-service.js';
 import fs from 'fs';
 import path from 'path';
 
