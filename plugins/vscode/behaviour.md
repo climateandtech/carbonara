@@ -82,3 +82,26 @@ Then I see in the "Data & Results" panel:
   - A group "🌱 Greenframe Analysis (X)" 
   - Individual analysis entries like "🔬 [URL] - [Date]" with carbon footprint data
 And I can expand entries to see detailed carbon analysis results
+
+As a user
+I can click "$(tools) Run Analysis Tools" from the status bar menu
+And I see a list of available analysis tools
+And each tool shows:
+  - An icon representing the tool type
+  - The tool name
+  - A description of what the tool analyzes
+And when I select a tool
+Then I see progress notification "Running [Tool Name]..."
+And when complete, I see "✅ [Tool Name] analysis completed!"
+And the results appear in the "Data & Results" panel under:
+  - A group "🔧 Analysis Tools"
+  - Individual tool results like "[Tool Icon] [Tool Name] - [Date]"
+And I can expand entries to see detailed analysis data
+
+As a user
+When I have multiple tools configured
+I can select multiple tools to run in sequence
+And I see progress for each tool as it runs
+And when all tools complete
+I see a summary notification "✅ All selected tools completed!"
+And results from each tool appear in the "Data & Results" panel

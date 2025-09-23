@@ -111,9 +111,9 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze carbonara-swd should require URL argument', () => {
+  test('analyze test-analyzer should require URL argument', () => {
     try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze carbonara-swd`, { 
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer`, { 
         encoding: 'utf8',
         stdio: 'pipe'
       });
@@ -123,9 +123,9 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze carbonara-swd should handle invalid URL gracefully', () => {
+  test('analyze test-analyzer should handle invalid URL gracefully', () => {
     try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze carbonara-swd invalid-url --output json`, { 
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer invalid-url --output json`, { 
         encoding: 'utf8',
         stdio: 'pipe',
         timeout: 10000
@@ -138,12 +138,12 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('tools --list should show carbonara-swd analyzer', () => {
+  test('tools --list should show test-analyzer', () => {
     try {
       const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { encoding: 'utf8' });
       expect(result).toContain('Analysis Tools Registry');
-      expect(result).toContain('carbonara-swd'); // Should show our SWD analyzer
-      expect(result).toContain('Carbonara SWD Analyzer');
+      expect(result).toContain('test-analyzer'); // Should show our test analyzer
+      expect(result).toContain('Test Analyzer');
     } catch (error: any) {
       // If registry loading fails, check that it's trying to load tools
       if (error.stderr) {
