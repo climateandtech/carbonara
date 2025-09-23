@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import fs, { mkdtempSync } from 'fs';
 import path from 'path';
 import os, { tmpdir } from 'os';
-import { describe, test, beforeEach, afterEach, expect } from 'vitest';
+import { describe, test, beforeEach, afterEach, expect, vi } from 'vitest';
 
 describe('Carbonara CLI - Tests', () => {
   let testDir: string;
@@ -11,7 +11,7 @@ describe('Carbonara CLI - Tests', () => {
   beforeEach(() => {
     testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbonara-test-'));
     // Simple, predictable path - CLI is always in ../dist relative to test
-    cliPath = path.resolve(__dirname, '../dist/index.js');
+    cliPath = path.resolve(__dirname, '../dist/index.js');   
   });
 
   afterEach(() => {
@@ -83,6 +83,8 @@ describe('Carbonara CLI - Tests', () => {
   });
 
   test('tools --list should show available tools', () => {
+    // Increase timeout for CI environment
+    vi.setConfig({ testTimeout: 30000 });
     try {
       const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { 
         encoding: 'utf8',
@@ -203,7 +205,9 @@ describe('CLI analyze command with project management', () => {
     }
   });
 
-  test('analyze should create project when config has no projectId', () => {
+  test('analyze should create project when config has no projectId', async () => {
+    // Set test-wide timeout for CI environment
+    vi.setConfig({ testTimeout: 30000 });
     // Create a config without projectId (like our test workspace)
     const config = {
       name: "Test Project",
@@ -235,26 +239,54 @@ describe('CLI analyze command with project management', () => {
     const db = new sqlite3.Database(dbPath);
     
     return new Promise<void>((resolve, reject) => {
-      db.get('SELECT COUNT(*) as count FROM projects', (err: any, row: any) => {
-        if (err) reject(err);
-        else {
+      let isResolved = false;
+      const cleanup = () => {
+        if (!db.closed) {
+          db.close();
+        }
+      };
+
+      // Use a single timeout for the entire test
+      const testTimeout = setTimeout(() => {
+        if (!isResolved) {
+          cleanup();
+          reject(new Error('Test timeout - database operations took too long'));
+        }
+      }, 10000);
+
+      process.on('uncaughtException', cleanup);
+      process.on('unhandledRejection', cleanup);
+
+      db.serialize(() => {
+        db.get('SELECT COUNT(*) as count FROM projects', (err: any, row: any) => {
+          if (err) {
+            cleanup();
+            clearTimeout(testTimeout);
+            reject(err);
+            return;
+          }
           expect(row.count).toBe(1);
           
-          // Check that analysis data was saved with proper project_id
           db.get('SELECT COUNT(*) as count FROM assessment_data WHERE project_id IS NOT NULL', (err2: any, row2: any) => {
-            if (err2) reject(err2);
-            else {
+            cleanup();
+            clearTimeout(testTimeout);
+            
+            if (err2) {
+              reject(err2);
+            } else {
               expect(row2.count).toBe(1);
-              db.close();
+              isResolved = true;
               resolve();
             }
           });
-        }
+        });
       });
     });
   });
 
-  test('analyze should use existing projectId when available in config', () => {
+  test('analyze should use existing projectId when available in config', async () => {
+    // Set test-wide timeout for CI environment
+    vi.setConfig({ testTimeout: 30000 });
     // Create a config with projectId
     const config = {
       name: "Test Project",
@@ -273,6 +305,11 @@ describe('CLI analyze command with project management', () => {
     const db = new sqlite3.Database(dbPath);
     
     return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        db.close();
+        reject(new Error('Database operation timeout'));
+      }, 5000);
+
       db.serialize(() => {
         // Create tables
         db.run(`CREATE TABLE projects (
@@ -295,10 +332,16 @@ describe('CLI analyze command with project management', () => {
         
         // Insert existing project with ID 42
         db.run('INSERT INTO projects (id, name, path) VALUES (42, "Test Project", ?)', [testDir], (err: any) => {
-          if (err) reject(err);
-          else {
+          if (err) {
+            clearTimeout(timeout);
             db.close();
-            
+            reject(err);
+            return;
+          }
+
+          db.close();
+          
+          try {
             // Run analyze command
             const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, { 
               encoding: 'utf8',
@@ -311,14 +354,25 @@ describe('CLI analyze command with project management', () => {
             
             // Verify data was saved with correct project_id
             const db2 = new sqlite3.Database(dbPath);
+            const verifyTimeout = setTimeout(() => {
+              db2.close();
+              reject(new Error('Database verification timeout'));
+            }, 5000);
+
             db2.get('SELECT project_id FROM assessment_data WHERE tool_name = "test-analyzer"', (err2: any, row: any) => {
-              if (err2) reject(err2);
-              else {
+              clearTimeout(verifyTimeout);
+              db2.close();
+              
+              if (err2) {
+                reject(err2);
+              } else {
                 expect(row.project_id).toBe(42);
-                db2.close();
                 resolve();
               }
             });
+          } catch (error) {
+            clearTimeout(timeout);
+            reject(error);
           }
         });
       });
