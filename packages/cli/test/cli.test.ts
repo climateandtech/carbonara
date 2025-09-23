@@ -10,7 +10,14 @@ describe('Carbonara CLI - Tests', () => {
 
   beforeEach(() => {
     testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbonara-test-'));
-    cliPath = path.resolve(__dirname, '../dist/index.js');
+    // Try multiple possible paths for CLI in CI vs local
+    const possiblePaths = [
+      path.resolve(__dirname, '../dist/index.js'),
+      path.resolve(process.cwd(), 'packages/cli/dist/index.js'),
+      path.resolve(__dirname, '../../cli/dist/index.js')
+    ];
+    
+    cliPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
   });
 
   afterEach(() => {
@@ -70,7 +77,11 @@ describe('Carbonara CLI - Tests', () => {
   });
 
   test('tools command should show help when no options provided', () => {
-    const result = execSync(`cd "${testDir}" && node "${cliPath}" tools`, { encoding: 'utf8' });
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" tools`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
     expect(result).toContain('Analysis Tools Management');
     expect(result).toContain('list');
     expect(result).toContain('install');
@@ -79,7 +90,11 @@ describe('Carbonara CLI - Tests', () => {
 
   test('tools --list should show available tools', () => {
     try {
-      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { encoding: 'utf8' });
+      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { 
+        encoding: 'utf8',
+        timeout: 10000,
+        stdio: 'pipe'
+      });
       expect(result).toContain('Analysis Tools Registry');
       // Should show at least the co2-assessment tool from our registry
       expect(result).toContain('co2-assessment');
@@ -140,7 +155,11 @@ describe('Carbonara CLI - Tests', () => {
 
   test('tools --list should show test-analyzer', () => {
     try {
-      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { encoding: 'utf8' });
+      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { 
+        encoding: 'utf8',
+        timeout: 10000,
+        stdio: 'pipe'
+      });
       expect(result).toContain('Analysis Tools Registry');
       expect(result).toContain('test-analyzer'); // Should show our test analyzer
       expect(result).toContain('Test Analyzer');
@@ -180,7 +199,14 @@ describe('CLI analyze command with project management', () => {
 
   beforeEach(() => {
     testDir = mkdtempSync(path.join(tmpdir(), 'carbonara-cli-analyze-test-'));
-    cliPath = path.resolve(__dirname, '../dist/index.js');
+    // Try multiple possible paths for CLI in CI vs local
+    const possiblePaths = [
+      path.resolve(__dirname, '../dist/index.js'),
+      path.resolve(process.cwd(), 'packages/cli/dist/index.js'),
+      path.resolve(__dirname, '../../cli/dist/index.js')
+    ];
+    
+    cliPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
   });
 
   afterEach(() => {
@@ -204,7 +230,8 @@ describe('CLI analyze command with project management', () => {
     // Run analyze command with --save
     const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, { 
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
+      timeout: 15000
     });
     
     // Should succeed and show results saved
@@ -287,7 +314,8 @@ describe('CLI analyze command with project management', () => {
             // Run analyze command
             const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, { 
               encoding: 'utf8',
-              stdio: 'pipe'
+              stdio: 'pipe',
+              timeout: 15000
             });
             
             expect(result).toContain('analysis completed');
