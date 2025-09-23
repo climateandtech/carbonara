@@ -1,0 +1,65 @@
+[
+  {
+    "id": 3,
+    "project_id": 1,
+    "tool_name": "greenframe",
+    "data_type": "web-analysis",
+    "data": {
+      "url": "https://test-site.com",
+      "results": {
+        "carbon": {
+          "total": 1.85
+        },
+        "score": 68,
+        "performance": {
+          "loadTime": 2100,
+          "pageSize": 890
+        }
+      }
+    },
+    "timestamp": "2025-01-15T11:45:00.000Z",
+    "source": "test"
+  },
+  {
+    "id": 1,
+    "project_id": 1,
+    "tool_name": "greenframe",
+    "data_type": "web-analysis",
+    "data": {
+      "url": "https://example.com",
+      "results": {
+        "totalBytes": 524288,
+        "requestCount": 25,
+        "loadTime": 1250,
+        "carbonEstimate": 0.245,
+        "energyEstimate": 0.0012
+      },
+      "raw_results": "{\"totalBytes\":524288,\"requestCount\":25,\"loadTime\":1250,\"carbonEstimate\":0.245}"
+    },
+    "timestamp": "2025-01-15T10:30:00.000Z",
+    "source": "test"
+  },
+  {
+    "id": 2,
+    "project_id": 1,
+    "tool_name": "co2-assessment",
+    "data_type": "questionnaire",
+    "data": {
+      "impactScore": 75,
+      "projectScope": {
+        "estimatedUsers": 10000,
+        "expectedTraffic": "high",
+        "projectLifespan": "3-5 years"
+      },
+      "infrastructure": {
+        "hostingProvider": "AWS",
+        "serverLocation": "us-east-1"
+      },
+      "sustainabilityGoals": {
+        "carbonNeutralityTarget": true
+      }
+    },
+    "timestamp": "2025-01-15T09:15:00.000Z",
+    "source": "test"
+  }
+]

@@ -65,7 +65,39 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
 
     getChildren(element?: AssessmentItem): Thenable<AssessmentItem[]> {
         if (!this.workspaceFolder) {
-            return Promise.resolve([]);
+            // Show options to initialize or open a project when no workspace
+            return Promise.resolve([
+                new AssessmentItem(
+                    'No Carbonara Project',
+                    'Initialize a new project or open an existing one',
+                    vscode.TreeItemCollapsibleState.None,
+                    'no-project'
+                ),
+                new AssessmentItem(
+                    'Initialize Project',
+                    'Create a new Carbonara project in current workspace',
+                    vscode.TreeItemCollapsibleState.None,
+                    'init-action',
+                    undefined,
+                    undefined,
+                    {
+                        command: 'carbonara.initProject',
+                        title: 'Initialize Project'
+                    }
+                ),
+                new AssessmentItem(
+                    'Open Project',
+                    'Open an existing Carbonara project',
+                    vscode.TreeItemCollapsibleState.None,
+                    'open-action',
+                    undefined,
+                    undefined,
+                    {
+                        command: 'carbonara.openProject',
+                        title: 'Open Project'
+                    }
+                )
+            ]);
         }
 
         if (element) {
@@ -462,21 +494,35 @@ export class AssessmentItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly contextValue: string,
         public readonly sectionId?: string,
-        public readonly fieldId?: string
+        public readonly fieldId?: string,
+        command?: vscode.Command
     ) {
         super(label, collapsibleState);
         this.description = description;
         this.contextValue = contextValue;
 
+        // Set custom command if provided
+        if (command) {
+            this.command = command;
+        }
+
         if (contextValue === 'section') {
             this.iconPath = new vscode.ThemeIcon('folder');
-            this.command = {
-                command: 'carbonara.editSection',
-                title: 'Edit Section',
-                arguments: [sectionId]
-            };
+            if (!command) {
+                this.command = {
+                    command: 'carbonara.editSection',
+                    title: 'Edit Section',
+                    arguments: [sectionId]
+                };
+            }
         } else if (contextValue === 'field') {
             this.iconPath = new vscode.ThemeIcon('symbol-property');
+        } else if (contextValue === 'init-action') {
+            this.iconPath = new vscode.ThemeIcon('add');
+        } else if (contextValue === 'open-action') {
+            this.iconPath = new vscode.ThemeIcon('folder-opened');
+        } else if (contextValue === 'no-project') {
+            this.iconPath = new vscode.ThemeIcon('info');
         }
     }
 } 

@@ -1,0 +1,10 @@
+---
+description: Use this rule whenever you find yourself deciding what to do or which part of the code to touch
+alwaysApply: true
+---
+
+- Only make the changes or additions that directly are needed for what you are being asked to
+- Never guess requirements
+- Never make changes that don't belong to the current task
+- In doubt clarify the current task with the user 
+- If there is something you think should be done: Make suggestions, as brief and precise as possible in form of requirements to ask the user and let the user decide wether they are impelmented

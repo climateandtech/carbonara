@@ -1,0 +1,25 @@
+# Build outputs
+dist/
+out/
+test-build/
+
+# Dependencies
+node_modules/
+
+# Test artifacts
+e2e/temp-vscode-data/
+test-results/
+playwright-report/
+*.png
+*.jpg
+*.jpeg
+
+# VS Code
+.vscode/settings.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db 

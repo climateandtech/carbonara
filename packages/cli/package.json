@@ -1,13 +1,14 @@
 {
   "name": "@carbonara/cli",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Carbonara CLI tool for CO2 assessment and modular tool execution",
   "main": "dist/index.js",
   "bin": {
     "carbonara": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/schemas && cp -r schemas/* dist/schemas/",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",
@@ -18,8 +19,11 @@
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "cypress": "^13.17.0",
-    "inquirer": "^8.2.6",
+    "execa": "^5.1.1",
+    "@inquirer/prompts": "^7.8.6",
+    "js-yaml": "^4.1.0",
     "ora": "^6.3.1",
+    "playwright": "^1.40.0",
     "sqlite3": "^5.1.7",
     "zod": "^3.25.67"
   },
@@ -31,10 +35,10 @@
     "sustainability"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "To be clarified - All rights reserved",
   "type": "module",
   "devDependencies": {
-    "@types/inquirer": "^9.0.8",
+    "@types/js-yaml": "^4.0.5",
     "@vitest/ui": "^3.2.4",
     "typescript": "^5.0.0",
     "vitest": "^3.2.4"
