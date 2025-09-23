@@ -179,26 +179,33 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
     private async loadToolsFromRegistry(cliPath: string): Promise<void> {
         try {
-            // Find the tools registry file
-            const cliDir = path.dirname(cliPath);
-            let registryPath = path.join(cliDir, 'src', 'registry', 'tools.json');
+            console.log(`🔧 Loading tools from registry`);
             
-            // Try different paths for compiled vs source
-            if (!fs.existsSync(registryPath)) {
-                registryPath = path.join(cliDir, 'dist', 'registry', 'tools.json');
-            }
-            if (!fs.existsSync(registryPath)) {
-                registryPath = path.join(cliDir, '..', 'src', 'registry', 'tools.json');
-            }
+            // Best practice: Use environment variable for registry path
+            const registryPath = process.env.CARBONARA_REGISTRY_PATH || 
+                path.join(path.dirname(cliPath), 'registry', 'tools.json');
             
             if (fs.existsSync(registryPath)) {
                 const registryContent = fs.readFileSync(registryPath, 'utf8');
-                this.tools = JSON.parse(registryContent);
+                const registry = JSON.parse(registryContent);
+                
+                // Transform registry format to match our interface
+                this.tools = registry.tools.map((tool: any) => ({
+                    id: tool.id,
+                    name: tool.name,
+                    description: tool.description,
+                    type: tool.installation?.type === 'built-in' ? 'built-in' : 'external',
+                    command: tool.command?.executable || tool.command,
+                    installation: tool.installation,
+                    detection: tool.detection,
+                    isInstalled: tool.installation?.type === 'built-in' ? true : false
+                }));
                 
                 // Check installation status for external tools
                 await this.checkToolInstallationStatus();
+                console.log(`✅ Loaded ${this.tools.length} tools from registry`);
             } else {
-                console.log('❌ CLI registry not found');
+                console.log(`❌ Tools registry not found at: ${registryPath}`);
                 this.tools = [];
             }
         } catch (error: any) {
@@ -350,6 +357,12 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
 
     private async detectToolInstallation(tool: any): Promise<boolean> {
+        // Handle undefined or null tools
+        if (!tool) {
+            console.log('🔍 Tool is undefined or null, defaulting to not installed');
+            return false;
+        }
+
         // During E2E tests, force external tools to be "not installed" for predictable results
         if (process.env.CARBONARA_E2E_TEST === 'true' && tool.detection?.method === 'command') {
             console.log(`🧪 E2E Test Mode: Tool ${tool.id} forced to 'not installed' for predictable testing`);
@@ -357,11 +370,13 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         }
 
         if (!tool.detection) {
-            throw new Error(`Tool ${tool.id} has no detection configuration - cannot determine installation status`);
+            console.log(`🔍 Tool ${tool.id || 'undefined'} has no detection configuration, defaulting to not installed`);
+            return false;
         }
         
         if (tool.detection.method !== 'command') {
-            throw new Error(`Tool ${tool.id} has unsupported detection method '${tool.detection.method}' - only 'command' is supported`);
+            console.log(`🔍 Tool ${tool.id || 'undefined'} has unsupported detection method '${tool.detection.method}', defaulting to not installed`);
+            return false;
         }
 
         if (!tool.detection.target) {

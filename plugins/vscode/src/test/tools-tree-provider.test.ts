@@ -25,6 +25,14 @@ suite('ToolsTreeProvider Unit Tests', () => {
             configurable: true
         });
         
+        // Set CLI path for tests - point to the actual CLI in the monorepo
+        const cliPath = path.join(__dirname, '..', '..', '..', '..', 'packages', 'cli', 'dist', 'index.js');
+        process.env.CARBONARA_CLI_PATH = cliPath;
+        
+        // Set registry path for tests - point to the tools registry
+        const registryPath = path.join(__dirname, '..', '..', '..', '..', 'packages', 'cli', 'src', 'registry', 'tools.json');
+        process.env.CARBONARA_REGISTRY_PATH = registryPath;
+        
         provider = new ToolsTreeProvider();
     });
 
