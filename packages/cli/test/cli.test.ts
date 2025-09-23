@@ -240,11 +240,35 @@ describe('CLI analyze command with project management', () => {
     
     return new Promise<void>((resolve, reject) => {
       let isResolved = false;
+      let cleanupHandlers: Array<() => void> = [];
+      
       const cleanup = () => {
-        if (!db.closed) {
-          db.close();
+        if (!isResolved) {
+          try {
+            if (!db.closed) {
+              db.close();
+            }
+          } catch (err) {
+            // Ignore errors during cleanup
+          }
+          // Remove all cleanup handlers
+          cleanupHandlers.forEach(handler => {
+            process.removeListener('uncaughtException', handler);
+            process.removeListener('unhandledRejection', handler);
+          });
         }
       };
+
+      const errorHandler = (err: any) => {
+        cleanup();
+        reject(err);
+      };
+
+      // Add error handlers
+      const wrappedHandler = () => errorHandler(null);
+      cleanupHandlers.push(wrappedHandler);
+      process.on('uncaughtException', wrappedHandler);
+      process.on('unhandledRejection', wrappedHandler);
 
       // Use a single timeout for the entire test
       const testTimeout = setTimeout(() => {
@@ -253,9 +277,6 @@ describe('CLI analyze command with project management', () => {
           reject(new Error('Test timeout - database operations took too long'));
         }
       }, 10000);
-
-      process.on('uncaughtException', cleanup);
-      process.on('unhandledRejection', cleanup);
 
       db.serialize(() => {
         db.get('SELECT COUNT(*) as count FROM projects', (err: any, row: any) => {
@@ -305,10 +326,44 @@ describe('CLI analyze command with project management', () => {
     const db = new sqlite3.Database(dbPath);
     
     return new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        db.close();
-        reject(new Error('Database operation timeout'));
-      }, 5000);
+      let isResolved = false;
+      let cleanupHandlers: Array<() => void> = [];
+      
+      const cleanup = () => {
+        if (!isResolved) {
+          try {
+            if (!db.closed) {
+              db.close();
+            }
+          } catch (err) {
+            // Ignore errors during cleanup
+          }
+          // Remove all cleanup handlers
+          cleanupHandlers.forEach(handler => {
+            process.removeListener('uncaughtException', handler);
+            process.removeListener('unhandledRejection', handler);
+          });
+        }
+      };
+
+      const errorHandler = (err: any) => {
+        cleanup();
+        reject(err);
+      };
+
+      // Add error handlers
+      const wrappedHandler = () => errorHandler(null);
+      cleanupHandlers.push(wrappedHandler);
+      process.on('uncaughtException', wrappedHandler);
+      process.on('unhandledRejection', wrappedHandler);
+
+      // Use a single timeout for the entire test
+      const testTimeout = setTimeout(() => {
+        if (!isResolved) {
+          cleanup();
+          reject(new Error('Test timeout - database operations took too long'));
+        }
+      }, 10000);
 
       db.serialize(() => {
         // Create tables
@@ -333,8 +388,8 @@ describe('CLI analyze command with project management', () => {
         // Insert existing project with ID 42
         db.run('INSERT INTO projects (id, name, path) VALUES (42, "Test Project", ?)', [testDir], (err: any) => {
           if (err) {
-            clearTimeout(timeout);
-            db.close();
+            cleanup();
+            clearTimeout(testTimeout);
             reject(err);
             return;
           }
@@ -360,18 +415,19 @@ describe('CLI analyze command with project management', () => {
             }, 5000);
 
             db2.get('SELECT project_id FROM assessment_data WHERE tool_name = "test-analyzer"', (err2: any, row: any) => {
-              clearTimeout(verifyTimeout);
-              db2.close();
+              cleanup();
+              clearTimeout(testTimeout);
               
               if (err2) {
                 reject(err2);
               } else {
                 expect(row.project_id).toBe(42);
+                isResolved = true;
                 resolve();
               }
             });
           } catch (error) {
-            clearTimeout(timeout);
+            clearTimeout(testTimeout);
             reject(error);
           }
         });
