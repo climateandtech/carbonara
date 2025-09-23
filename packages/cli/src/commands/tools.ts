@@ -28,12 +28,11 @@ export async function toolsCommand(options: ToolsOptions) {
 
 async function listTools() {
   const registry = getToolRegistry();
-  await registry.refreshInstalledTools();
   
   console.log(chalk.blue('🛠️  Analysis Tools Registry'));
   console.log('═'.repeat(50));
   
-  const installedTools = registry.getInstalledTools();
+  const installedTools = await registry.getInstalledTools();
   const allTools = registry.getAllTools();
   
   if (installedTools.length > 0) {
@@ -47,7 +46,12 @@ async function listTools() {
     });
   }
   
-  const notInstalledTools = allTools.filter(t => !registry.isToolInstalled(t.id));
+  const notInstalledTools = [];
+  for (const tool of allTools) {
+    if (!(await registry.isToolInstalled(tool.id))) {
+      notInstalledTools.push(tool);
+    }
+  }
   if (notInstalledTools.length > 0) {
     console.log(chalk.yellow('\n⚠️  Available Tools (not installed):'));
     notInstalledTools.forEach(tool => {
@@ -84,7 +88,7 @@ async function installTool(toolId: string) {
     process.exit(1);
   }
   
-  if (registry.isToolInstalled(toolId)) {
+  if (await registry.isToolInstalled(toolId)) {
     console.log(chalk.green(`✅ Tool '${tool.name}' is already installed`));
     return;
   }
@@ -142,7 +146,7 @@ async function refreshTools() {
     await registry.refreshInstalledTools();
     spinner.succeed('Tool status refreshed!');
     
-    const installedCount = registry.getInstalledTools().length;
+    const installedCount = (await registry.getInstalledTools()).length;
     const totalCount = registry.getAllTools().length;
     
     console.log(chalk.blue(`\n📊 Status: ${installedCount}/${totalCount} tools installed`));

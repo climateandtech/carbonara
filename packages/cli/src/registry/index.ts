@@ -41,6 +41,7 @@ export interface ToolRegistry {
 export class AnalysisToolRegistry {
   private registry: ToolRegistry;
   private installedTools: Map<string, boolean> = new Map();
+  private toolsRefreshed: boolean = false;
 
   constructor() {
     // Try multiple paths to find the registry file
@@ -64,7 +65,8 @@ export class AnalysisToolRegistry {
     }
     
     this.registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-    this.refreshInstalledTools();
+    // Don't call refreshInstalledTools() in constructor - it's async and can hang
+    // Call it lazily when needed
   }
 
   async refreshInstalledTools(): Promise<void> {
@@ -74,6 +76,8 @@ export class AnalysisToolRegistry {
       const isInstalled = await this.checkToolInstallation(tool);
       this.installedTools.set(tool.id, isInstalled);
     }
+    
+    this.toolsRefreshed = true;
   }
 
   private async checkToolInstallation(tool: AnalysisTool): Promise<boolean> {
@@ -108,7 +112,10 @@ export class AnalysisToolRegistry {
     return this.registry.tools;
   }
 
-  getInstalledTools(): AnalysisTool[] {
+  async getInstalledTools(): Promise<AnalysisTool[]> {
+    if (!this.toolsRefreshed) {
+      await this.refreshInstalledTools();
+    }
     return this.registry.tools.filter(tool => this.installedTools.get(tool.id) === true);
   }
 
@@ -116,7 +123,10 @@ export class AnalysisToolRegistry {
     return this.registry.tools.find(tool => tool.id === id);
   }
 
-  isToolInstalled(id: string): boolean {
+  async isToolInstalled(id: string): Promise<boolean> {
+    if (!this.toolsRefreshed) {
+      await this.refreshInstalledTools();
+    }
     return this.installedTools.get(id) === true;
   }
 

@@ -17,14 +17,13 @@ interface AnalyzeOptions {
 
 export async function analyzeCommand(toolId: string, url: string, options: AnalyzeOptions) {
   const registry = getToolRegistry();
-  await registry.refreshInstalledTools();
   const tool = registry.getTool(toolId);
 
   if (!tool) {
     console.error(chalk.red(`❌ Unknown analysis tool: ${toolId}`));
     console.log(chalk.yellow('\n📋 Available tools:'));
     
-    const installedTools = registry.getInstalledTools();
+    const installedTools = await registry.getInstalledTools();
     const allTools = registry.getAllTools();
     
     if (installedTools.length > 0) {
@@ -37,7 +36,12 @@ export async function analyzeCommand(toolId: string, url: string, options: Analy
       });
     }
     
-    const notInstalledTools = allTools.filter(t => !registry.isToolInstalled(t.id));
+    const notInstalledTools = [];
+    for (const tool of allTools) {
+      if (!(await registry.isToolInstalled(tool.id))) {
+        notInstalledTools.push(tool);
+      }
+    }
     if (notInstalledTools.length > 0) {
       console.log(chalk.yellow('\n⚠️  Available (not installed):'));
       notInstalledTools.forEach(t => {

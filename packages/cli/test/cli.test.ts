@@ -10,14 +10,8 @@ describe('Carbonara CLI - Tests', () => {
 
   beforeEach(() => {
     testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbonara-test-'));
-    // Try multiple possible paths for CLI in CI vs local
-    const possiblePaths = [
-      path.resolve(__dirname, '../dist/index.js'),
-      path.resolve(process.cwd(), 'packages/cli/dist/index.js'),
-      path.resolve(__dirname, '../../cli/dist/index.js')
-    ];
-    
-    cliPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
+    // Simple, predictable path - CLI is always in ../dist relative to test
+    cliPath = path.resolve(__dirname, '../dist/index.js');
   });
 
   afterEach(() => {
@@ -199,14 +193,8 @@ describe('CLI analyze command with project management', () => {
 
   beforeEach(() => {
     testDir = mkdtempSync(path.join(tmpdir(), 'carbonara-cli-analyze-test-'));
-    // Try multiple possible paths for CLI in CI vs local
-    const possiblePaths = [
-      path.resolve(__dirname, '../dist/index.js'),
-      path.resolve(process.cwd(), 'packages/cli/dist/index.js'),
-      path.resolve(__dirname, '../../cli/dist/index.js')
-    ];
-    
-    cliPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
+    // Simple, predictable path - CLI is always in ../dist relative to test
+    cliPath = path.resolve(__dirname, '../dist/index.js');
   });
 
   afterEach(() => {
