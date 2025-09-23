@@ -67,4 +67,22 @@ describe('Carbonara CLI - Tests', () => {
       expect(error.stderr.toString()).toContain('Data operation failed');
     }
   });
+
+  test('data --json should output valid JSON', () => {
+    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
+      name: 'Test Project',
+      projectType: 'web',
+      projectId: 'test-123'
+    }));
+    
+    try {
+      const result = execSync(`cd "${testDir}" && node "${cliPath}" data --json`, { encoding: 'utf8' });
+      // Should output valid JSON array (empty array for no data)
+      const parsed = JSON.parse(result.trim());
+      expect(Array.isArray(parsed)).toBe(true);
+    } catch (error: any) {
+      // If database fails, that's expected behavior
+      expect(error.stderr.toString()).toContain('Data operation failed');
+    }
+  });
 });
