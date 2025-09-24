@@ -5,16 +5,33 @@ import * as fs from 'fs';
 import { spawn } from 'child_process';
 import { AssessmentTreeProvider } from './assessment-tree-provider';
 import { DataTreeProvider } from './data-tree-provider';
+import { DatabaseHighlighter, registerHighlightCommands } from './database-highlighter';
 
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
+let databaseHighlighter: DatabaseHighlighter;
 
 let currentProjectPath: string | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Carbonara extension is now active!');
+
+    // Initialize database highlighter
+    databaseHighlighter = new DatabaseHighlighter(context);
+    databaseHighlighter.initialize().then(() => {
+        console.log('Database highlighter initialized');
+        // Load and display highlights if there's an active editor
+        if (vscode.window.activeTextEditor) {
+            vscode.commands.executeCommand('carbonara.refreshHighlights');
+        }
+    }).catch(err => {
+        console.error('Failed to initialize database highlighter:', err);
+    });
+
+    // Register highlighter commands
+    registerHighlightCommands(context, databaseHighlighter);
 
     // Create status bar item
     carbonaraStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -80,6 +97,9 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     if (carbonaraStatusBar) {
         carbonaraStatusBar.dispose();
+    }
+    if (databaseHighlighter) {
+        databaseHighlighter.dispose();
     }
 }
 

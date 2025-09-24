@@ -4,7 +4,7 @@ src/
 *.map
 
 # Build artifacts
-out/
+
 node_modules/
 .vscode-test/
 

@@ -95,6 +95,20 @@
         "command": "carbonara.openProject",
         "title": "Open Carbonara Project",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "carbonara.refreshHighlights",
+        "title": "Refresh Code Highlights",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "carbonara.clearHighlights",
+        "title": "Clear Code Highlights",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "carbonara.viewHighlightDetails",
+        "title": "View Highlight Details"
       }
     ],
     "viewsContainers": {
@@ -224,7 +238,8 @@
     "playwright:install": "playwright install"
   },
   "dependencies": {
-    "@carbonara/core": "file:../../packages/core"
+    "@carbonara/core": "file:../../packages/core",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
@@ -232,6 +247,7 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
     "@types/vscode": "^1.85.0",
+    "@types/sqlite3": "^3.1.11",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.15.0",
     "glob": "^11.0.3",
