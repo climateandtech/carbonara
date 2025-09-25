@@ -51,8 +51,6 @@ npm run test:ci
 
 - **`CI`** - Set to `'true'` to enable CI mode
 - **`GITHUB_ACTIONS`** - Automatically set by GitHub Actions
-- **`MOCK_MEGALINTER`** - Force use of mock MegaLinter data
-- **`SKIP_MEGALINTER_TESTS`** - Skip MegaLinter tests entirely
 
 ## CI/CD Strategy
 
