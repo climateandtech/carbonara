@@ -396,22 +396,45 @@ export class DatabaseHighlighter {
   }
 
   private async updateHighlights(document: vscode.TextDocument): Promise<void> {
+    console.log("Updating highlights for:", document.uri.fsPath);
+
     const assessmentData = await this.loadAssessmentData();
+    console.log(`Loaded ${assessmentData.length} assessment data items.`);
+
     const highlights = this.extractHighlightsFromAssessmentData(assessmentData);
+    console.log(`Extracted ${highlights.length} total highlights.`);
 
     const documentPath = document.uri.fsPath;
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 
-    // Filter highlights for current document
-    const documentHighlights = highlights.filter((h) => {
-      if (!h.file_path) {
-        return false;
+    const documentHighlights: CodeHighlight[] = [];
+    if (workspaceFolder) {
+      for (const h of highlights) {
+        if (!h.file_path) {
+          continue;
+        }
+
+        // Normalize paths to handle different path separators (e.g., \ vs /)
+        const normalizedDocPath = path.normalize(documentPath);
+        const normalizedHighlightPath = path.normalize(h.file_path);
+
+        // Create a relative path from the workspace root to the file path from the highlight
+        const relativePath = path.relative(
+          path.normalize(workspaceFolder.uri.fsPath),
+          normalizedHighlightPath
+        );
+
+        // Check if the document path ends with the highlight's file path
+        if (normalizedDocPath.endsWith(normalizedHighlightPath)) {
+          documentHighlights.push(h);
+          continue; // Move to the next highlight
+        }
       }
-      const highlightPath = path.isAbsolute(h.file_path)
-        ? h.file_path
-        : path.join(workspaceFolder?.uri.fsPath || "", h.file_path);
-      return highlightPath === documentPath;
-    });
+    }
+
+    console.log(
+      `Found ${documentHighlights.length} highlights for the current document.`
+    );
 
     // Clear existing decorations
     this.clearDecorations();
