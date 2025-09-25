@@ -19,6 +19,9 @@ dist/**/*.test.*
 dist/test/
 dist/tests/
 
+# Important: Include the WASM file
+!dist/sql-wasm.wasm
+
 # Scripts
 **/scripts/
 

@@ -246,7 +246,18 @@ export class DatabaseHighlighter {
 
     try {
       if (!this.SQL) {
-        this.SQL = await initSqlJs();
+        // Configure the WASM file location
+        const wasmPath = path.join(__dirname, 'sql-wasm.wasm');
+        
+        // Initialize sql.js with the correct WASM file path
+        this.SQL = await initSqlJs({
+          locateFile: (file: string) => {
+            if (file === 'sql-wasm.wasm') {
+              return wasmPath;
+            }
+            return file;
+          }
+        });
       }
       const dbFile = fs.readFileSync(this.dbPath);
       this.db = new this.SQL.Database(dbFile);
