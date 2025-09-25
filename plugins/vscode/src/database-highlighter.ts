@@ -4,17 +4,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-
-// Import sqlite3 with proper typing
-let sqlite3: any;
-try {
-  sqlite3 = require("sqlite3").verbose();
-} catch (error) {
-  console.error("Failed to load sqlite3:", error);
-  vscode.window.showErrorMessage(
-    "Failed to load sqlite3 module. Please run: npm install"
-  );
-}
+import initSqlJs, { Database } from "sql.js";
 
 // Interface for highlight data that might be stored in assessment_data
 interface CodeHighlight {
@@ -51,7 +41,8 @@ interface ProjectConfig {
 }
 
 export class DatabaseHighlighter {
-  private db: any = null; // sqlite3.Database
+  private db: Database | null = null;
+  private SQL: any;
   private diagnosticCollection: vscode.DiagnosticCollection;
   private decorationTypes: Map<string, vscode.TextEditorDecorationType>;
   private activeDecorations: Map<string, vscode.DecorationOptions[]> =
@@ -253,36 +244,25 @@ export class DatabaseHighlighter {
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      if (!sqlite3) {
-        console.error("sqlite3 module not available");
-        resolve();
-        return;
+    try {
+      if (!this.SQL) {
+        this.SQL = await initSqlJs();
       }
-
-      this.db = new sqlite3.Database(
-        this.dbPath,
-        sqlite3.OPEN_READONLY,
-        (err: any) => {
-          if (err) {
-            console.error(`Failed to open database: ${err.message}`);
-            resolve(); // Don't reject, just continue without database
-          } else {
-            console.log(`Connected to database at ${this.dbPath}`);
-            resolve();
-          }
-        }
-      );
-    });
+      const dbFile = fs.readFileSync(this.dbPath);
+      this.db = new this.SQL.Database(dbFile);
+      console.log(`Connected to database at ${this.dbPath}`);
+    } catch (err) {
+      console.error(`Failed to open database: ${(err as Error).message}`);
+      // Don't throw, just continue without database
+    }
   }
 
   public async loadAssessmentData(): Promise<AssessmentData[]> {
-    return new Promise((resolve, reject) => {
-      if (!this.db || !this.projectId) {
-        resolve([]);
-        return;
-      }
+    if (!this.db || !this.projectId) {
+      return [];
+    }
 
+    try {
       // Query assessment_data table for this project
       const query = `
                 SELECT * FROM assessment_data 
@@ -290,20 +270,27 @@ export class DatabaseHighlighter {
                 ORDER BY timestamp DESC
             `;
 
-      this.db.all(query, [this.projectId], (err: any, rows: any[]) => {
-        if (err) {
-          console.error(`Failed to load assessment data: ${err.message}`);
-          resolve([]);
-        } else {
-          const assessmentData: AssessmentData[] = rows.map((row) => ({
-            ...row,
-            data:
-              typeof row.data === "string" ? JSON.parse(row.data) : row.data,
-          }));
-          resolve(assessmentData);
-        }
-      });
-    });
+      const stmt = this.db.prepare(query);
+      stmt.bind([this.projectId]);
+
+      const rows: any[] = [];
+      while (stmt.step()) {
+        rows.push(stmt.getAsObject());
+      }
+      stmt.free();
+
+      const assessmentData: AssessmentData[] = rows.map((row) => ({
+        ...row,
+        data: typeof row.data === "string" ? JSON.parse(row.data) : row.data,
+      }));
+
+      return assessmentData;
+    } catch (err) {
+      console.error(
+        `Failed to load assessment data: ${(err as Error).message}`
+      );
+      return [];
+    }
   }
 
   private extractHighlightsFromAssessmentData(
@@ -531,16 +518,23 @@ export class DatabaseHighlighter {
         if (range.contains(position)) {
           const contents = new vscode.MarkdownString();
           contents.appendMarkdown(
-            `**🌱 Carbonara ${highlight.severity.toUpperCase()}**\n\n`
+            `**🌱 Carbonara ${highlight.severity.toUpperCase()}**
+
+`
           );
-          contents.appendMarkdown(`${highlight.message}\n\n`);
+          contents.appendMarkdown(`${highlight.message}
+
+`);
 
           if (highlight.category) {
-            contents.appendMarkdown(`*Category*: ${highlight.category}\n\n`);
+            contents.appendMarkdown(`*Category*: ${highlight.category}
+
+`);
           }
 
           if (highlight.source) {
-            contents.appendMarkdown(`*Source*: ${highlight.source}\n`);
+            contents.appendMarkdown(`*Source*: ${highlight.source}
+`);
           }
 
           return new vscode.Hover(contents, range);

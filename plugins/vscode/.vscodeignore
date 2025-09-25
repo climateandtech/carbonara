@@ -4,9 +4,23 @@ src/
 *.map
 
 # Build artifacts
-
-node_modules/
+out/
 .vscode-test/
+node_modules/
+.turbo/
+
+# Test files
+**/test/
+**/tests/
+**/*.test.*
+**/e2e/
+**/test-build/
+dist/**/*.test.*
+dist/test/
+dist/tests/
+
+# Scripts
+**/scripts/
 
 # Development files
 .git/
@@ -14,6 +28,8 @@ node_modules/
 .eslintrc.json
 tsconfig.json
 webpack.config.js
+vite.config.ts
+esbuild.js
 
 # Parent directory files (monorepo structure)
 ../**
@@ -23,6 +39,10 @@ webpack.config.js
 # Test files
 test/
 **/*.test.*
+e2e/
+
+# Scripts
+scripts/
 
 # Documentation (except README)
 *.md
