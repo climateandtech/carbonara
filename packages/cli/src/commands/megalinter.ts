@@ -56,9 +56,7 @@ export async function megalinterCommand(options: MegalinterOptions) {
     let megalinterError: any = null;
 
     try {
-      (async () => {
-        await new MegaLinterRunnerCli().run(args);
-      })();
+      await new MegaLinterRunnerCli().run(args);
 
       // const megalinterResult = await execa("npx", args, {
       //   stdio: "inherit",
