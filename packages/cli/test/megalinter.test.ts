@@ -46,6 +46,13 @@ describe("Carbonara CLI - MegaLinter Tests", () => {
       console.log(
         "MegaLinter execution may have failed, checking file creation"
       );
+      console.error("Error during MegaLinter execution:", error);
+      if (error.stdout) {
+        console.log("MegaLinter stdout:", error.stdout);
+      }
+      if (error.stderr) {
+        console.error("MegaLinter stderr:", error.stderr);
+      }
       megalinterResult = null;
     }
 
