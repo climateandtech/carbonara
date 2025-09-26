@@ -1,7 +1,5 @@
-// import execa from "execa";
 // @ts-ignore
 import { MegaLinterRunnerCli } from "../../../../node_modules/mega-linter-runner/lib/index.js";
-// import MegaLinterRunner from "mega-linter-runner";
 import chalk from "chalk";
 import ora from "ora";
 import { createDataLake } from "../database/index.js";
@@ -58,11 +56,6 @@ export async function megalinterCommand(options: MegalinterOptions) {
     try {
       await new MegaLinterRunnerCli().run(args);
 
-      // const megalinterResult = await execa("npx", args, {
-      //   stdio: "inherit",
-      //   cwd: process.cwd(),
-      // });
-
       spinner.succeed("MegaLinter analysis completed!");
       // Since MegaLinter outputs to files, we need to read the results
       const results = await parseMegalinterResults();
@@ -79,9 +72,6 @@ export async function megalinterCommand(options: MegalinterOptions) {
       megalinterError = execError;
       spinner.fail("MegaLinter analysis failed");
     }
-
-    // Clean up megalinter-reports folder after processing (always run)
-    // await cleanupReportsFolder();
 
     // Re-throw error after cleanup if megalinter failed
     if (megalinterFailed && megalinterError) {
@@ -181,21 +171,3 @@ async function saveToDatabase(results: any) {
     console.error(chalk.red("❌ Failed to save to database:"), error.message);
   }
 }
-
-// async function cleanupReportsFolder() {
-//   try {
-//     const fs = await import("fs/promises");
-//     const path = await import("path");
-//     const reportsDir = path.join(process.cwd(), "megalinter-reports");
-
-//     // Check if the directory exists before trying to remove it
-//     try {
-//       await fs.access(reportsDir);
-//       await fs.rm(reportsDir, { recursive: true, force: true });
-//     } catch {
-//       // Directory doesn't exist, nothing to clean up
-//     }
-//   } catch (error: any) {
-//     // Silently ignore cleanup errors to not disrupt the main flow
-//   }
-// }
