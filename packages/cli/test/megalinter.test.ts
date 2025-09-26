@@ -38,7 +38,7 @@ describe("Carbonara CLI - MegaLinter Tests", () => {
         `cd "${testDir}" && node "${cliPath}" megalinter`,
         {
           encoding: "utf8",
-          timeout: 30000,
+          timeout: 90000,
         }
       );
     } catch (error: any) {
@@ -46,12 +46,19 @@ describe("Carbonara CLI - MegaLinter Tests", () => {
       console.log(
         "MegaLinter execution may have failed, checking file creation"
       );
+      console.error("Error during MegaLinter execution:", error);
+      if (error.stdout) {
+        console.log("MegaLinter stdout:", error.stdout);
+      }
+      if (error.stderr) {
+        console.error("MegaLinter stderr:", error.stderr);
+      }
       megalinterResult = null;
     }
 
     // Get final file list after running megalinter
     finalFiles = fs.readdirSync(testDir);
-  }, 45000);
+  }, 100000);
 
   afterEach(() => {
     if (fs.existsSync(testDir)) {

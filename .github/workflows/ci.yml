@@ -11,100 +11,66 @@ on:
       - "packages/cli/**"
 
 jobs:
-  # Fast unit tests - always run
-  unit-tests:
-    name: Unit Tests (without MegaLinter)
+  # Unit and MegaLinter tests
+  ci-tests:
+    name: Unit and MegaLinter Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        node-version: [22.x, 24.x]
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Pull MegaLinter Docker image
+        run: docker pull oxsecurity/megalinter:v8
+
+      - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "22.x"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install dependencies for Node 22.x
         working-directory: packages/cli
         run: npm ci
 
-      - name: Build CLI
+      - name: Build CLI for Node 22.x
         working-directory: packages/cli
         run: npm run build
 
-      - name: Run tests (excluding MegaLinter)
+      - name: Run tests (excluding MegaLinter) for Node 22.x
         working-directory: packages/cli
         run: npm run test:ci
         env:
           CI: true
 
-  # MegaLinter mock tests - quick validation
-  megalinter-mock-tests:
-    name: MegaLinter Mock Tests (CI Mode)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    strategy:
-      matrix:
-        node-version: [22.x, 24.x]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
-
-      - name: Install dependencies
-        working-directory: packages/cli
-        run: npm ci
-
-      - name: Build CLI
-        working-directory: packages/cli
-        run: npm run build
-
-      - name: Run MegaLinter tests with mocks
+      - name: Run MegaLinter tests for Node 22.x
         working-directory: packages/cli
         run: npm run test:megalinter
         env:
           CI: true
-          MOCK_MEGALINTER: true
 
-  # Full integration tests - only on main branch or manual trigger
-  integration-tests:
-    name: Full Integration Tests (with real MegaLinter)
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - name: Setup Node.js 24.x
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24.x"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install dependencies for Node 24.x
         working-directory: packages/cli
         run: npm ci
 
-      - name: Install MegaLinter
-        run: npm install -g mega-linter-runner
-
-      - name: Build CLI
+      - name: Build CLI for Node 24.x
         working-directory: packages/cli
         run: npm run build
 
-      - name: Run all tests including MegaLinter
+      - name: Run tests (excluding MegaLinter) for Node 24.x
         working-directory: packages/cli
-        run: npm test
+        run: npm run test:ci
         env:
-          CI: false # Run as if local to get full MegaLinter execution
+          CI: true
+
+      - name: Run MegaLinter tests for Node 24.x
+        working-directory: packages/cli
+        run: npm run test:megalinter
+        env:
+          CI: true
