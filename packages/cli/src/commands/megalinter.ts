@@ -47,6 +47,8 @@ export async function megalinterCommand(options: MegalinterOptions) {
       PERL,PHP,POWERSHELL,PYTHON,R,RAKU,RUBY,RUST,SALESFORCE,SCALA,SQL,SWIFT,TSX,TYPESCRIPT,VBDOTNET,CSS,\
       ENV,GRAPHQL,HTML,JSON,LATEX,MARKDOWN,PROTOBUF,RST,XML,YAML,ACTION,ANSIBLE,API,ARM,BICEP,CLOUDFORMATION,\
       DOCKERFILE,EDITORCONFIG,GHERKIN,KUBERNETES,PUPPET,SNAKEMAKE,TEKTON,TERRAFORM,COPYPASTE,REPOSITORY,SPELL'",
+      "-e",
+      "'PLUGINS=https://raw.githubusercontent.com/pessi-v/carbonara-linters/refs/heads/main/mega-linter-plugin-fasterer/fasterer.megalinter-descriptor.yml'",
     ];
 
     // // Run MegaLinter
@@ -54,7 +56,9 @@ export async function megalinterCommand(options: MegalinterOptions) {
     let megalinterError: any = null;
 
     try {
-      await new MegaLinterRunnerCli().run(args);
+      (async () => {
+        await new MegaLinterRunnerCli().run(args);
+      })();
 
       spinner.succeed("MegaLinter analysis completed!");
       // Since MegaLinter outputs to files, we need to read the results
