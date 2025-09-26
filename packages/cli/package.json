@@ -28,7 +28,7 @@
     "playwright": "^1.40.0",
     "sqlite3": "^5.1.7",
     "zod": "^4.0.15",
-    "mega-linter-runner": "^8.8.0"
+    "mega-linter-runner": "^9.0.1"
   },
   "keywords": [
     "cli",
