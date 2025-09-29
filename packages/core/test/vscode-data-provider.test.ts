@@ -82,7 +82,7 @@ describe('VSCodeDataProvider', () => {
       // Find co2-assessment group
       const co2Group = groups.find(g => g.toolName === 'co2-assessment');
       expect(co2Group).toBeDefined();
-      expect(co2Group?.displayName).toBe('Analysis results from co2-assessment');
+      expect(co2Group?.displayName).toBe('🌍 CO2 Assessments');
       expect(co2Group?.entries).toHaveLength(3);
     });
 
@@ -93,7 +93,7 @@ describe('VSCodeDataProvider', () => {
       const entry = co2Group?.entries[0];
       
       expect(entry?.label).toBeDefined();
-      expect(entry?.label).toContain('Analysis'); // Contains entry type
+      expect(entry?.label).toContain('Assessment'); // Contains entry type
     });
 
     it('should create detailed field items from schema', async () => {
@@ -104,9 +104,9 @@ describe('VSCodeDataProvider', () => {
       
       expect(details.length).toBeGreaterThan(0);
       
-      // Check for expected fields based on schema
+      // Check for expected fields based on schema  
       const scoreField = details.find(d => d.key === 'impactScore');
-      expect(scoreField?.label).toBe('impactScore: 75');
+      expect(scoreField?.label).toMatch(/📊 Overall Score: \d+/); // Should show score with schema label
       
 
     });
@@ -147,11 +147,20 @@ describe('VSCodeDataProvider', () => {
 
   describe('Error Handling', () => {
     it('should handle database errors gracefully', async () => {
-      // Close the database to simulate error
-      await dataService.close();
+      // Suppress console.error for this test
+      const originalConsoleError = console.error;
+      console.error = () => {}; // Suppress error logging
       
-      const data = await dataProvider.loadDataForProject('/test/path');
-      expect(data).toEqual([]); // Should return empty array, not throw
+      try {
+        // Close the database to simulate error
+        await dataService.close();
+        
+        const data = await dataProvider.loadDataForProject('/test/path');
+        expect(data).toEqual([]); // Should return empty array, not throw
+      } finally {
+        // Restore console.error
+        console.error = originalConsoleError;
+      }
     });
 
     it('should handle malformed data gracefully', async () => {

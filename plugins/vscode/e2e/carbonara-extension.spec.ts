@@ -159,31 +159,63 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
       
       // Use F1 to open command palette and search for data refresh
       await vscode.window.keyboard.press('F1');
-      await vscode.window.waitForTimeout(500);
-      
-      await vscode.window.keyboard.type('Carbonara: Refresh Data');
-      await vscode.window.waitForTimeout(500);
-      
-      await vscode.window.keyboard.press('Enter');
-      
+        await vscode.window.waitForTimeout(500);
+        
+        await vscode.window.keyboard.type('Carbonara: Refresh Data');
+        await vscode.window.waitForTimeout(500);
+        
+        await vscode.window.keyboard.press('Enter');
+        
       // Wait for refresh to complete
-      await vscode.window.waitForTimeout(2000);
+        await vscode.window.waitForTimeout(2000);
       console.log('✅ Triggered data refresh via command palette');
       
       // Step 5: Examine the data panel structure to understand what's available
       console.log('🔍 Examining data panel structure...');
       
       try {
-        // Look for tree view structures that might contain data
-        const treeViews = await vscode.window.locator('.tree-explorer-viewlet-tree-view').count();
-        console.log(`📊 Found ${treeViews} tree views in total`);
+        // Use deterministic selectors instead of unreliable ID selectors
+        console.log('📊 Checking individual tree contents using deterministic approach...');
         
-        if (treeViews > 0) {
-          // Get content from the first tree view to see what kind of data structure we have
-          const firstTreeContent = await vscode.window.locator('.tree-explorer-viewlet-tree-view').first().textContent();
-          console.log(`📊 Data tree view 0 content: ${firstTreeContent?.substring(0, 200)}...`);
-          console.log('✅ Found data tree view structure');
+        // Get all trees using the same approach as the main test
+        const allTrees = vscode.window.locator('[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view');
+        const treeCount = await allTrees.count();
+        console.log(`📊 Found ${treeCount} total trees`);
+        
+        // Examine each tree and categorize by content
+        for (let i = 0; i < treeCount; i++) {
+          const tree = allTrees.nth(i);
+          const treeRows = tree.locator('.monaco-list-row');
+          const rowCount = await treeRows.count();
+          
+          if (rowCount > 0) {
+            const rowTexts = await treeRows.allTextContents();
+            const hasQuestionnaireData = rowTexts.some(text => 
+              text.includes('Project Information') || 
+              text.includes('Infrastructure') || 
+              text.includes('Development')
+            );
+            const hasToolsData = rowTexts.some(text => 
+              text.includes('Built-in') || 
+              text.includes('Not installed')
+            );
+            const hasAnalysisData = rowTexts.some(text => 
+              text.includes('Test Analysis') || 
+              text.includes('analysis') ||
+              text.includes('.example.com')
+            );
+            
+            let treeType = 'Unknown';
+            if (hasQuestionnaireData) treeType = 'CO2 Assessment (Questionnaire)';
+            else if (hasToolsData) treeType = 'Analysis Tools';
+            else if (hasAnalysisData) treeType = 'Data & Results (Analysis)';
+            
+            console.log(`📊 Tree ${i} (${treeType}): ${rowCount} rows`);
+            console.log(`    Content preview: ${rowTexts.slice(0, 2).join(', ')}...`);
+          }
         }
+        
+        console.log('✅ Examined all tree structures using deterministic approach');
         
       } catch (error) {
         console.log('⚠️ Could not analyze tree view structure:', error);
@@ -245,4 +277,425 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
       await VSCodeLauncher.close(vscode);
     }
   });
-});
+
+  test('should show Analysis Tools tree view and allow tool interaction', async () => {
+    console.log('🔍 Testing Analysis Tools tree view visibility and functionality...');
+    
+    const vscode = await VSCodeLauncher.launch('with-carbonara-project');
+    
+    try {
+      // Wait for extension to fully activate
+      await VSCodeLauncher.waitForExtension(vscode.window);
+      console.log('⏳ Extension fully activated');
+      
+      // Step 1: Open the Carbonara sidebar
+      console.log('📋 Opening Carbonara sidebar...');
+      await VSCodeLauncher.openSidebar(vscode.window);
+      console.log('✅ Opened Carbonara sidebar');
+      
+      // Step 2: Assert Analysis Tools section is visible
+      console.log('🔍 Looking for Analysis Tools section...');
+      const toolsSection = vscode.window.locator('.pane-header').filter({ hasText: 'Analysis Tools' });
+      
+      // ASSERTION: Analysis Tools section must be visible
+      await expect(toolsSection).toBeVisible({ timeout: 10000 });
+      console.log('✅ Analysis Tools section header is visible');
+      
+      // Step 3: Check Analysis Tools state and ensure it's expanded
+      console.log('🔍 Checking Analysis Tools collapse state...');
+      
+      // Look for the chevron icon to determine current state
+      const chevronRight = toolsSection.locator('.codicon-chevron-right'); // Collapsed
+      const chevronDown = toolsSection.locator('.codicon-chevron-down');   // Expanded
+      
+      const isCollapsed = await chevronRight.isVisible({ timeout: 1000 });
+      const isExpanded = await chevronDown.isVisible({ timeout: 1000 });
+      
+      console.log(`📊 Analysis Tools initial state: collapsed=${isCollapsed}, expanded=${isExpanded}`);
+      
+      if (isExpanded) {
+        console.log('✅ Analysis Tools is already expanded - no click needed');
+      } else if (isCollapsed) {
+        console.log('📂 Analysis Tools is collapsed, clicking chevron to expand...');
+        // Click the chevron icon directly to expand
+        await chevronRight.click();
+        await vscode.window.waitForTimeout(2000);
+        
+        // Verify it expanded
+        const nowExpanded = await chevronDown.isVisible({ timeout: 3000 });
+        console.log(`✅ After click - Analysis Tools expanded: ${nowExpanded}`);
+      } else {
+        console.log('⚠️ Could not determine Analysis Tools state - no chevron icons found');
+        // Don't click anything - might already be in the right state
+      }
+      
+      // Step 4: After clicking, wait for tree content to appear
+      await vscode.window.waitForTimeout(1000);
+      
+      // Debug: Check what sections are visible now
+      const allSections = vscode.window.locator('.pane-header');
+      const sectionCount = await allSections.count();
+      console.log(`🔍 Found ${sectionCount} total pane sections`);
+      
+      if (sectionCount > 0) {
+        const sectionTexts = await allSections.allTextContents();
+        console.log('📋 All sections:', sectionTexts);
+      }
+      
+      // Get tools tree using deterministic selector (no fallbacks!)
+      console.log('🔍 Looking for Analysis Tools tree...');
+      const toolsTree = vscode.window
+        .locator('[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view')
+        .last();
+      
+      await expect(toolsTree).toBeVisible();
+      console.log('✅ Found Analysis Tools tree');
+      const allRows = toolsTree.locator('.monaco-list-row');
+      
+      // Debug: Check what we find in the Analysis Tools section
+      const rowCount = await allRows.count();
+      console.log(`🔍 Found ${rowCount} rows in tree content`);
+      
+      if (rowCount > 0) {
+        const rowTexts = await allRows.allTextContents();
+        console.log('📋 Analysis Tools content:', rowTexts);
+        
+        // Now we should see either tools or our informative "No analysis tools available" message
+        // This helps differentiate between collapsed (no content) vs expanded but no tools
+        console.log('✅ Analysis Tools section has content (either tools or no-tools message)');
+      } else {
+        console.log('❌ No rows found in Analysis Tools section - likely still collapsed or not loading');
+      }
+      
+      // Step 6: Verify installed tools (from registry: 1 built-in tool)
+      console.log('🔍 Checking for installed tools...');
+      const installedTools = toolsTree.locator('.monaco-list-row').filter({ hasText: 'Built-in' });
+      
+      // ASSERTION: Must have exactly 1 installed tool (Test Analyzer in test environment)
+      await expect(installedTools).toHaveCount(1, { timeout: 5000 });
+      console.log('✅ Found exactly 1 installed tool as expected');
+      
+      const installedTexts = await installedTools.allTextContents();
+      console.log(`📊 Installed tool: ${installedTexts.join(', ')}`);
+      
+      // ASSERTION: Must be Test Analyzer (test-only tool)
+      expect(installedTexts[0]).toContain('Test Analyzer');
+      console.log('✅ Test Analyzer tool is available for testing');
+      
+      // Step 7: Verify uninstalled tools (from registry: 2 external tools)
+      console.log('🔍 Checking for uninstalled tools...');
+      const uninstalledTools = toolsTree.locator('.monaco-list-row').filter({ hasText: 'Not installed' });
+      
+      // ASSERTION: Must have exactly 2 uninstalled tools (GreenFrame + Impact Framework)
+      await expect(uninstalledTools).toHaveCount(2, { timeout: 5000 });
+      console.log('✅ Found exactly 2 uninstalled tools as expected');
+      
+      const uninstalledTexts = await uninstalledTools.allTextContents();
+      console.log(`📊 Uninstalled tools: ${uninstalledTexts.join(', ')}`);
+      
+      // ASSERTION: Must contain GreenFrame tool
+      const hasGreenFrame = uninstalledTexts.some(text => text.includes('GreenFrame'));
+      expect(hasGreenFrame).toBe(true);
+      console.log('✅ GreenFrame tool is available for installation');
+      
+      // ASSERTION: Must contain Impact Framework tool  
+      const hasImpactFramework = uninstalledTexts.some(text => text.includes('Impact Framework'));
+      expect(hasImpactFramework).toBe(true);
+      console.log('✅ Impact Framework tool is available for installation');
+      
+      // Step 8: Verify total matches registry (1 + 2 = 3 tools)
+      const totalTools = await toolsTree.locator('.monaco-list-row').count();
+      
+      // ASSERTION: Total must be exactly 3 tools from registry
+      expect(totalTools).toBe(3);
+      console.log(`✅ Total tools: ${totalTools} (matches registry: 1 installed + 2 uninstalled)`);
+      
+      console.log('✅ Analysis Tools verification completed - all registry tools accounted for');
+      
+      console.log('🎉 Analysis Tools tree view test completed!');
+      
+      // Step 9: Test the Test Analyzer functionality
+      console.log('🧪 Testing Test Analyzer execution...');
+      
+      // Click on the Test Analyzer tool to execute it
+      const testAnalyzerRow = toolsTree.locator('.monaco-list-row').filter({ hasText: 'Test Analyzer' });
+      await expect(testAnalyzerRow).toBeVisible();
+      
+      // Click the Test Analyzer row to trigger analysis
+      await testAnalyzerRow.click();
+      console.log('✅ Clicked Test Analyzer tool');
+      
+      // Wait for URL input dialog to appear
+      await vscode.window.waitForTimeout(1000);
+      
+      // Look for the input box and enter a test URL
+      const inputBox = vscode.window.locator('input[placeholder*="https://example.com"], .quick-input-box input');
+      await expect(inputBox).toBeVisible({ timeout: 5000 });
+      
+      const testUrl = 'https://test-site.example.com';
+      await inputBox.fill(testUrl);
+      console.log(`✅ Entered test URL: ${testUrl}`);
+      
+      // Press Enter to confirm
+      await inputBox.press('Enter');
+      console.log('✅ Confirmed URL input');
+      
+      // Wait for analysis completion notification
+      console.log('⏳ Waiting for analysis to complete...');
+      
+      // Look for the completion notification or wait longer for CLI to finish
+      try {
+        // Wait for either success or failure notification using UI constants
+        const successNotification = vscode.window.locator(SELECTORS.NOTIFICATIONS.TOAST).filter({ hasText: 'analysis completed' });
+        const failureNotification = vscode.window.locator(SELECTORS.NOTIFICATIONS.TOAST).filter({ hasText: UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED });
+        
+        // Wait up to 10 seconds for one of these notifications
+        await Promise.race([
+          successNotification.waitFor({ timeout: 10000 }),
+          failureNotification.waitFor({ timeout: 10000 })
+        ]);
+        
+        // Check which notification appeared
+        const hasSuccess = await successNotification.isVisible();
+        const hasFailure = await failureNotification.isVisible();
+        
+        if (hasSuccess) {
+          console.log('✅ Analysis completed successfully (notification detected)');
+        } else if (hasFailure) {
+          console.log('❌ Analysis failed (notification detected)');
+          
+          // FAIL THE TEST: Analysis should succeed for test analyzer
+          expect(hasFailure).toBe(false);
+          return; // Exit early since analysis failed
+        } else {
+          console.log('⚠️ No clear notification found, assuming analysis completed');
+        }
+        
+        // ASSERTION: Analysis must succeed (no failure notification should be visible)
+        expect(hasFailure).toBe(false);
+        console.log('✅ ASSERTION PASSED: Analysis completed without failure notification');
+        
+      } catch (error) {
+        console.log('⚠️ No notification detected, waiting additional time for CLI to complete');
+        // Fallback: wait additional time for CLI process to complete
+        await vscode.window.waitForTimeout(3000);
+      }
+      
+      // Step 10: Verify analysis results appear in Data Tree
+      console.log('📊 Checking for analysis results in Data Tree...');
+      
+      // Look for the Data & Results section
+      const dataSection = vscode.window.locator('.pane-header').filter({ hasText: 'Data & Results' });
+      await expect(dataSection).toBeVisible();
+      console.log('✅ Found Data & Results section');
+      
+      // Click on Data & Results section to ensure it's expanded and active
+      await dataSection.click();
+      console.log('✅ Clicked Data & Results section to activate it');
+      
+      // Step 11: Manually refresh the data tree to ensure latest results are loaded
+      console.log('🔄 Refreshing Data Tree to load latest analysis results...');
+      
+      // Use F1 to open command palette and search for data refresh
+      await vscode.window.keyboard.press('F1');
+      await vscode.window.waitForTimeout(500);
+      
+      await vscode.window.keyboard.type('Carbonara: Refresh Data');
+      await vscode.window.waitForTimeout(500);
+      
+      await vscode.window.keyboard.press('Enter');
+      console.log('✅ Triggered data refresh via command palette');
+      
+      // Wait for refresh to complete and data to load
+      await vscode.window.waitForTimeout(3000);
+      
+      // Step 12: Check the data tree content for our test analyzer results
+      console.log('📊 Examining Data Tree content after refresh...');
+      
+      // Debug: Let's see what tree sections we have available
+      console.log('🔍 Debugging available tree sections...');
+      const allTreeSections = vscode.window.locator('.pane-header');
+      const treeSectionCount = await allTreeSections.count();
+      console.log(`📊 Found ${treeSectionCount} tree sections`);
+      
+      if (treeSectionCount > 0) {
+        const treeSectionTexts = await allTreeSections.allTextContents();
+        console.log('📋 Available sections:', treeSectionTexts);
+      }
+      
+      // Get the data tree using the section title approach (no fallbacks!)
+      // We need to target specifically the "Data & Results" section, not "CO2 Assessment"
+      console.log('🔍 Looking for Data & Results tree...');
+      
+      // Click on the Data & Results header to ensure it's expanded
+      const dataResultsHeader = vscode.window
+        .locator('.pane-header')
+        .filter({ hasText: 'Data & Results' });
+      await dataResultsHeader.click();
+      console.log('✅ Clicked Data & Results header');
+      
+      // Debug: Let's examine ALL 3 tree sections to see which one has the analysis results
+      console.log('🔍 Debugging ALL tree sections and their content...');
+      const allTrees = vscode.window.locator('[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view');
+      const treeCount = await allTrees.count();
+      console.log(`📊 Found ${treeCount} total trees`);
+      
+      // Examine each tree individually
+      for (let i = 0; i < treeCount; i++) {
+        console.log(`\n🔍 Examining tree ${i}:`);
+        const tree = allTrees.nth(i);
+        const treeRows = tree.locator('.monaco-list-row');
+        const rowCount = await treeRows.count();
+        console.log(`  📊 Tree ${i} has ${rowCount} rows`);
+        
+        if (rowCount > 0) {
+          const rowTexts = await treeRows.allTextContents();
+          console.log(`  📋 Tree ${i} content:`, rowTexts.slice(0, 3)); // Show first 3 items
+        }
+      }
+      
+      // Now try to find the tree with analysis results (not questionnaire data)
+      console.log('\n🔍 Looking for tree with analysis results (not questionnaire)...');
+      let dataTree = null;
+      let foundAnalysisTree = false;
+      
+      for (let i = 0; i < treeCount; i++) {
+        const tree = allTrees.nth(i);
+        const treeRows = tree.locator('.monaco-list-row');
+        const rowCount = await treeRows.count();
+        
+        if (rowCount > 0) {
+          const rowTexts = await treeRows.allTextContents();
+          const hasQuestionnaireData = rowTexts.some(text => 
+            text.includes('Project Information') || 
+            text.includes('Infrastructure') || 
+            text.includes('Development')
+          );
+          
+          const hasAnalysisData = rowTexts.some(text => 
+            text.includes('Test Analysis') || 
+            text.includes('test-') || 
+            text.includes('.example.com')
+          );
+          
+          console.log(`  🔍 Tree ${i}: hasQuestionnaire=${hasQuestionnaireData}, hasAnalysis=${hasAnalysisData}`);
+          
+          if (hasAnalysisData && !hasQuestionnaireData) {
+            console.log(`  ✅ Found analysis results in tree ${i}!`);
+            dataTree = tree;
+            foundAnalysisTree = true;
+            break;
+          }
+        }
+      }
+      
+      if (!foundAnalysisTree) {
+        console.log('❌ Could not find tree with analysis results, using nth(1) as fallback');
+        dataTree = allTrees.nth(1);
+      }
+      
+      await expect(dataTree).toBeVisible();
+      console.log('✅ Selected data tree for analysis');
+      
+      const dataRows = dataTree.locator('.monaco-list-row');
+      const dataRowCount = await dataRows.count();
+      console.log(`📊 Final selected tree has ${dataRowCount} data entries`);
+      
+      if (dataRowCount > 0) {
+        const dataTexts = await dataRows.allTextContents();
+        console.log('📋 carbonara.dataTree entries:', dataTexts);
+        
+        // STRICT CHECK: Look for ACTUAL analysis results, not just tool names
+        // We should see analysis data like URLs, scores, timestamps - NOT just tool names
+        
+        // First, check if we're seeing tools list instead of analysis results
+        const isShowingToolsList = dataTexts.some(text => 
+          text.includes('Built-in') || 
+          text.includes('Not installed') ||
+          text.includes('Installed')
+        );
+        
+        // Look for actual analysis result indicators from our test
+        console.log('🔍 Checking each text entry for analysis results:');
+        dataTexts.forEach((text, i) => {
+          console.log(`  ${i+1}. "${text}"`);
+          console.log(`     lowercase: "${text.toLowerCase()}"`);
+          console.log(`     includes 'test analysis': ${text.toLowerCase().includes('test analysis')}`);
+          console.log(`     includes 'test result': ${text.toLowerCase().includes('test result')}`);
+          console.log(`     includes '(url)': ${text.includes('(url)')}`);
+          console.log(`     includes '{res': ${text.includes('{res')}`);
+          console.log(`     date pattern match: ${text.match(/\d{2}\/\d{2}\/\d{4}/) ? 'YES' : 'NO'}`);
+        });
+        
+        const hasTestAnalysisResults = dataTexts.some(text => {
+          const lowerText = text.toLowerCase();
+          return (
+            // Look for our test analysis group or entries
+            lowerText.includes('test analysis') ||
+            // Look for any test domain variation (test-site, test-fix, etc.)
+            text.match(/test-[^.]+\.example\.com/) ||
+            lowerText.includes('test result') ||
+            // Look for timestamp patterns (from screenshot: "02/09/2025")
+            text.match(/\d{2}\/\d{2}\/\d{4}/)
+          );
+        });
+        
+        if (isShowingToolsList && !hasTestAnalysisResults) {
+          console.log('❌ Data Tree is showing tools list, NOT analysis results!');
+          console.log('🔍 This means the selector is targeting the wrong tree section');
+          
+          // FAIL THE TEST: We should see analysis results, not tools
+          expect(isShowingToolsList).toBe(false);
+          return; // Exit early since we have wrong content
+        }
+        
+        // ASSERTION: Must have actual test analysis results
+        if (!hasTestAnalysisResults) {
+          const expected = [
+            '"Test Analysis" (group name)',
+            '"test-*.example.com" (URL pattern)',
+            '"test result" (description)',
+            '"02/09/2025" (date pattern)'
+          ];
+          
+          const errorMessage = `Expected to find test analysis results in Data & Results tab.
+          
+Expected one of:
+${expected.map(e => `  - ${e}`).join('\n')}
+
+Found actual:
+${dataTexts.map((text, i) => `  [${i}] "${text}"`).join('\n')}`;
+
+          throw new Error(errorMessage);
+        }
+        
+        console.log('✅ Found test analysis results in Data Tree!');
+        expect(hasTestAnalysisResults).toBe(true);
+
+      } else {
+        console.log('⚠️ No data entries found - checking if database was created and analysis was saved');
+        
+        // Check if there's a "No data available" message vs actual empty state
+        const noDataMessage = dataTree.getByText(/No data/i);
+        const hasNoDataMessage = await noDataMessage.isVisible().catch(() => false);
+        
+        if (hasNoDataMessage) {
+          console.log('📋 Found "No data available" message - analysis may not have been saved to database');
+        } else {
+          console.log('📋 Data tree appears empty - may be loading or have display issues');
+        }
+      }
+      
+      console.log('🧪 Test Analyzer execution test completed!');
+      
+      // Wait 10 seconds for manual inspection before closing
+      console.log('⏳ Waiting 10 seconds for manual inspection...');
+      console.log('👀 You can now interact with the VSCode window to debug');
+      await vscode.window.waitForTimeout(10000);
+      console.log('⏰ 10 seconds elapsed, closing VSCode...');
+      
+    } finally {
+      await VSCodeLauncher.close(vscode);
+    }
+  });
+}); 

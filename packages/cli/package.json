@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc && npm run copy-assets",
-    "copy-assets": "mkdir -p dist/schemas && cp -r schemas/* dist/schemas/",
+    "copy-assets": "mkdir -p dist/schemas dist/registry && cp -r schemas/* dist/schemas/ && cp -r src/registry/* dist/registry/",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",

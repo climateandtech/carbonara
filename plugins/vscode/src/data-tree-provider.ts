@@ -128,6 +128,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     }
 
     async refresh(): Promise<void> {
+        console.log('🔄 DataTreeProvider.refresh() called - clearing cache and refreshing');
+        // Clear cached data to force reload from database
+        this.cachedItems = null;
         this._onDidChangeTreeData.fire();
     }
 

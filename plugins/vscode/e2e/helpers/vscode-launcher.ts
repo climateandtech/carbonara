@@ -76,7 +76,14 @@ export class VSCodeLauncher {
         env: {
           ...process.env,
           // Provide CLI path so extension can spawn it reliably
-          CARBONARA_CLI_PATH: path.join(extensionDevelopmentPath, '..', '..', 'packages', 'cli', 'dist', 'index.js')
+          CARBONARA_CLI_PATH: path.join(extensionDevelopmentPath, '..', '..', 'packages', 'cli', 'dist', 'index.js'),
+          // Mock external tool commands to ensure predictable E2E test results
+          // Override PATH to prevent actual tool detection, ensuring external tools show as "Not installed"
+          PATH: '/usr/bin:/bin:/usr/sbin:/sbin', // Basic system paths without npm global installs
+          // Disable npm global bin directory to prevent finding globally installed tools
+          NPM_CONFIG_PREFIX: '/tmp/nonexistent-npm-prefix',
+          // Set a flag that ToolsTreeProvider can check to force mock behavior
+          CARBONARA_E2E_TEST: 'true'
         } as { [key: string]: string }
       });
 

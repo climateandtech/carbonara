@@ -1,0 +1,253 @@
+{
+  "tools": [
+    {
+      "id": "co2-assessment",
+      "name": "CO2 Assessment",
+      "description": "Interactive CO2 sustainability assessment questionnaire",
+      "command": {
+        "executable": "built-in",
+        "args": [],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "built-in",
+        "package": "built-in",
+        "global": false,
+        "instructions": "Built-in assessment tool, no installation required"
+      },
+      "detection": {
+        "method": "built-in",
+        "target": "always-available"
+      },
+      "display": {
+        "category": "Sustainability Assessment",
+        "icon": "🌍",
+        "groupName": "CO2 Assessments",
+        "entryTemplate": "📊 Assessment - {date}",
+        "descriptionTemplate": "Score: {impactScore}/100",
+        "fields": [
+          {
+            "key": "impactScore",
+            "label": "📊 Overall Score",
+            "path": "data.impactScore",
+            "type": "number",
+            "format": "{value}/100"
+          },
+          {
+            "key": "estimatedUsers",
+            "label": "👥 Users",
+            "path": "data.projectScope.estimatedUsers",
+            "type": "number"
+          },
+          {
+            "key": "expectedTraffic",
+            "label": "📈 Traffic",
+            "path": "data.projectScope.expectedTraffic",
+            "type": "string"
+          },
+          {
+            "key": "hostingProvider",
+            "label": "🏗️ Hosting",
+            "path": "data.infrastructure.hostingProvider",
+            "type": "string"
+          },
+          {
+            "key": "carbonNeutralTarget",
+            "label": "🎯 Carbon Neutral",
+            "path": "data.sustainabilityGoals.carbonNeutralityTarget",
+            "type": "string"
+          }
+        ]
+      },
+      "options": []
+    },
+    {
+      "id": "test-analyzer",
+      "name": "Test Analyzer",
+      "description": "Test-only analyzer for E2E testing with predictable results",
+      "command": {
+        "executable": "built-in",
+        "args": [],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "built-in",
+        "package": "built-in",
+        "global": false,
+        "instructions": "Built-in test analyzer, no installation required"
+      },
+      "detection": {
+        "method": "built-in",
+        "target": "always-available"
+      },
+      "display": {
+        "category": "Test Tools",
+        "icon": "🧪",
+        "groupName": "Test Analysis",
+        "entryTemplate": "🧪 {url} - {date}",
+        "descriptionTemplate": "Test result: {result}",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 Test URL", 
+            "path": "data.url",
+            "type": "url",
+            "format": "domain-only"
+          },
+          {
+            "key": "result",
+            "label": "🧪 Test Result",
+            "path": "data.result",
+            "type": "string",
+            "format": "{value}"
+          }
+        ]
+      },
+      "options": []
+    },
+
+    {
+      "id": "greenframe",
+      "name": "GreenFrame",
+      "description": "Measure the carbon footprint of web applications",
+      "command": {
+        "executable": "npx",
+        "args": ["greenframe", "analyze", "{url}", "--format=json"],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "npm",
+        "package": "@marmelab/greenframe-cli",
+        "global": true,
+        "instructions": "npm install -g @marmelab/greenframe-cli"
+      },
+      "detection": {
+        "method": "command",
+        "target": "npx greenframe --help"
+      },
+      "display": {
+        "category": "Carbon Analysis",
+        "icon": "🌱",
+        "groupName": "GreenFrame Analysis",
+        "entryTemplate": "🔬 {url} - {date}",
+        "descriptionTemplate": "{carbonTotal}g CO2",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 URL",
+            "path": "data.url",
+            "type": "url"
+          },
+          {
+            "key": "carbonTotal",
+            "label": "🌱 Carbon",
+            "path": "data.results.carbon.total",
+            "type": "carbon",
+            "format": "{value}g CO2"
+          },
+          {
+            "key": "score",
+            "label": "📊 Score",
+            "path": "data.results.score",
+            "type": "number",
+            "format": "{value}/100"
+          },
+          {
+            "key": "loadTime",
+            "label": "⚡ Load Time",
+            "path": "data.results.performance.loadTime",
+            "type": "time",
+            "format": "{value}ms"
+          },
+          {
+            "key": "pageSize",
+            "label": "📊 Page Size",
+            "path": "data.results.performance.pageSize",
+            "type": "number",
+            "format": "{value}KB"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-s, --save",
+          "description": "Save results to data lake",
+          "type": "boolean"
+        },
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table)",
+          "type": "string",
+          "default": "table"
+        }
+      ]
+    },
+    {
+      "id": "impact-framework",
+      "name": "Impact Framework",
+      "description": "Green Software Foundation's impact measurement framework",
+      "command": {
+        "executable": "if-run",
+        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "outputFormat": "yaml"
+      },
+      "installation": {
+        "type": "npm",
+        "package": "@grnsft/if @tngtech/if-webpage-plugins",
+        "global": true,
+        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+      },
+      "detection": {
+        "method": "command",
+        "target": "if-run --help"
+      },
+      "display": {
+        "category": "Impact Analysis",
+        "icon": "⚡",
+        "groupName": "Impact Framework Analysis",
+        "entryTemplate": "🔍 {url} - {date}",
+        "descriptionTemplate": "Impact analysis",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 URL",
+            "path": "data.url",
+            "type": "url"
+          },
+          {
+            "key": "energy",
+            "label": "⚡ Energy",
+            "path": "data.results.energy",
+            "type": "energy",
+            "format": "{value} kWh"
+          },
+          {
+            "key": "carbon",
+            "label": "🌱 Carbon",
+            "path": "data.results.carbon",
+            "type": "carbon",
+            "format": "{value}g CO2"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-s, --save",
+          "description": "Save results to data lake",
+          "type": "boolean"
+        },
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table)",
+          "type": "string",
+          "default": "table"
+        },
+        {
+          "flag": "--scroll-to-bottom",
+          "description": "Scroll to bottom of page during analysis",
+          "type": "boolean"
+        }
+      ]
+    }
+  ]
+}

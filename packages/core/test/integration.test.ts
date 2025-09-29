@@ -52,7 +52,7 @@ describe('Carbonara Core Integration', () => {
       // Check CO2 assessment group
       const co2Group = groups.find((g: any) => g.toolName === 'co2-assessment');
       expect(co2Group).toBeDefined();
-      expect(co2Group?.displayName).toBe('Analysis results from co2-assessment');
+      expect(co2Group?.displayName).toBe('🌍 CO2 Assessments');
       expect(co2Group?.entries).toHaveLength(1);
 
       // 4. Test detailed data extraction
@@ -66,8 +66,8 @@ describe('Carbonara Core Integration', () => {
       const impactScoreDetail = details.find((d: any) => d.key === 'impactScore');
       expect(impactScoreDetail?.label).toContain('75'); // Contains the score value
       
-      const projectScopeDetail = details.find((d: any) => d.key === 'projectScope');
-      expect(projectScopeDetail?.label).toBeDefined(); // Basic formatting without rich icons
+      const estimatedUsersDetail = details.find((d: any) => d.key === 'estimatedUsers');
+      expect(estimatedUsersDetail?.label).toBeDefined(); // Basic formatting without rich icons
 
       // 5. Test project stats
       const stats = await vscodeProvider.getProjectStats('/test/e2e');
