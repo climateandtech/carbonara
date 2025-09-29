@@ -4,9 +4,11 @@ src/
 *.map
 
 # Build artifacts
-out/
 node_modules/
 .vscode-test/
+out/**/*.map
+out/test/
+.turbo/
 
 # Development files
 .git/
@@ -23,6 +25,7 @@ webpack.config.js
 # Test files
 test/
 **/*.test.*
+e2e/
 
 # Documentation (except README)
 *.md

@@ -1,7 +1,6 @@
 # Build outputs
 dist/
 out/
-test-build/
 
 # Dependencies
 node_modules/

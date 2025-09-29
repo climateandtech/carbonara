@@ -15,7 +15,7 @@ A VS Code extension for CO2 assessment and web sustainability analysis, integrat
 
 ### Method 1: Install from VSIX (Recommended)
 
-1. Download the `carbonara-vscode-1.0.0.vsix` file
+1. Download the `carbonara-vscode-0.1.0.vsix` file
 2. Open VS Code
 3. Open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
 4. Type "Extensions: Install from VSIX"
@@ -24,7 +24,7 @@ A VS Code extension for CO2 assessment and web sustainability analysis, integrat
 ### Method 2: Command Line Installation
 
 ```bash
-code --install-extension carbonara-vscode-1.0.0.vsix
+code --install-extension carbonara-vscode-0.1.0.vsix
 ```
 
 ## Prerequisites
@@ -46,6 +46,7 @@ The extension requires the Carbonara CLI tool to be available. It will automatic
 ### Available Commands
 
 Access commands via:
+
 - **Status Bar**: Click the Carbonara icon
 - **Command Palette**: Search for "Carbonara"
 - **Quick Pick Menu**: Use `Carbonara: Show Menu`
@@ -78,12 +79,14 @@ Access commands via:
 ### Status Bar Integration
 
 The status bar shows project status:
+
 - **$(pulse) Carbonara**: Project not initialized
 - **$(check) Carbonara**: Project initialized and ready
 
 ### Project Structure
 
 After initialization, your project will contain:
+
 ```
 your-project/
 ├── carbonara.config.json    # Project configuration
@@ -129,19 +132,25 @@ dist/
 ## Troubleshooting
 
 ### CLI Not Found
+
 If you see "Carbonara CLI not found":
+
 1. Ensure the CLI is installed: `npm install -g @carbonara/cli`
 2. Or ensure you're in a monorepo with the CLI at `packages/cli/`
 3. Check that Node.js is properly installed
 
 ### Project Not Initialized
+
 If commands show "No project found":
+
 1. Run **Initialize Project** first
 2. Ensure you're in a workspace folder
 3. Check that `carbonara.config.json` exists
 
 ### Database Errors
+
 If you see database-related errors:
+
 1. Check that `carbonara.db` exists in your project
 2. Try re-initializing the project
 3. Ensure proper file permissions
@@ -162,4 +171,4 @@ ISC License - see LICENSE file for details.
 
 - [Carbonara CLI Documentation](../../packages/cli/README.md)
 - [VS Code Extension API](https://code.visualstudio.com/api)
-- [Greenframe Documentation](https://greenframe.io) 
+- [Greenframe Documentation](https://greenframe.io)
