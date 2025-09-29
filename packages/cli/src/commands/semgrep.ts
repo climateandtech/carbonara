@@ -8,6 +8,11 @@ import type {
   SemgrepMatch,
   SemgrepServiceConfig,
 } from "@carbonara/core";
+import { fileURLToPath } from 'url';
+
+// ESM-compliant __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface SemgrepOptions {
   output: "json" | "table" | "sarif";
