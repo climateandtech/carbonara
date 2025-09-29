@@ -157,12 +157,8 @@ export class SemgrepService {
   /**
    * Run Semgrep analysis on a single file
    */
-  async analyzeFile(filePath: string, ruleFile?: string): Promise<SemgrepResult> {
+  async analyzeFile(filePath: string): Promise<SemgrepResult> {
     const args = [this.runnerPath, filePath, '--json'];
-    
-    if (ruleFile) {
-      args.push('--rule-file', ruleFile);
-    }
     
     args.push('--rules-dir', this.rulesDir);
     
@@ -204,12 +200,8 @@ export class SemgrepService {
   /**
    * Run Semgrep analysis on a directory
    */
-  async analyzeDirectory(dirPath: string, ruleFile?: string): Promise<SemgrepResult> {
+  async analyzeDirectory(dirPath: string): Promise<SemgrepResult> {
     const args = [this.runnerPath, dirPath, '--json'];
-    
-    if (ruleFile) {
-      args.push('--rule-file', ruleFile);
-    }
     
     args.push('--rules-dir', this.rulesDir);
     
@@ -251,12 +243,8 @@ export class SemgrepService {
   /**
    * Run Semgrep analysis on multiple targets
    */
-  async analyze(targets: string[], ruleFile?: string): Promise<SemgrepResult> {
+  async analyze(targets: string[]): Promise<SemgrepResult> {
     const args = [this.runnerPath, ...targets, '--json'];
-    
-    if (ruleFile) {
-      args.push('--rule-file', ruleFile);
-    }
     
     args.push('--rules-dir', this.rulesDir);
     

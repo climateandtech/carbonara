@@ -16,7 +16,6 @@ const __dirname = path.dirname(__filename);
 
 interface SemgrepOptions {
   output: "json" | "table" | "sarif";
-  ruleFile?: string;
   setup?: boolean;
   listRules?: boolean;
   severity?: string;
@@ -83,9 +82,9 @@ export async function semgrepCommand(
     // Run analysis
     let result: SemgrepResult;
     if (isDirectory) {
-      result = await semgrep.analyzeDirectory(targetPath, options?.ruleFile);
+      result = await semgrep.analyzeDirectory(targetPath);
     } else {
-      result = await semgrep.analyzeFile(targetPath, options?.ruleFile);
+      result = await semgrep.analyzeFile(targetPath);
     }
 
     spinner.succeed("Semgrep analysis completed!");
@@ -204,11 +203,7 @@ async function listAvailableRules(options: SemgrepOptions): Promise<void> {
       }
     }
 
-    console.log(
-      chalk.gray(
-        "\n💡 Use a rule with: carbonara semgrep <target> --rule-file <rule-name>"
-      )
-    );
+    
   } catch (error: any) {
     console.error(chalk.red("Error listing rules:"), error.message);
     process.exit(1);
@@ -473,7 +468,6 @@ function showHelp(): void {
   console.log(
     "  -o, --output <format>    Output format: table, json, sarif (default: table)"
   );
-  console.log("  -r, --rule-file <file>   Use specific rule file");
   console.log(
     "  -s, --severity <level>   Filter by severity: error, warning, info"
   );
@@ -496,9 +490,6 @@ function showHelp(): void {
   );
   console.log(
     "  carbonara semgrep ./src --severity error         # Show only errors"
-  );
-  console.log(
-    "  carbonara semgrep ./src --rule-file no-console   # Use specific rule"
   );
   console.log(
     "  carbonara semgrep --setup                        # Setup environment"
