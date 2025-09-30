@@ -201,7 +201,8 @@ Thumbs.db
 
 # Local development
 .turbo
-.npmrc 
+.npmrc
+mise.toml
 
 # Carbonara - User-generated files
 carbonara.config.json
