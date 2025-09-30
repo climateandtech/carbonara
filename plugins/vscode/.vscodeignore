@@ -7,7 +7,7 @@ src/
 node_modules/
 .vscode-test/
 out/**/*.map
-out/test/
+!out/cli
 .turbo/
 
 # Development files
@@ -27,6 +27,7 @@ webpack.config.js
 test/
 **/*.test.*
 e2e/
+out/test/
 
 # Documentation (except README)
 *.md
@@ -45,4 +46,4 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
