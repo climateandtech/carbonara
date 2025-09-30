@@ -806,7 +806,6 @@ async function runSemgrepOnFile() {
     }
 
     const output = vscode.window.createOutputChannel('Carbonara Semgrep');
-    output.show();
     output.appendLine(`Running Semgrep on ${path.basename(filePath)}...`);
 
     return vscode.window.withProgress({
