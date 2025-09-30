@@ -332,7 +332,7 @@
         },
         {
           "flag": "--save",
-          "description": "Save results to file",
+          "description": "Save results to database",
           "type": "boolean"
         },
         {

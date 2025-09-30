@@ -445,17 +445,76 @@ async function saveResults(
   result: SemgrepResult
 ): Promise<void> {
   try {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `semgrep-report-${timestamp}.json`;
-    const filepath = path.join(process.cwd(), filename);
+    // Import parser and database utilities
+    const { parseToolResults } = await import('../parsers/index.js');
+    const { createDataLake } = await import('../database/index.js');
+    const { loadProjectConfig } = await import('../utils/config.js');
 
-    fs.writeFileSync(filepath, JSON.stringify(result, null, 2));
+    const config = await loadProjectConfig();
+    if (!config) {
+      console.log(chalk.yellow('⚠️  No project found. Results not saved to database.'));
+      return;
+    }
 
-    console.log(chalk.green(`\n💾 Results saved to: ${filename}`));
+    const dataLake = createDataLake();
+    await dataLake.initialize();
+
+    // Ensure we have a valid project ID
+    let projectId = config.projectId;
+    
+    if (!projectId) {
+      console.log(chalk.blue('🔧 No project ID found, creating project in database...'));
+      
+      // Create project in database
+      const projectPath = process.cwd();
+      projectId = await dataLake.createProject(
+        config.name || 'Unnamed Project',
+        projectPath,
+        {
+          description: config.description,
+          projectType: config.projectType || 'web',
+          initialized: new Date().toISOString()
+        }
+      );
+      
+      // Update config with new project ID
+      const { saveProjectConfig } = await import('../utils/config.js');
+      const updatedConfig = { ...config, projectId };
+      saveProjectConfig(updatedConfig, projectPath);
+      
+      console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
+    }
+
+    // Parse Semgrep results into standardized format
+    const standardizedResult = parseToolResults('semgrep', result, target);
+
+    const assessmentData = {
+      // Keep original results for backward compatibility
+      target: target,
+      raw_results: JSON.stringify(result),
+      timestamp: new Date().toISOString(),
+      ...result,
+      
+      // Add standardized findings for highlighting
+      findings: standardizedResult.findings,
+      stats: standardizedResult.stats,
+      metadata: standardizedResult.metadata
+    };
+
+    await dataLake.storeAssessmentData(projectId, 'semgrep', 'code-analysis', assessmentData, target);
+    await dataLake.close();
+
+    console.log(chalk.green('✅ Semgrep results saved to database'));
+    
+    // Show summary of findings
+    if (standardizedResult.findings.length > 0) {
+      console.log(chalk.blue(`\n🔍 Found ${standardizedResult.findings.length} code issues`));
+      console.log(`   Errors: ${standardizedResult.stats.errorCount}`);
+      console.log(`   Warnings: ${standardizedResult.stats.warningCount}`);
+      console.log(`   Info: ${standardizedResult.stats.infoCount}`);
+    }
   } catch (error: any) {
-    console.error(
-      chalk.yellow(`\n⚠️  Could not save results: ${error.message}`)
-    );
+    console.error(chalk.red('❌ Failed to save to database:'), error.message);
   }
 }
 

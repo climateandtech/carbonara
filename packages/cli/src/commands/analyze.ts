@@ -340,19 +340,45 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
       console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
     }
 
+    // Import parser and standardize results
+    const { parseToolResults } = await import('../parsers/index.js');
+    const standardizedResult = parseToolResults(toolId, results, url);
+
+    // Determine data type based on tool
+    const dataType = isCodeAnalysisTool(toolId) ? 'code-analysis' : 'web-analysis';
+
     const assessmentData = {
+      // Keep original results for backward compatibility
       url: url,
       raw_results: JSON.stringify(results),
       timestamp: new Date().toISOString(),
-      // Extract commonly needed fields for schema templates
-      ...results  // Spread the results to make fields directly accessible
+      ...results,
+      
+      // Add standardized findings for highlighting
+      findings: standardizedResult.findings,
+      stats: standardizedResult.stats,
+      metadata: standardizedResult.metadata
     };
 
-    await dataLake.storeAssessmentData(projectId, toolId, 'web-analysis', assessmentData, url);
+    await dataLake.storeAssessmentData(projectId, toolId, dataType, assessmentData, url);
     await dataLake.close();
 
     console.log(chalk.green('\n✅ Results saved to project database'));
+    
+    // Show summary of findings if it's a code analysis tool
+    if (isCodeAnalysisTool(toolId) && standardizedResult.findings.length > 0) {
+      console.log(chalk.blue(`\n🔍 Found ${standardizedResult.findings.length} code issues`));
+      console.log(`   Errors: ${standardizedResult.stats.errorCount}`);
+      console.log(`   Warnings: ${standardizedResult.stats.warningCount}`);
+      console.log(`   Info: ${standardizedResult.stats.infoCount}`);
+    }
   } catch (error) {
     console.log(chalk.yellow('\n⚠️  Could not save results:'), error);
   }
+}
+
+// Helper function to determine if a tool is a code analysis tool
+function isCodeAnalysisTool(toolId: string): boolean {
+  const codeAnalysisTools = ['semgrep', 'megalinter', 'eslint', 'pylint', 'rubocop'];
+  return codeAnalysisTools.includes(toolId);
 }

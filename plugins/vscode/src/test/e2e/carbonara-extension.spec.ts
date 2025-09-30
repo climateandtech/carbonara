@@ -698,4 +698,89 @@ ${dataTexts.map((text, i) => `  [${i}] "${text}"`).join('\n')}`;
       await VSCodeLauncher.close(vscode);
     }
   });
+
+  test.describe('Unified Highlighting System', () => {
+    test('should initialize highlighting commands', async () => {
+      console.log('🔍 Testing highlighting commands...');
+      
+      // Check if highlighting commands are available
+      await vscode.window.click('[aria-label="Command Palette"]');
+      await vscode.window.fill('[aria-label="Command Palette"]', 'carbonara.runAnalysis');
+      await vscode.window.press('[aria-label="Command Palette"]', 'Enter');
+      
+      // Should not show error
+      const errorElements = await vscode.window.locator('.error').count();
+      expect(errorElements).toBe(0);
+    });
+
+    test('should run analysis and show results', async () => {
+      console.log('🔍 Testing analysis execution...');
+      
+      // Open a test file with issues
+      await vscode.window.click('[aria-label="Explorer"]');
+      await vscode.window.click('text=package.json');
+      
+      // Run analysis via command palette
+      await vscode.window.click('[aria-label="Command Palette"]');
+      await vscode.window.fill('[aria-label="Command Palette"]', 'carbonara.runAnalysis');
+      await vscode.window.press('[aria-label="Command Palette"]', 'Enter');
+      
+      // Wait for analysis to complete
+      await vscode.window.waitForTimeout(3000);
+      
+      // Check if problems panel shows results
+      await vscode.window.click('[aria-label="Problems"]');
+      await vscode.window.waitForTimeout(1000);
+      
+      // Should have some diagnostics (even if just warnings)
+      const problemElements = await vscode.window.locator('.monaco-list-row').count();
+      expect(problemElements).toBeGreaterThan(0);
+    });
+
+    test('should toggle database storage', async () => {
+      console.log('🔍 Testing database storage toggle...');
+      
+      // Toggle storage off
+      await vscode.window.click('[aria-label="Command Palette"]');
+      await vscode.window.fill('[aria-label="Command Palette"]', 'carbonara.toggleStoreToDatabase');
+      await vscode.window.press('[aria-label="Command Palette"]', 'Enter');
+      
+      // Should show notification
+      const notification = await vscode.window.locator('.notification-toast').first();
+      await expect(notification).toBeVisible();
+      
+      // Toggle back on
+      await vscode.window.click('[aria-label="Command Palette"]');
+      await vscode.window.fill('[aria-label="Command Palette"]', 'carbonara.toggleStoreToDatabase');
+      await vscode.window.press('[aria-label="Command Palette"]', 'Enter');
+    });
+
+    test('should clear highlights', async () => {
+      console.log('🔍 Testing highlight clearing...');
+      
+      // Clear highlights
+      await vscode.window.click('[aria-label="Command Palette"]');
+      await vscode.window.fill('[aria-label="Command Palette"]', 'carbonara.clearHighlights');
+      await vscode.window.press('[aria-label="Command Palette"]', 'Enter');
+      
+      // Should not show error
+      const errorElements = await vscode.window.locator('.error').count();
+      expect(errorElements).toBe(0);
+    });
+
+    test('should show hover information for findings', async () => {
+      console.log('🔍 Testing hover information...');
+      
+      // Open a file with potential issues
+      await vscode.window.click('[aria-label="Explorer"]');
+      await vscode.window.click('text=package.json');
+      
+      // Hover over a line
+      await vscode.window.hover('.view-line');
+      
+      // Should show hover information
+      const hoverElement = await vscode.window.locator('.monaco-hover');
+      await expect(hoverElement).toBeVisible();
+    });
+  });
 }); 
