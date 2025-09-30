@@ -121,7 +121,7 @@
         {
           "id": "carbonara",
           "title": "Carbonara",
-          "icon": "$(leaf)"
+          "icon": "icon.svg"
         }
       ]
     },

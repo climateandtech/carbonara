@@ -16,6 +16,7 @@ out/test/
 .eslintrc.json
 tsconfig.json
 webpack.config.js
+.claude/
 
 # Parent directory files (monorepo structure)
 ../**
