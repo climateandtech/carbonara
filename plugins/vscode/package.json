@@ -114,6 +114,11 @@
         "command": "carbonara.analyzeTool",
         "title": "Analyze with Tool",
         "icon": "$(play)"
+      },
+      {
+        "command": "carbonara.runSemgrep",
+        "title": "Run Semgrep on Current File",
+        "icon": "$(search)"
       }
     ],
     "viewsContainers": {
@@ -190,6 +195,19 @@
           "command": "carbonara.analyzeTool",
           "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
           "group": "inline"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "carbonara.runSemgrep",
+          "group": "carbonara",
+          "when": "editorTextFocus"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "carbonara.runSemgrep",
+          "when": "editorIsOpen"
         }
       ]
     },

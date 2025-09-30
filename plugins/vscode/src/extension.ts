@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import { AssessmentTreeProvider } from './assessment-tree-provider';
 import { DataTreeProvider } from './data-tree-provider';
 import { ToolsTreeProvider } from './tools-tree-provider';
+import type { SemgrepMatch, SemgrepResult } from '@carbonara/core';
 
 
 let carbonaraStatusBar: vscode.StatusBarItem;
@@ -14,6 +15,39 @@ let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
 
 let currentProjectPath: string | null = null;
+
+// Store semgrep results for DocumentHighlight
+const semgrepResults = new Map<string, SemgrepMatch[]>();
+
+class SemgrepHighlightProvider implements vscode.DocumentHighlightProvider {
+    provideDocumentHighlights(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.DocumentHighlight[]> {
+        const matches = semgrepResults.get(document.uri.fsPath);
+        if (!matches) {
+            return [];
+        }
+
+        const highlights: vscode.DocumentHighlight[] = [];
+        for (const match of matches) {
+            const range = new vscode.Range(
+                match.start_line - 1,
+                match.start_column,
+                match.end_line - 1,
+                match.end_column
+            );
+
+            // Only highlight if the position is within this range
+            if (range.contains(position)) {
+                highlights.push(new vscode.DocumentHighlight(range));
+            }
+        }
+
+        return highlights;
+    }
+}
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Carbonara extension is now active!');
@@ -59,11 +93,20 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('carbonara.viewTools', viewTools),
         vscode.commands.registerCommand('carbonara.refreshTools', () => toolsTreeProvider.refresh()),
         vscode.commands.registerCommand('carbonara.installTool', (toolId) => toolsTreeProvider.installTool(toolId)),
-        vscode.commands.registerCommand('carbonara.analyzeTool', (toolId) => toolsTreeProvider.analyzeTool(toolId))
+        vscode.commands.registerCommand('carbonara.analyzeTool', (toolId) => toolsTreeProvider.analyzeTool(toolId)),
+        vscode.commands.registerCommand('carbonara.runSemgrep', runSemgrepOnFile)
 
     ];
 
     context.subscriptions.push(carbonaraStatusBar, ...commands);
+
+    // Register DocumentHighlightProvider for all languages
+    context.subscriptions.push(
+        vscode.languages.registerDocumentHighlightProvider(
+            { scheme: 'file' },
+            new SemgrepHighlightProvider()
+        )
+    );
 
     // Watch for project config changes and refresh views/status accordingly
     const watcher = vscode.workspace.createFileSystemWatcher('**/carbonara.config.json');
@@ -766,7 +809,7 @@ function checkProjectStatus() {
 
     const projectPath = getCurrentProjectPath();
     const configPath = path.join(projectPath, 'carbonara.config.json');
-    
+
     if (fs.existsSync(configPath)) {
         carbonaraStatusBar.text = "$(check) Carbonara";
         carbonaraStatusBar.tooltip = "Carbonara project initialized";
@@ -779,4 +822,127 @@ function checkProjectStatus() {
         assessmentTreeProvider.refresh();
         dataTreeProvider.refresh();
     }
+}
+
+async function runSemgrepOnFile() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage('No file is currently open');
+        return;
+    }
+
+    const filePath = editor.document.uri.fsPath;
+
+    // Save the document if it has unsaved changes
+    if (editor.document.isDirty) {
+        await editor.document.save();
+    }
+
+    const output = vscode.window.createOutputChannel('Carbonara Semgrep');
+    output.show();
+    output.appendLine(`Running Semgrep on ${path.basename(filePath)}...`);
+
+    return vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Running Semgrep analysis...',
+        cancellable: true
+    }, async (progress, token) => {
+        return new Promise<void>((resolve) => {
+            const resolved = resolveCarbonaraCli();
+
+            if (!resolved) {
+                output.appendLine('Error: Carbonara CLI not found');
+                vscode.window.showErrorMessage('Carbonara CLI not found. Please install it first.');
+                resolve();
+                return;
+            }
+
+            const args = ['semgrep', filePath, '--output', 'json'];
+            let child: import('child_process').ChildProcess;
+
+            if (resolved.mode === 'path') {
+                if (resolved.path.endsWith('.js')) {
+                    child = spawn('node', [resolved.path, ...args], { stdio: 'pipe' });
+                } else {
+                    child = spawn(resolved.path, args, { stdio: 'pipe' });
+                }
+            } else {
+                child = spawn('carbonara', args, { stdio: 'pipe' });
+            }
+
+            let stdoutData = '';
+            let stderrData = '';
+
+            token.onCancellationRequested(() => {
+                output.appendLine('Analysis cancelled by user');
+                try { child.kill(); } catch {}
+            });
+
+            child.stdout?.on('data', (data) => {
+                stdoutData += data.toString();
+            });
+
+            child.stderr?.on('data', (data) => {
+                const text = data.toString();
+                stderrData += text;
+                output.append(text);
+            });
+
+            child.on('close', (code) => {
+                if (code === 0 || stdoutData) {
+                    try {
+                        const result: SemgrepResult = JSON.parse(stdoutData);
+
+                        // Store results for DocumentHighlight
+                        semgrepResults.set(filePath, result.matches);
+
+                        // Display summary
+                        output.appendLine(`\nAnalysis complete!`);
+                        output.appendLine(`Files scanned: ${result.stats.files_scanned}`);
+                        output.appendLine(`Total findings: ${result.stats.total_matches}`);
+                        output.appendLine(`  Errors: ${result.stats.error_count}`);
+                        output.appendLine(`  Warnings: ${result.stats.warning_count}`);
+                        output.appendLine(`  Info: ${result.stats.info_count}`);
+
+                        if (result.matches.length > 0) {
+                            output.appendLine(`\nFindings:`);
+                            result.matches.forEach((match, index) => {
+                                output.appendLine(`\n${index + 1}. [${match.severity}] ${match.rule_id}`);
+                                output.appendLine(`   ${filePath}:${match.start_line}:${match.start_column}`);
+                                output.appendLine(`   ${match.message}`);
+                            });
+
+                            vscode.window.showWarningMessage(
+                                `Semgrep found ${result.stats.total_matches} issue(s). Check Output for details.`,
+                                'View Output'
+                            ).then(selection => {
+                                if (selection === 'View Output') {
+                                    output.show();
+                                }
+                            });
+                        } else {
+                            output.appendLine('\n✓ No issues found!');
+                            vscode.window.showInformationMessage('Semgrep: No issues found!');
+                        }
+                    } catch (error) {
+                        output.appendLine(`Error parsing Semgrep results: ${error}`);
+                        vscode.window.showErrorMessage('Failed to parse Semgrep results');
+                    }
+                } else {
+                    output.appendLine(`\nSemgrep failed with exit code ${code}`);
+                    if (stderrData) {
+                        output.appendLine(stderrData);
+                    }
+                    vscode.window.showErrorMessage(`Semgrep analysis failed. Check Output for details.`);
+                }
+                resolve();
+            });
+
+            child.on('error', (err) => {
+                output.appendLine(`Failed to start Semgrep: ${err.message}`);
+                vscode.window.showErrorMessage('Failed to run Semgrep. Is Carbonara CLI installed?');
+                resolve();
+            });
+        });
+    });
 } 
