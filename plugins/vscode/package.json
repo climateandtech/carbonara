@@ -119,6 +119,10 @@
         "command": "carbonara.runSemgrep",
         "title": "Run Semgrep on Current File",
         "icon": "$(search)"
+      },
+      {
+        "command": "carbonara.clearSemgrepResults",
+        "title": "Clear Semgrep Results"
       }
     ],
     "viewsContainers": {

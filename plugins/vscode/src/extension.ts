@@ -16,41 +16,15 @@ let toolsTreeProvider: ToolsTreeProvider;
 
 let currentProjectPath: string | null = null;
 
-// Store semgrep results for DocumentHighlight
-const semgrepResults = new Map<string, SemgrepMatch[]>();
-
-class SemgrepHighlightProvider implements vscode.DocumentHighlightProvider {
-    provideDocumentHighlights(
-        document: vscode.TextDocument,
-        position: vscode.Position,
-        token: vscode.CancellationToken
-    ): vscode.ProviderResult<vscode.DocumentHighlight[]> {
-        const matches = semgrepResults.get(document.uri.fsPath);
-        if (!matches) {
-            return [];
-        }
-
-        const highlights: vscode.DocumentHighlight[] = [];
-        for (const match of matches) {
-            const range = new vscode.Range(
-                match.start_line - 1,
-                match.start_column,
-                match.end_line - 1,
-                match.end_column
-            );
-
-            // Only highlight if the position is within this range
-            if (range.contains(position)) {
-                highlights.push(new vscode.DocumentHighlight(range));
-            }
-        }
-
-        return highlights;
-    }
-}
+// Diagnostics collection for Semgrep results
+let semgrepDiagnostics: vscode.DiagnosticCollection;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Carbonara extension is now active!');
+
+    // Create diagnostics collection for Semgrep
+    semgrepDiagnostics = vscode.languages.createDiagnosticCollection('semgrep');
+    context.subscriptions.push(semgrepDiagnostics);
 
     // Create status bar item
     carbonaraStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -94,19 +68,12 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('carbonara.refreshTools', () => toolsTreeProvider.refresh()),
         vscode.commands.registerCommand('carbonara.installTool', (toolId) => toolsTreeProvider.installTool(toolId)),
         vscode.commands.registerCommand('carbonara.analyzeTool', (toolId) => toolsTreeProvider.analyzeTool(toolId)),
-        vscode.commands.registerCommand('carbonara.runSemgrep', runSemgrepOnFile)
+        vscode.commands.registerCommand('carbonara.runSemgrep', runSemgrepOnFile),
+        vscode.commands.registerCommand('carbonara.clearSemgrepResults', clearSemgrepResults)
 
     ];
 
     context.subscriptions.push(carbonaraStatusBar, ...commands);
-
-    // Register DocumentHighlightProvider for all languages
-    context.subscriptions.push(
-        vscode.languages.registerDocumentHighlightProvider(
-            { scheme: 'file' },
-            new SemgrepHighlightProvider()
-        )
-    );
 
     // Watch for project config changes and refresh views/status accordingly
     const watcher = vscode.workspace.createFileSystemWatcher('**/carbonara.config.json');
@@ -893,8 +860,35 @@ async function runSemgrepOnFile() {
                     try {
                         const result: SemgrepResult = JSON.parse(stdoutData);
 
-                        // Store results for DocumentHighlight
-                        semgrepResults.set(filePath, result.matches);
+                        // Convert Semgrep results to VSCode diagnostics
+                        const diagnostics: vscode.Diagnostic[] = result.matches.map(match => {
+                            const range = new vscode.Range(
+                                match.start_line - 1,
+                                match.start_column,
+                                match.end_line - 1,
+                                match.end_column
+                            );
+
+                            // Map severity
+                            let severity: vscode.DiagnosticSeverity;
+                            if (match.severity === 'ERROR') {
+                                severity = vscode.DiagnosticSeverity.Error;
+                            } else if (match.severity === 'WARNING') {
+                                severity = vscode.DiagnosticSeverity.Warning;
+                            } else {
+                                severity = vscode.DiagnosticSeverity.Information;
+                            }
+
+                            const diagnostic = new vscode.Diagnostic(range, match.message, severity);
+                            diagnostic.source = 'semgrep';
+                            diagnostic.code = match.rule_id;
+
+                            return diagnostic;
+                        });
+
+                        // Apply diagnostics to the document
+                        const uri = vscode.Uri.file(filePath);
+                        semgrepDiagnostics.set(uri, diagnostics);
 
                         // Display summary
                         output.appendLine(`\nAnalysis complete!`);
@@ -913,7 +907,7 @@ async function runSemgrepOnFile() {
                             });
 
                             vscode.window.showWarningMessage(
-                                `Semgrep found ${result.stats.total_matches} issue(s). Check Output for details.`,
+                                `Semgrep found ${result.stats.total_matches} issue(s). Underlines added to code.`,
                                 'View Output'
                             ).then(selection => {
                                 if (selection === 'View Output') {
@@ -922,6 +916,8 @@ async function runSemgrepOnFile() {
                             });
                         } else {
                             output.appendLine('\n✓ No issues found!');
+                            // Clear any previous diagnostics
+                            semgrepDiagnostics.set(uri, []);
                             vscode.window.showInformationMessage('Semgrep: No issues found!');
                         }
                     } catch (error) {
@@ -945,4 +941,9 @@ async function runSemgrepOnFile() {
             });
         });
     });
+}
+
+function clearSemgrepResults() {
+    semgrepDiagnostics.clear();
+    vscode.window.showInformationMessage('Semgrep results cleared');
 } 
