@@ -4,9 +4,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import initSqlJs, { Database } from "sql.js";
 import { spawn } from 'child_process';
-import { mapFindingToCategory } from '../../packages/cli/src/parsers/category-mapping.js';
+import { setupCarbonaraCore } from '@carbonara/core';
 
 // Interface for highlight data
 interface CodeHighlight {
@@ -44,10 +43,9 @@ interface ProjectConfig {
 
 export class UnifiedHighlighter {
   private context: vscode.ExtensionContext;
-  private db: Database | null = null;
-  private SQL: any;
+  private coreServices: Awaited<ReturnType<typeof setupCarbonaraCore>> | null = null;
   private diagnosticCollection: vscode.DiagnosticCollection;
-  private decorationTypes: Map<string, vscode.TextEditorDecorationType>;
+  private decorationTypes!: Map<string, vscode.TextEditorDecorationType>;
   private activeDecorations: Map<string, vscode.DecorationOptions[]> = new Map();
   private dbPath: string = "";
   private projectId: number | null = null;
@@ -63,22 +61,52 @@ export class UnifiedHighlighter {
 
     // Initialize decoration types for different severities
     this.initializeDecorationTypes();
+    
+    // Initialize core services
+    this.initializeCoreServices();
+  }
+
+  private async initializeCoreServices(): Promise<void> {
+    try {
+      console.log('🔧 Initializing core services...');
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        console.log('❌ No workspace folder available for core services');
+        return;
+      }
+
+      const dbPath = path.join(workspaceFolder.uri.fsPath, 'carbonara.db');
+      console.log(`🔧 Setting up core services with dbPath: ${dbPath}`);
+      this.coreServices = await setupCarbonaraCore({ dbPath });
+      console.log('✅ Core services initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize core services:', error);
+      console.error('❌ Error details:', error);
+    }
   }
 
   async initialize(): Promise<void> {
-    await this.initializeDatabase();
-    
+    // Core services are initialized in constructor
     // Listen for document changes to trigger analysis
     vscode.workspace.onDidSaveTextDocument((document) => {
+      console.log(`📁 File saved: ${document.fileName}`);
       this.runAnalysis(document);
     });
 
     // Listen for active editor changes
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (editor) {
+        console.log(`📁 Active editor changed: ${editor.document.fileName}`);
         this.runAnalysis(editor.document);
       }
     });
+
+    // Also trigger analysis on the currently active file when extension loads
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+      console.log(`📁 Initial analysis for: ${activeEditor.document.fileName}`);
+      this.runAnalysis(activeEditor.document);
+    }
   }
 
   private initializeDecorationTypes(): void {
@@ -151,44 +179,6 @@ export class UnifiedHighlighter {
     });
   }
 
-  private async initializeDatabase(): Promise<void> {
-    try {
-      this.SQL = await initSqlJs();
-      
-      // Find project config and database
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) return;
-
-      const configPath = path.join(workspaceFolder.uri.fsPath, 'carbonara.config.json');
-      if (!fs.existsSync(configPath)) return;
-
-      const configContent = fs.readFileSync(configPath, 'utf-8');
-      const config: ProjectConfig = JSON.parse(configContent);
-      this.projectId = config.projectId;
-
-      // Find database file
-      const possibleDbPaths = [
-        path.join(workspaceFolder.uri.fsPath, 'carbonara.db'),
-        path.join(workspaceFolder.uri.fsPath, '.carbonara', 'carbonara.db'),
-        config.database?.path
-      ].filter(Boolean);
-
-      for (const dbPath of possibleDbPaths) {
-        if (fs.existsSync(dbPath)) {
-          this.dbPath = dbPath;
-          break;
-        }
-      }
-
-      if (this.dbPath) {
-        const dbBuffer = fs.readFileSync(this.dbPath);
-        this.db = new this.SQL.Database(dbBuffer);
-        console.log('✅ Database initialized for unified highlighter');
-      }
-    } catch (error) {
-      console.error('Failed to initialize database:', error);
-    }
-  }
 
   // ANALYSIS LAYER: Run linters and optionally store to database
   async runAnalysis(document: vscode.TextDocument): Promise<void> {
@@ -211,6 +201,153 @@ export class UnifiedHighlighter {
 
     // Run analysis
     await this.runToolAnalysis(toolId, filePath);
+  }
+
+  // Public method for manual analysis trigger
+  async runAnalysisOnActiveFile(): Promise<void> {
+    console.log('🚀 runAnalysisOnActiveFile called');
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      console.log('❌ No active text editor');
+      vscode.window.showErrorMessage('No file is currently open');
+      return;
+    }
+    console.log(`📁 Active file: ${editor.document.fileName}`);
+
+    const filePath = editor.document.uri.fsPath;
+
+    // Save the document if it has unsaved changes
+    if (editor.document.isDirty) {
+      await editor.document.save();
+    }
+
+    const output = vscode.window.createOutputChannel('Carbonara Analysis');
+    output.appendLine(`Running analysis on ${path.basename(filePath)}...`);
+
+    return vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: 'Running analysis...',
+      cancellable: true
+    }, async (progress, token) => {
+      return new Promise<void>((resolve) => {
+        // Run Semgrep directly
+        const child = spawn('semgrep', ['--config', 'auto', '--json', filePath], { stdio: 'pipe' });
+
+        let stdoutData = '';
+        let stderrData = '';
+
+        token.onCancellationRequested(() => {
+          output.appendLine('Analysis cancelled by user');
+          try { child.kill(); } catch {}
+        });
+
+        child.stdout?.on('data', (data) => {
+          stdoutData += data.toString();
+        });
+
+        child.stderr?.on('data', (data) => {
+          const text = data.toString();
+          stderrData += text;
+          output.append(text);
+        });
+
+        child.on('close', async (code) => {
+          if (code === 0 || stdoutData) {
+            try {
+              const result = JSON.parse(stdoutData);
+
+              // Convert Semgrep results to VSCode diagnostics
+              const diagnostics: vscode.Diagnostic[] = result.matches.map((match: any) => {
+                const range = new vscode.Range(
+                  match.start_line - 1,
+                  match.start_column,
+                  match.end_line - 1,
+                  match.end_column
+                );
+
+                // Map severity
+                let severity: vscode.DiagnosticSeverity;
+                if (match.severity === 'ERROR') {
+                  severity = vscode.DiagnosticSeverity.Error;
+                } else if (match.severity === 'WARNING') {
+                  severity = vscode.DiagnosticSeverity.Warning;
+                } else {
+                  severity = vscode.DiagnosticSeverity.Information;
+                }
+
+                const diagnostic = new vscode.Diagnostic(range, match.message, severity);
+                diagnostic.source = 'carbonara';
+                diagnostic.code = match.rule_id;
+
+                return diagnostic;
+              });
+
+              // Apply diagnostics to the document
+              const uri = vscode.Uri.file(filePath);
+              console.log(`🔍 Setting ${diagnostics.length} diagnostics for file: ${filePath}`);
+              console.log(`🔍 Diagnostic details:`, diagnostics.map(d => ({ message: d.message, severity: d.severity, range: d.range })));
+              this.diagnosticCollection.set(uri, diagnostics);
+
+              // Display summary
+              output.appendLine(`\nAnalysis complete!`);
+              output.appendLine(`Files scanned: ${result.stats.files_scanned}`);
+              output.appendLine(`Total findings: ${result.stats.total_matches}`);
+              output.appendLine(`  Errors: ${result.stats.error_count}`);
+              output.appendLine(`  Warnings: ${result.stats.warning_count}`);
+              output.appendLine(`  Info: ${result.stats.info_count}`);
+
+              if (result.matches.length > 0) {
+                output.appendLine(`\nFindings:`);
+                result.matches.forEach((match: any, index: number) => {
+                  output.appendLine(`\n${index + 1}. [${match.severity}] ${match.rule_id}`);
+                  output.appendLine(`   ${filePath}:${match.start_line}:${match.start_column}`);
+                  output.appendLine(`   ${match.message}`);
+                });
+
+                vscode.window.showWarningMessage(
+                  `Analysis found ${result.stats.total_matches} issue(s). Check Problems panel.`,
+                  'View Output'
+                ).then(selection => {
+                  if (selection === 'View Output') {
+                    output.show();
+                  }
+                });
+              } else {
+                output.appendLine('\n✓ No issues found!');
+                // Clear any previous diagnostics
+                this.diagnosticCollection.set(uri, []);
+                vscode.window.showInformationMessage('Analysis: No issues found!');
+              }
+
+              // Store to database if enabled
+              if (this.storeToDatabase) {
+                await this.storeAnalysisResults('semgrep', filePath, result);
+              }
+
+              // Also update highlights from database to show any stored results
+              await this.updateHighlightsFromDatabase();
+
+            } catch (error) {
+              output.appendLine(`Error parsing analysis results: ${error}`);
+              vscode.window.showErrorMessage('Failed to parse analysis results');
+            }
+          } else {
+            output.appendLine(`\nAnalysis failed with exit code ${code}`);
+            if (stderrData) {
+              output.appendLine(stderrData);
+            }
+            vscode.window.showErrorMessage(`Analysis failed. Check Output for details.`);
+          }
+          resolve();
+        });
+
+        child.on('error', (err) => {
+          output.appendLine(`Failed to start analysis: ${err.message}`);
+          vscode.window.showErrorMessage('Failed to run analysis. Is Semgrep installed?');
+          resolve();
+        });
+      });
+    });
   }
 
   private isSupportedFile(document: vscode.TextDocument): boolean {
@@ -291,35 +428,48 @@ export class UnifiedHighlighter {
 
   private async storeAnalysisResults(toolId: string, filePath: string, rawResult: any): Promise<void> {
     try {
-      // Import the CLI's database functionality
-      const { createDataLake } = await import('../../packages/cli/src/database/index.js');
-      const { loadProjectConfig } = await import('../../packages/cli/src/utils/config.js');
-      const { parseToolResults } = await import('../../packages/cli/src/parsers/index.js');
-
-      const config = await loadProjectConfig();
-      if (!config?.projectId) {
-        console.log('No project found, skipping database save');
+      if (!this.coreServices?.dataService) {
+        console.log('Core services not available, skipping database save');
         return;
       }
 
-      const dataLake = createDataLake();
-      await dataLake.initialize();
-
-      // Parse results into standardized format
-      const standardizedResult = parseToolResults(toolId, rawResult, filePath);
-
+      // For now, store raw results - parsing will be handled by CLI
       const assessmentData = {
         target: filePath,
         raw_results: JSON.stringify(rawResult),
         timestamp: new Date().toISOString(),
-        ...rawResult,
-        findings: standardizedResult.findings,
-        stats: standardizedResult.stats,
-        metadata: standardizedResult.metadata
+        toolId,
+        dataType: 'code-analysis'
       };
 
-      await dataLake.storeAssessmentData(config.projectId, toolId, 'code-analysis', assessmentData, filePath);
-      await dataLake.close();
+      // Get project ID from workspace
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        console.log('No workspace folder found');
+        return;
+      }
+
+      // Create or get project
+      let project = await this.coreServices.dataService.getProject(workspaceFolder.uri.fsPath);
+      
+      if (!project) {
+        const projectId = await this.coreServices.dataService.createProject(
+          path.basename(workspaceFolder.uri.fsPath),
+          workspaceFolder.uri.fsPath,
+          { type: 'web' }
+        );
+        project = await this.coreServices.dataService.getProject(workspaceFolder.uri.fsPath);
+      }
+
+      if (project) {
+        await this.coreServices.dataService.storeAssessmentData(
+          project.id,
+          toolId,
+          'code-analysis',
+          assessmentData,
+          filePath
+        );
+      }
 
       console.log(`✅ ${toolId} results saved to database`);
     } catch (error) {
@@ -329,7 +479,7 @@ export class UnifiedHighlighter {
 
   // DISPLAY LAYER: Show results from database
   private async displayResults(toolId: string, filePath: string): Promise<void> {
-    if (this.storeToDatabase && this.db) {
+    if (this.storeToDatabase && this.coreServices?.dataService) {
       // Display from database
       await this.updateHighlightsFromDatabase();
     } else {
@@ -340,50 +490,70 @@ export class UnifiedHighlighter {
   }
 
   private async updateHighlightsFromDatabase(): Promise<void> {
-    if (!this.db || !this.projectId) return;
+    console.log('🔍 updateHighlightsFromDatabase called');
+    if (!this.coreServices?.dataService) {
+      console.log('❌ Core services not available');
+      return;
+    }
 
     try {
-      const assessmentData = await this.loadAssessmentData();
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        console.log('❌ No workspace folder');
+        return;
+      }
+
+      const project = await this.coreServices.dataService.getProject(workspaceFolder.uri.fsPath);
+      if (!project) {
+        console.log('❌ No project found');
+        return;
+      }
+
+      console.log(`📁 Project found: ${project.id}`);
+      const assessmentData = await this.coreServices.dataService.getAssessmentData(project.id, 'code-analysis');
+      console.log(`📊 Loaded ${assessmentData.length} assessment data entries`);
       const highlights = this.extractHighlightsFromAssessmentData(assessmentData);
+      console.log(`🎨 Extracted ${highlights.length} highlights`);
       
-      // Update highlights for all open documents
+      // Group highlights by file for Problems panel
+      const highlightsByFile = new Map<string, CodeHighlight[]>();
+      for (const highlight of highlights) {
+        if (!highlightsByFile.has(highlight.file_path)) {
+          highlightsByFile.set(highlight.file_path, []);
+        }
+        highlightsByFile.get(highlight.file_path)!.push(highlight);
+      }
+
+      // Update diagnostics for Problems panel
+      for (const [filePath, fileHighlights] of highlightsByFile) {
+        const uri = vscode.Uri.file(filePath);
+        const diagnostics: vscode.Diagnostic[] = fileHighlights.map(highlight => {
+          const range = new vscode.Range(
+            new vscode.Position(Math.max(0, highlight.start_line - 1), Math.max(0, highlight.start_column - 1)),
+            new vscode.Position(Math.max(0, highlight.end_line - 1), Math.max(0, highlight.end_column - 1))
+          );
+
+          const diagnostic = new vscode.Diagnostic(range, highlight.message, this.mapSeverityToVSCode(highlight.severity));
+          diagnostic.source = 'carbonara';
+          diagnostic.code = highlight.category;
+          return diagnostic;
+        });
+
+        // Apply diagnostics to Problems panel
+        this.diagnosticCollection.set(uri, diagnostics);
+      }
+      
+      // Update visual decorations for open documents
       const openDocuments = vscode.workspace.textDocuments;
       for (const document of openDocuments) {
-        await this.updateDocumentHighlights(document, highlights);
+        const documentHighlights = highlightsByFile.get(document.uri.fsPath) || [];
+        await this.updateDocumentDecorations(document, documentHighlights);
       }
     } catch (error) {
       console.error('Failed to update highlights from database:', error);
     }
   }
 
-  private async loadAssessmentData(): Promise<AssessmentData[]> {
-    if (!this.db || !this.projectId) return [];
-
-    try {
-      const query = `
-        SELECT * FROM assessment_data 
-        WHERE project_id = ? 
-        ORDER BY timestamp DESC
-      `;
-
-      const stmt = this.db.prepare(query);
-      stmt.bind([this.projectId]);
-
-      const rows: any[] = [];
-      while (stmt.step()) {
-        rows.push(stmt.getAsObject());
-      }
-      stmt.free();
-
-      return rows.map((row) => ({
-        ...row,
-        data: typeof row.data === "string" ? JSON.parse(row.data) : row.data,
-      }));
-    } catch (err) {
-      console.error(`Failed to load assessment data: ${(err as Error).message}`);
-      return [];
-    }
-  }
 
   private extractHighlightsFromAssessmentData(assessmentData: AssessmentData[]): CodeHighlight[] {
     const highlights: CodeHighlight[] = [];
@@ -427,6 +597,57 @@ export class UnifiedHighlighter {
     }
 
     return highlights;
+  }
+
+  private async updateDocumentDecorations(document: vscode.TextDocument, highlights: CodeHighlight[]): Promise<void> {
+    const documentPath = document.uri.fsPath;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+
+    const documentHighlights: CodeHighlight[] = [];
+    if (workspaceFolder) {
+      for (const h of highlights) {
+        if (!h.file_path) continue;
+
+        const normalizedDocPath = path.normalize(documentPath);
+        const normalizedHighlightPath = path.normalize(h.file_path);
+
+        if (normalizedDocPath.endsWith(normalizedHighlightPath)) {
+          documentHighlights.push(h);
+        }
+      }
+    }
+
+    // Group highlights by severity for decorations
+    const highlightsBySeverity = new Map<string, vscode.DecorationOptions[]>();
+
+    for (const highlight of documentHighlights) {
+      const range = new vscode.Range(
+        new vscode.Position(Math.max(0, highlight.start_line - 1), Math.max(0, highlight.start_column - 1)),
+        new vscode.Position(Math.max(0, highlight.end_line - 1), Math.max(0, highlight.end_column - 1))
+      );
+
+      // Create decoration
+      const decorationOptions: vscode.DecorationOptions = {
+        range: range,
+        hoverMessage: this.createHoverMessage(highlight)
+      };
+
+      if (!highlightsBySeverity.has(highlight.severity)) {
+        highlightsBySeverity.set(highlight.severity, []);
+      }
+      highlightsBySeverity.get(highlight.severity)!.push(decorationOptions);
+    }
+
+    // Apply decorations
+    const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
+    if (editor) {
+      for (const [severity, decorations] of highlightsBySeverity) {
+        const decorationType = this.decorationTypes.get(severity);
+        if (decorationType) {
+          editor.setDecorations(decorationType, decorations);
+        }
+      }
+    }
   }
 
   private async updateDocumentHighlights(document: vscode.TextDocument, highlights: CodeHighlight[]): Promise<void> {
@@ -541,13 +762,7 @@ export class UnifiedHighlighter {
     this.initializeDecorationTypes();
   }
 
-  // Public methods for commands
-  async runAnalysisOnActiveFile(): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-    if (editor) {
-      await this.runAnalysis(editor.document);
-    }
-  }
+  // Public methods for commands (runAnalysisOnActiveFile is now defined above)
 
   async toggleStoreToDatabase(): Promise<void> {
     this.storeToDatabase = !this.storeToDatabase;
@@ -557,11 +772,24 @@ export class UnifiedHighlighter {
 
   async refreshHighlights(): Promise<void> {
     await this.updateHighlightsFromDatabase();
+    vscode.window.showInformationMessage('Highlights refreshed from database');
+  }
+
+  async loadDatabaseHighlights(): Promise<void> {
+    console.log('🎯 loadDatabaseHighlights command triggered!');
+    try {
+      await this.updateHighlightsFromDatabase();
+      vscode.window.showInformationMessage('Database highlights loaded and displayed in Problems panel');
+    } catch (error) {
+      console.error('Failed to load database highlights:', error);
+      vscode.window.showErrorMessage(`Failed to load database highlights: ${error}`);
+    }
   }
 
   async clearAllFindings(): Promise<void> {
     this.diagnosticCollection.clear();
     this.clearDecorations();
+    vscode.window.showInformationMessage('Analysis results cleared');
   }
 
   isStoreToDatabaseEnabled(): boolean {
@@ -572,7 +800,17 @@ export class UnifiedHighlighter {
 export function registerUnifiedCommands(context: vscode.ExtensionContext, highlighter: UnifiedHighlighter): void {
   const commands = [
     vscode.commands.registerCommand('carbonara.runAnalysis', () => {
+      console.log('🎯 carbonara.runAnalysis command triggered!');
       highlighter.runAnalysisOnActiveFile();
+    }),
+    vscode.commands.registerCommand('carbonara.runSemgrepAnalysis', () => {
+      console.log('🎯 carbonara.runSemgrepAnalysis command triggered!');
+      console.log('🎯 About to call runAnalysisOnActiveFile...');
+      highlighter.runAnalysisOnActiveFile().then(() => {
+        console.log('🎯 runAnalysisOnActiveFile completed');
+      }).catch((error) => {
+        console.error('🎯 runAnalysisOnActiveFile failed:', error);
+      });
     }),
     vscode.commands.registerCommand('carbonara.toggleStoreToDatabase', () => {
       highlighter.toggleStoreToDatabase();
@@ -582,6 +820,9 @@ export function registerUnifiedCommands(context: vscode.ExtensionContext, highli
     }),
     vscode.commands.registerCommand('carbonara.clearHighlights', () => {
       highlighter.clearAllFindings();
+    }),
+    vscode.commands.registerCommand('carbonara.loadDatabaseHighlights', () => {
+      highlighter.loadDatabaseHighlights();
     })
   ];
 

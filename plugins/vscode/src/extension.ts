@@ -18,7 +18,8 @@ let unifiedHighlighter: UnifiedHighlighter;
 let currentProjectPath: string | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Carbonara extension is now active!');
+    console.log('🚀 Carbonara extension is now active!');
+    console.log('🚀 Extension activation started...');
 
     // Create status bar item
     carbonaraStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -35,7 +36,13 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('🔧 Creating ToolsTreeProvider...');
     toolsTreeProvider = new ToolsTreeProvider();
     console.log('🔧 Creating UnifiedHighlighter...');
-    unifiedHighlighter = new UnifiedHighlighter(context);
+    try {
+      unifiedHighlighter = new UnifiedHighlighter(context);
+      console.log('✅ UnifiedHighlighter created successfully');
+    } catch (error) {
+      console.error('❌ Failed to create UnifiedHighlighter:', error);
+      console.error('❌ Error details:', error);
+    }
     console.log('🔧 Registering tree data providers...');
     vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
     vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
@@ -68,7 +75,13 @@ export function activate(context: vscode.ExtensionContext) {
     ];
 
     // Register unified highlighting commands
-    registerUnifiedCommands(context, unifiedHighlighter);
+    console.log('🔧 Registering unified highlighting commands...');
+    if (unifiedHighlighter) {
+      registerUnifiedCommands(context, unifiedHighlighter);
+      console.log('✅ Unified highlighting commands registered');
+    } else {
+      console.error('❌ Cannot register commands - unifiedHighlighter is null');
+    }
 
     context.subscriptions.push(carbonaraStatusBar, ...commands);
 

@@ -93,6 +93,30 @@
         "icon": "$(trash)"
       },
       {
+        "command": "carbonara.runAnalysis",
+        "title": "Run Code Analysis"
+      },
+      {
+        "command": "carbonara.runSemgrepAnalysis",
+        "title": "Run Semgrep Analysis"
+      },
+      {
+        "command": "carbonara.toggleStoreToDatabase",
+        "title": "Toggle Database Storage"
+      },
+      {
+        "command": "carbonara.refreshHighlights",
+        "title": "Refresh Highlights"
+      },
+      {
+        "command": "carbonara.clearHighlights",
+        "title": "Clear Highlights"
+      },
+      {
+        "command": "carbonara.loadDatabaseHighlights",
+        "title": "Load Database Highlights"
+      },
+      {
         "command": "carbonara.openProject",
         "title": "Open Carbonara Project",
         "icon": "$(folder-opened)"
