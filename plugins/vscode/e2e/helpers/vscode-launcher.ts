@@ -25,6 +25,84 @@ export class VSCodeLauncher {
   private static activeInstances: VSCodeInstance[] = [];
   private static isLaunching = false;
 
+  /**
+   * Detect available VS Code installation on the system
+   * Supports: VS Code, VS Code Insiders, VSCodium, Cursor
+   */
+  private static detectVSCodePath(): { executablePath: string; appPath: string } {
+    const platform = process.platform;
+
+    if (platform === 'darwin') {
+      // macOS - check common VS Code variants
+      const variants = [
+        {
+          name: 'Visual Studio Code',
+          executablePath: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
+          appPath: '/Applications/Visual Studio Code.app/Contents/Resources/app'
+        },
+        {
+          name: 'VSCodium',
+          executablePath: '/Applications/VSCodium.app/Contents/MacOS/Electron',
+          appPath: '/Applications/VSCodium.app/Contents/Resources/app'
+        },
+        {
+          name: 'Visual Studio Code - Insiders',
+          executablePath: '/Applications/Visual Studio Code - Insiders.app/Contents/MacOS/Electron',
+          appPath: '/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app'
+        },
+        {
+          name: 'Cursor',
+          executablePath: '/Applications/Cursor.app/Contents/MacOS/Electron',
+          appPath: '/Applications/Cursor.app/Contents/Resources/app'
+        }
+      ];
+
+      for (const variant of variants) {
+        if (fs.existsSync(variant.executablePath) && fs.existsSync(variant.appPath)) {
+          console.log(`✅ Found ${variant.name} at ${variant.executablePath}`);
+          return { executablePath: variant.executablePath, appPath: variant.appPath };
+        }
+      }
+    } else if (platform === 'linux') {
+      // Linux - check common locations
+      const variants = [
+        { executablePath: '/usr/share/code/code', appPath: '/usr/share/code/resources/app' },
+        { executablePath: '/usr/bin/code', appPath: '/usr/share/code/resources/app' },
+        { executablePath: '/usr/share/codium/codium', appPath: '/usr/share/codium/resources/app' }
+      ];
+
+      for (const variant of variants) {
+        if (fs.existsSync(variant.executablePath) && fs.existsSync(variant.appPath)) {
+          return variant;
+        }
+      }
+    } else if (platform === 'win32') {
+      // Windows - check common locations
+      const variants = [
+        {
+          executablePath: 'C:\\Program Files\\Microsoft VS Code\\Code.exe',
+          appPath: 'C:\\Program Files\\Microsoft VS Code\\resources\\app'
+        },
+        {
+          executablePath: process.env.LOCALAPPDATA + '\\Programs\\Microsoft VS Code\\Code.exe',
+          appPath: process.env.LOCALAPPDATA + '\\Programs\\Microsoft VS Code\\resources\\app'
+        }
+      ];
+
+      for (const variant of variants) {
+        if (fs.existsSync(variant.executablePath) && fs.existsSync(variant.appPath)) {
+          return variant;
+        }
+      }
+    }
+
+    throw new Error(
+      `No VS Code installation found. Please install VS Code, VSCodium, or another compatible variant.\n` +
+      `Platform: ${platform}\n` +
+      `You can also set VSCODE_PATH environment variable to point to your installation.`
+    );
+  }
+
   static async launch(workspaceFixture: WorkspaceFixture = 'test-workspace'): Promise<VSCodeInstance> {
     // Wait if another instance is currently launching
     while (this.isLaunching) {
@@ -58,12 +136,14 @@ export class VSCodeLauncher {
       console.log(`🧪 Using workspace fixture: ${workspaceFixture}`);
       console.log(`📁 Workspace path: ${workspacePath}`);
 
+      // Detect VS Code installation
+      const vscode = this.detectVSCodePath();
+
       // Launch VSCode with better isolation to prevent multiple windows
-      // TODO make sure this works on every system
       const app = await electron.launch({
-        executablePath: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
+        executablePath: vscode.executablePath,
         args: [
-          '/Applications/Visual Studio Code.app/Contents/Resources/app',
+          vscode.appPath,
           '--extensionDevelopmentPath=' + extensionDevelopmentPath,
           '--disable-workspace-trust',
           '--no-sandbox',
