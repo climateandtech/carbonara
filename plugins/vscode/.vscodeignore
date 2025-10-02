@@ -31,11 +31,9 @@ test/
 e2e/
 
 # test logs and artifacts
-test-results/
-playwright-report/
-invalid-project-handling.png
-multiple-projects-failed.png
-existing-project-loaded.png
+src/test/e2e/test-results/
+src/test/e2e/playwright-report/
+src/test/e2e/screenshots/
 
 # Documentation (except README)
 *.md

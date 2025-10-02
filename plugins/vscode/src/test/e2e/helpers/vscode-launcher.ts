@@ -157,7 +157,7 @@ export class VSCodeLauncher {
         await this.closeAllActive();
       }
 
-      const extensionDevelopmentPath = path.resolve(__dirname, "../../");
+      const extensionDevelopmentPath = path.resolve(__dirname, "../../../../");
 
       // Ensure the extension is built
       const outPath = path.join(extensionDevelopmentPath, "out");
