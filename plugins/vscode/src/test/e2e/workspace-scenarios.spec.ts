@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { VSCodeLauncher, VSCodeInstance, WorkspaceFixture } from './helpers/vscode-launcher';
-import { SELECTORS, UI_TEXT } from '../src/constants/ui-text';
+import { SELECTORS, UI_TEXT } from '../../constants/ui-text';
 
 async function setupTest(workspaceFixture: WorkspaceFixture): Promise<VSCodeInstance> {
   const vscode = await VSCodeLauncher.launch(workspaceFixture);
@@ -103,7 +103,7 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
           }
         }
       } catch (error) {
-        console.log('ℹ️ Sidebar test inconclusive:', error.message);
+        console.log('ℹ️ Sidebar test inconclusive:', error instanceof Error ? error.message : String(error));
       }
       
       await vscode.window.screenshot({ path: 'existing-project-loaded.png' });
@@ -145,7 +145,7 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
             
             await vscode.window.screenshot({ path: 'multiple-projects-selection.png' });
           } catch (error) {
-            console.log('❌ Multiple projects not found as expected:', error.message);
+            console.log('❌ Multiple projects not found as expected:', error instanceof Error ? error.message : String(error));
             await vscode.window.screenshot({ path: 'multiple-projects-failed.png' });
           }
         }

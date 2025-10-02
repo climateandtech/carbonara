@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Locator } from '@playwright/test';
 import { VSCodeLauncher, VSCodeInstance } from './helpers/vscode-launcher';
-import { SELECTORS, UI_TEXT } from '../src/constants/ui-text';
+import { SELECTORS, UI_TEXT } from '../../constants/ui-text';
 
 let vscode: VSCodeInstance;
 
@@ -556,7 +556,7 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
       
       // Now try to find the tree with analysis results (not questionnaire data)
       console.log('\n🔍 Looking for tree with analysis results (not questionnaire)...');
-      let dataTree = null;
+      let dataTree: Locator | null = null;
       let foundAnalysisTree = false;
       
       for (let i = 0; i < treeCount; i++) {
@@ -593,11 +593,11 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
         console.log('❌ Could not find tree with analysis results, using nth(1) as fallback');
         dataTree = allTrees.nth(1);
       }
-      
-      await expect(dataTree).toBeVisible();
+
+      await expect(dataTree!).toBeVisible();
       console.log('✅ Selected data tree for analysis');
-      
-      const dataRows = dataTree.locator('.monaco-list-row');
+
+      const dataRows = dataTree!.locator('.monaco-list-row');
       const dataRowCount = await dataRows.count();
       console.log(`📊 Final selected tree has ${dataRowCount} data entries`);
       
@@ -674,9 +674,9 @@ ${dataTexts.map((text, i) => `  [${i}] "${text}"`).join('\n')}`;
 
       } else {
         console.log('⚠️ No data entries found - checking if database was created and analysis was saved');
-        
+
         // Check if there's a "No data available" message vs actual empty state
-        const noDataMessage = dataTree.getByText(/No data/i);
+        const noDataMessage = dataTree!.getByText(/No data/i);
         const hasNoDataMessage = await noDataMessage.isVisible().catch(() => false);
         
         if (hasNoDataMessage) {
