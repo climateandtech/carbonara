@@ -1,13 +1,9 @@
 import { CodeAnalysisResult, CodeFinding } from '../types/analysis.js';
 import { AnalysisTool } from '../registry/index.js';
 
-// Import custom parsers
-import { parseSonarQubeResults } from './sonarqube.js';
-
 // Registry of custom parsers
 const customParsers: Record<string, (output: string, toolId: string, projectPath: string) => CodeAnalysisResult> = {
-  'sonarqube': parseSonarQubeResults,
-  // Add more custom parsers here as needed
+  // Add custom parsers here as needed
 };
 
 export interface ParsingConfig {
@@ -286,6 +282,7 @@ export function registerCustomParser(name: string, parser: (output: string, tool
 export function getAvailableCustomParsers(): string[] {
   return Object.keys(customParsers);
 }
+
 
 
 
