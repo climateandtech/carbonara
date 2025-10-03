@@ -129,6 +129,14 @@
         "command": "carbonara.deleteSemgrepResultsForFile",
         "title": "Delete Semgrep Results for File",
         "icon": "$(trash)"
+      },
+      {
+        "command": "carbonara.detectProject",
+        "title": "Detect Project Languages"
+      },
+      {
+        "command": "carbonara.exportProjectInfo",
+        "title": "Export Project Info for CLI"
       }
     ],
     "viewsContainers": {
