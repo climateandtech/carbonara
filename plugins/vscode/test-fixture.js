@@ -36,3 +36,4 @@ function memoryLeak() {
     data.push(new Array(1000).fill('memory leak'));
   }, 100);
 }
+

@@ -287,3 +287,4 @@ carbonara test-rules .carbonara/custom-rules/ --sample-files ./test-samples/
 ```
 
 This system allows teams to create custom rules that align with Carbonara's environmental impact focus while maintaining compatibility with existing tool ecosystems.
+
