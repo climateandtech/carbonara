@@ -7,7 +7,7 @@ import yaml from 'js-yaml';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake } from '../database/index.js';
 import { loadProjectConfig } from '../utils/config.js';
-import { parseToolResults } from '../parsers/generic.js';
+// Generic parser removed - using simple JSON parsing
 // Built-in analyzers will be imported when added via separate PRs
 
 interface AnalyzeOptions {
@@ -135,7 +135,7 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
       ], { stdio: 'pipe' });
       
       if (apiResult.stdout) {
-        return parseToolResults(apiResult.stdout, tool, process.cwd());
+        return JSON.parse(apiResult.stdout);
       }
     } catch (error) {
       console.warn(chalk.yellow(`⚠️  Could not fetch SonarQube results: ${error}`));
@@ -143,9 +143,9 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
     }
   }
 
-  // Use generic parser if tool has parsing configuration
+  // Use simple JSON parsing for now
   if (tool.parsing) {
-    return parseToolResults(result.stdout, tool, process.cwd());
+    return JSON.parse(result.stdout);
   }
 
   // Fallback to simple parsing
