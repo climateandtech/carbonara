@@ -1,10 +1,9 @@
 # Source files
 src/
 *.ts
-*.map
 
 # Build artifacts
-out/
+# out/ - contains the bundled extension files
 node_modules/
 .vscode-test/
 

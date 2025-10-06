@@ -1,11 +1,7 @@
-import sqlite3 from 'sqlite3';
-import { promisify } from 'util';
+import initSqlJs from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
-
-// Enable verbose mode for debugging
-sqlite3.verbose();
 
 interface ProjectRow {
   id?: number;

@@ -61,7 +61,8 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             
             // Test individual steps to isolate the hanging issue
             console.log('⏳ Step 1: Creating data service...');
-            const { createDataService, createSchemaService, createVSCodeDataProvider } = await import('@carbonara/core');
+            const coreModule = await import(path.join(__dirname, 'core-bundle.js'));
+            const { createDataService, createSchemaService, createVSCodeDataProvider } = coreModule;
             
             const dataService = createDataService({ dbPath });
             console.log('✅ Data service created');

@@ -1,5 +1,6 @@
-import sqlite3 from 'sqlite3';
+import initSqlJs from 'sql.js';
 import path from 'path';
+import fs from 'fs';
 
 export interface DatabaseConfig {
   dbPath?: string;
@@ -26,119 +27,142 @@ export interface Project {
 }
 
 export class DataService {
-  private db: sqlite3.Database;
+  private db: any; // sql.js Database
   private dbPath: string;
+  private SQL: any; // sql.js instance
 
   constructor(config: DatabaseConfig = {}) {
     this.dbPath = config.dbPath || path.join(process.cwd(), 'carbonara.db');
-    this.db = new sqlite3.Database(this.dbPath);
   }
 
   getDbPath(): string {
     return this.dbPath;
   }
 
+  private saveToDisk(): void {
+    if (this.db) {
+      const data = this.db.export();
+      fs.writeFileSync(this.dbPath, data);
+    }
+  }
+
   async initialize(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db.serialize(() => {
-        // Projects table
-        this.db.run(`
-          CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            path TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            metadata JSON,
-            co2_variables JSON
-          )
-        `);
+    try {
+      // Initialize sql.js
+      this.SQL = await initSqlJs();
+      
+      // Load existing database or create new one
+      let data: Uint8Array | undefined;
+      if (fs.existsSync(this.dbPath)) {
+        data = new Uint8Array(fs.readFileSync(this.dbPath));
+      }
+      
+      this.db = new this.SQL.Database(data);
+      
+      // Create tables
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          path TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          metadata TEXT,
+          co2_variables TEXT
+        )
+      `);
 
-        // Assessment data table
-        this.db.run(`
-          CREATE TABLE IF NOT EXISTS assessment_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id INTEGER,
-            tool_name TEXT NOT NULL,
-            data_type TEXT NOT NULL,
-            data JSON NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            source TEXT,
-            FOREIGN KEY (project_id) REFERENCES projects (id)
-          )
-        `);
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS assessment_data (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id INTEGER,
+          tool_name TEXT NOT NULL,
+          data_type TEXT NOT NULL,
+          data TEXT NOT NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          source TEXT,
+          FOREIGN KEY (project_id) REFERENCES projects (id)
+        )
+      `);
 
-        // Tool runs table
-        this.db.run(`
-          CREATE TABLE IF NOT EXISTS tool_runs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id INTEGER,
-            tool_name TEXT NOT NULL,
-            command TEXT NOT NULL,
-            status TEXT NOT NULL,
-            output JSON,
-            error_message TEXT,
-            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            completed_at DATETIME,
-            FOREIGN KEY (project_id) REFERENCES projects (id)
-          )
-        `, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-    });
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS tool_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id INTEGER,
+          tool_name TEXT NOT NULL,
+          command TEXT NOT NULL,
+          status TEXT NOT NULL,
+          output TEXT,
+          error_message TEXT,
+          started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          completed_at DATETIME,
+          FOREIGN KEY (project_id) REFERENCES projects (id)
+        )
+      `);
+      
+      // Save the database to disk
+      this.saveToDisk();
+    } catch (error) {
+      throw new Error(`Failed to initialize database: ${error}`);
+    }
   }
 
   async createProject(name: string, projectPath: string, metadata: any = {}): Promise<number> {
-    return new Promise((resolve, reject) => {
+    try {
       const stmt = this.db.prepare(`
         INSERT INTO projects (name, path, metadata)
         VALUES (?, ?, ?)
       `);
       
-      stmt.run([name, projectPath, JSON.stringify(metadata)], function(err) {
-        if (err) reject(err);
-        else resolve(this.lastID);
-      });
+      stmt.bind([name, projectPath, JSON.stringify(metadata)]);
+      stmt.step();
+      const result = stmt.getAsObject();
+      stmt.free();
       
-      stmt.finalize();
-    });
+      this.saveToDisk();
+      return this.db.exec("SELECT last_insert_rowid()")[0].values[0][0];
+    } catch (error) {
+      throw new Error(`Failed to create project: ${error}`);
+    }
   }
 
   async getProject(projectPath: string): Promise<Project | null> {
-    return new Promise((resolve, reject) => {
-      this.db.get(
-        'SELECT * FROM projects WHERE path = ?',
-        [projectPath],
-        (err, row: any) => {
-          if (err) reject(err);
-          else {
-            if (row) {
-              row.metadata = row.metadata ? JSON.parse(row.metadata) : {};
-              row.co2_variables = row.co2_variables ? JSON.parse(row.co2_variables) : {};
-            }
-            resolve(row || null);
-          }
-        }
-      );
-    });
+    try {
+      const stmt = this.db.prepare('SELECT * FROM projects WHERE path = ?');
+      stmt.bind([projectPath]);
+      
+      if (stmt.step()) {
+        const result = stmt.getAsObject();
+        stmt.free();
+        
+        result.metadata = result.metadata ? JSON.parse(result.metadata) : {};
+        result.co2_variables = result.co2_variables ? JSON.parse(result.co2_variables) : {};
+        return result;
+      }
+      stmt.free();
+      return null;
+    } catch (error) {
+      throw new Error(`Failed to get project: ${error}`);
+    }
   }
 
   async getAllProjects(): Promise<Project[]> {
-    return new Promise((resolve, reject) => {
-      this.db.all('SELECT * FROM projects ORDER BY created_at DESC', (err, rows: any[]) => {
-        if (err) reject(err);
-        else {
-          const projects = rows.map(row => ({
-            ...row,
-            metadata: row.metadata ? JSON.parse(row.metadata) : {},
-            co2_variables: row.co2_variables ? JSON.parse(row.co2_variables) : {}
-          }));
-          resolve(projects);
-        }
-      });
-    });
+    try {
+      const stmt = this.db.prepare('SELECT * FROM projects ORDER BY created_at DESC');
+      const results = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
+      
+      return results.map((row: any) => ({
+        ...row,
+        metadata: row.metadata ? JSON.parse(row.metadata) : {},
+        co2_variables: row.co2_variables ? JSON.parse(row.co2_variables) : {}
+      }));
+    } catch (error) {
+      throw new Error(`Failed to get all projects: ${error}`);
+    }
   }
 
   async storeAssessmentData(
@@ -148,72 +172,72 @@ export class DataService {
     data: any,
     source?: string
   ): Promise<number> {
-    return new Promise((resolve, reject) => {
+    try {
       const stmt = this.db.prepare(`
         INSERT INTO assessment_data (project_id, tool_name, data_type, data, source)
         VALUES (?, ?, ?, ?, ?)
       `);
       
-      stmt.run([projectId, toolName, dataType, JSON.stringify(data), source], function(err) {
-        if (err) reject(err);
-        else resolve(this.lastID);
-      });
+      stmt.bind([projectId, toolName, dataType, JSON.stringify(data), source]);
+      stmt.step();
+      stmt.free();
       
-      stmt.finalize();
-    });
+      this.saveToDisk();
+      return this.db.exec("SELECT last_insert_rowid()")[0].values[0][0];
+    } catch (error) {
+      throw new Error(`Failed to store assessment data: ${error}`);
+    }
   }
 
   async getAssessmentData(projectId?: number, toolName?: string): Promise<AssessmentDataEntry[]> {
-    let query = 'SELECT * FROM assessment_data';
-    const params: any[] = [];
+    try {
+      let query = 'SELECT * FROM assessment_data';
+      const params: any[] = [];
 
-    if (projectId || toolName) {
-      query += ' WHERE';
-      const conditions = [];
-      
-      if (projectId) {
-        conditions.push('project_id = ?');
-        params.push(projectId);
-      }
-      
-      if (toolName) {
-        conditions.push('tool_name = ?');
-        params.push(toolName);
-      }
-      
-      query += ' ' + conditions.join(' AND ');
-    }
-
-    query += ' ORDER BY timestamp DESC';
-
-    return new Promise((resolve, reject) => {
-      this.db.all(query, params, (err, rows: any[]) => {
-        if (err) reject(err);
-        else {
-          const data = rows.map(row => ({
-            ...row,
-            data: JSON.parse(row.data)
-          }));
-          resolve(data);
+      if (projectId || toolName) {
+        query += ' WHERE';
+        const conditions = [];
+        
+        if (projectId) {
+          conditions.push('project_id = ?');
+          params.push(projectId);
         }
-      });
-    });
+        
+        if (toolName) {
+          conditions.push('tool_name = ?');
+          params.push(toolName);
+        }
+        
+        query += ' ' + conditions.join(' AND ');
+      }
+
+      query += ' ORDER BY timestamp DESC';
+
+      const stmt = this.db.prepare(query);
+      stmt.bind(params);
+      const results = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
+      
+      return results.map((row: any) => ({
+        ...row,
+        data: JSON.parse(row.data)
+      }));
+    } catch (error) {
+      throw new Error(`Failed to get assessment data: ${error}`);
+    }
   }
 
   async close(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.db) {
-        resolve();
-        return;
+    try {
+      if (this.db) {
+        this.saveToDisk();
+        this.db.close();
       }
-      
-      this.db.close((err) => {
-        if (err && (err as any).code !== 'SQLITE_MISUSE') {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+    } catch (error) {
+      throw new Error(`Failed to close database: ${error}`);
+    }
   }
 }
