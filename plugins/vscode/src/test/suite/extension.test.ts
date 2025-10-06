@@ -143,13 +143,13 @@ suite('Tree Provider Tests', () => {
 });
 
 suite('CLI Integration Tests', () => {
-	const testWorkspaceRoot = path.join(__dirname, '..', '..', '..', 'e2e', 'fixtures', 'with-carbonara-project');
+	const testWorkspaceRoot = path.join(__dirname, '..', '..', '..', 'src', 'test', 'e2e', 'fixtures', 'with-carbonara-project');
 	
 	test('Should find CLI in monorepo structure', function() {
 		this.timeout(5000);
-		
+
 		// Check if CLI exists at expected location
-		const cliPath = path.join(testWorkspaceRoot, '..', '..', '..', '..', '..', 'packages', 'cli', 'src', 'index.ts');
+		const cliPath = path.join(testWorkspaceRoot, '..', '..', '..', '..', '..', '..', '..', 'packages', 'cli', 'src', 'index.ts');
 		assert.ok(fs.existsSync(cliPath), `CLI should exist at ${cliPath}`);
 	});
 

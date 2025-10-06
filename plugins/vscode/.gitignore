@@ -1,16 +1,14 @@
 # Build outputs
 dist/
 out/
-test-build/
 
 # Dependencies
 node_modules/
 
 # Test artifacts
-e2e/temp-vscode-data/
-test-results/
-playwright-report/
-*.png
+src/test/e2e/test-results/
+src/test/e2e/playwright-report/
+src/test/e2e/screenshots/
 *.jpg
 *.jpeg
 
@@ -23,3 +21,7 @@ playwright-report/
 # OS
 .DS_Store
 Thumbs.db 
+
+# dev
+.claude/
+carbonara.db

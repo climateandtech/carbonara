@@ -4,13 +4,14 @@
   "description": "Multi-Editor Plugin Architecture client for VS Code",
   "version": "0.1.0",
   "publisher": "carbonara",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/carbonara/carbonara"
   },
   "license": "To be clarified - All rights reserved",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.104.0"
   },
   "categories": [
     "Other",
@@ -121,7 +122,7 @@
         {
           "id": "carbonara",
           "title": "Carbonara",
-          "icon": "$(leaf)"
+          "icon": "icon.svg"
         }
       ]
     },
@@ -244,9 +245,9 @@
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish",
-    "install-extension": "code --install-extension ./carbonara-vscode-1.0.0.vsix",
+    "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",
-    "test:local": "npm run clean-test && npm run compile-tests && node ./test-build/test/runTest.js",
+    "test:local": "node ./out/test/runTest.js",
     "test:ci-check": "if [ \"$CI\" = \"true\" ]; then echo 'Skipping VSCode tests in CI environment'; exit 0; else npm run test:local; fi",
     "test:ui": "playwright test e2e --workers=1",
     "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
@@ -256,9 +257,6 @@
     "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
     "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
     "test:ui:headed": "playwright test e2e --headed --workers=1",
-    "compile-tests": "tsc -p . --outDir test-build",
-    "clean-test": "rm -rf test-build/",
-    "pretest": "npm run build",
     "playwright:install": "playwright install"
   },
   "dependencies": {
@@ -268,10 +266,10 @@
     "@playwright/test": "^1.40.0",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
-    "@types/vscode": "^1.85.0",
+    "@types/node": "22.9.0",
+    "@types/vscode": "^1.104.0",
     "@vscode/test-electron": "^2.4.1",
-    "@vscode/vsce": "^2.15.0",
+    "@vscode/vsce": "^3.6.2",
     "glob": "^11.0.3",
     "mocha": "^10.2.0",
     "playwright": "^1.40.0",
