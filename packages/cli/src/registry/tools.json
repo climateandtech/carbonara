@@ -248,6 +248,476 @@
           "type": "boolean"
         }
       ]
+    },
+    {
+      "id": "ecocode-java",
+      "name": "EcoCode Java",
+      "description": "SonarQube plugin for Java code sustainability analysis",
+      "command": {
+        "executable": "sonar-scanner",
+        "args": ["-Dsonar.projectKey={projectKey}", "-Dsonar.sources={sources}", "-Dsonar.ecocode.enabled=true"],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "sonarqube-plugin",
+        "package": "ecocode-java",
+        "global": false,
+        "instructions": "Install EcoCode Java plugin in SonarQube server and configure sonar-scanner"
+      },
+      "detection": {
+        "method": "command",
+        "target": "sonar-scanner --version"
+      },
+      "supportedLanguages": ["java"],
+      "parsing": {
+        "type": "config-driven",
+        "config": {
+          "findingsPath": "issues",
+          "mappings": {
+            "id": "key",
+            "file": "component",
+            "line": "line",
+            "severity": "severity",
+            "message": "message",
+            "rule": "rule",
+            "type": "type"
+          },
+          "severityMap": {
+            "BLOCKER": "critical",
+            "CRITICAL": "critical",
+            "MAJOR": "high",
+            "MINOR": "medium",
+            "INFO": "low"
+          },
+          "categoryMap": {
+            "ecocode:performance": "performance-critical",
+            "ecocode:efficiency": "performance-critical",
+            "ecocode:memory": "resource-optimization",
+            "ecocode:resource": "resource-optimization",
+            "ecocode:database": "data-efficiency",
+            "ecocode:query": "data-efficiency",
+            "ecocode:": "sustainability-patterns"
+          },
+          "defaultCategory": "sustainability-patterns"
+        }
+      },
+      "display": {
+        "category": "Code Sustainability",
+        "icon": "🌱",
+        "groupName": "EcoCode Analysis",
+        "entryTemplate": "☕ Java - {date}",
+        "descriptionTemplate": "{issues} sustainability issues",
+        "fields": [
+          {
+            "key": "issues",
+            "label": "🌱 Issues",
+            "path": "data.issues.length",
+            "type": "number"
+          },
+          {
+            "key": "critical",
+            "label": "🔴 Critical",
+            "path": "data.issues.filter(i => i.severity === 'CRITICAL').length",
+            "type": "number"
+          },
+          {
+            "key": "major",
+            "label": "🟠 Major",
+            "path": "data.issues.filter(i => i.severity === 'MAJOR').length",
+            "type": "number"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-Dsonar.projectKey <key>",
+          "description": "SonarQube project key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "flag": "-Dsonar.sources <path>",
+          "description": "Source code path",
+          "type": "string",
+          "default": "."
+        }
+      ]
+    },
+    {
+      "id": "ecocode-csharp",
+      "name": "EcoCode C#",
+      "description": "SonarQube plugin for C# code sustainability analysis",
+      "command": {
+        "executable": "sonar-scanner",
+        "args": ["-Dsonar.projectKey={projectKey}", "-Dsonar.sources={sources}", "-Dsonar.ecocode.enabled=true"],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "sonarqube-plugin",
+        "package": "ecocode-csharp",
+        "global": false,
+        "instructions": "Install EcoCode C# plugin in SonarQube server and configure sonar-scanner"
+      },
+      "detection": {
+        "method": "command",
+        "target": "sonar-scanner --version"
+      },
+      "supportedLanguages": ["csharp"],
+      "parsing": {
+        "type": "config-driven",
+        "config": {
+          "findingsPath": "issues",
+          "mappings": {
+            "id": "key",
+            "file": "component",
+            "line": "line",
+            "severity": "severity",
+            "message": "message",
+            "rule": "rule",
+            "type": "type"
+          },
+          "severityMap": {
+            "BLOCKER": "critical",
+            "CRITICAL": "critical",
+            "MAJOR": "high",
+            "MINOR": "medium",
+            "INFO": "low"
+          },
+          "categoryMap": {
+            "ecocode:performance": "performance-critical",
+            "ecocode:efficiency": "performance-critical",
+            "ecocode:memory": "resource-optimization",
+            "ecocode:resource": "resource-optimization",
+            "ecocode:database": "data-efficiency",
+            "ecocode:query": "data-efficiency",
+            "ecocode:": "sustainability-patterns"
+          },
+          "defaultCategory": "sustainability-patterns"
+        }
+      },
+      "display": {
+        "category": "Code Sustainability",
+        "icon": "🌱",
+        "groupName": "EcoCode Analysis",
+        "entryTemplate": "🔷 C# - {date}",
+        "descriptionTemplate": "{issues} sustainability issues",
+        "fields": [
+          {
+            "key": "issues",
+            "label": "🌱 Issues",
+            "path": "data.issues.length",
+            "type": "number"
+          },
+          {
+            "key": "critical",
+            "label": "🔴 Critical",
+            "path": "data.issues.filter(i => i.severity === 'CRITICAL').length",
+            "type": "number"
+          },
+          {
+            "key": "major",
+            "label": "🟠 Major",
+            "path": "data.issues.filter(i => i.severity === 'MAJOR').length",
+            "type": "number"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-Dsonar.projectKey <key>",
+          "description": "SonarQube project key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "flag": "-Dsonar.sources <path>",
+          "description": "Source code path",
+          "type": "string",
+          "default": "."
+        }
+      ]
+    },
+    {
+      "id": "ecocode-python",
+      "name": "EcoCode Python",
+      "description": "SonarQube plugin for Python code sustainability analysis",
+      "command": {
+        "executable": "sonar-scanner",
+        "args": ["-Dsonar.projectKey={projectKey}", "-Dsonar.sources={sources}", "-Dsonar.ecocode.enabled=true"],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "sonarqube-plugin",
+        "package": "ecocode-python",
+        "global": false,
+        "instructions": "Install EcoCode Python plugin in SonarQube server and configure sonar-scanner"
+      },
+      "detection": {
+        "method": "command",
+        "target": "sonar-scanner --version"
+      },
+      "supportedLanguages": ["python"],
+      "parsing": {
+        "type": "config-driven",
+        "config": {
+          "findingsPath": "issues",
+          "mappings": {
+            "id": "key",
+            "file": "component",
+            "line": "line",
+            "severity": "severity",
+            "message": "message",
+            "rule": "rule",
+            "type": "type"
+          },
+          "severityMap": {
+            "BLOCKER": "critical",
+            "CRITICAL": "critical",
+            "MAJOR": "high",
+            "MINOR": "medium",
+            "INFO": "low"
+          },
+          "categoryMap": {
+            "ecocode:performance": "performance-critical",
+            "ecocode:efficiency": "performance-critical",
+            "ecocode:memory": "resource-optimization",
+            "ecocode:resource": "resource-optimization",
+            "ecocode:database": "data-efficiency",
+            "ecocode:query": "data-efficiency",
+            "ecocode:": "sustainability-patterns"
+          },
+          "defaultCategory": "sustainability-patterns"
+        }
+      },
+      "display": {
+        "category": "Code Sustainability",
+        "icon": "🌱",
+        "groupName": "EcoCode Analysis",
+        "entryTemplate": "🐍 Python - {date}",
+        "descriptionTemplate": "{issues} sustainability issues",
+        "fields": [
+          {
+            "key": "issues",
+            "label": "🌱 Issues",
+            "path": "data.issues.length",
+            "type": "number"
+          },
+          {
+            "key": "critical",
+            "label": "🔴 Critical",
+            "path": "data.issues.filter(i => i.severity === 'CRITICAL').length",
+            "type": "number"
+          },
+          {
+            "key": "major",
+            "label": "🟠 Major",
+            "path": "data.issues.filter(i => i.severity === 'MAJOR').length",
+            "type": "number"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-Dsonar.projectKey <key>",
+          "description": "SonarQube project key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "flag": "-Dsonar.sources <path>",
+          "description": "Source code path",
+          "type": "string",
+          "default": "."
+        }
+      ]
+    },
+    {
+      "id": "ecocode-javascript",
+      "name": "EcoCode JavaScript",
+      "description": "SonarQube plugin for JavaScript/TypeScript code sustainability analysis",
+      "command": {
+        "executable": "sonar-scanner",
+        "args": ["-Dsonar.projectKey={projectKey}", "-Dsonar.sources={sources}", "-Dsonar.ecocode.enabled=true"],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "sonarqube-plugin",
+        "package": "ecocode-javascript",
+        "global": false,
+        "instructions": "Install EcoCode JavaScript plugin in SonarQube server and configure sonar-scanner"
+      },
+      "detection": {
+        "method": "command",
+        "target": "sonar-scanner --version"
+      },
+      "supportedLanguages": ["javascript", "typescript"],
+      "parsing": {
+        "type": "config-driven",
+        "config": {
+          "findingsPath": "issues",
+          "mappings": {
+            "id": "key",
+            "file": "component",
+            "line": "line",
+            "severity": "severity",
+            "message": "message",
+            "rule": "rule",
+            "type": "type"
+          },
+          "severityMap": {
+            "BLOCKER": "critical",
+            "CRITICAL": "critical",
+            "MAJOR": "high",
+            "MINOR": "medium",
+            "INFO": "low"
+          },
+          "categoryMap": {
+            "ecocode:performance": "performance-critical",
+            "ecocode:efficiency": "performance-critical",
+            "ecocode:memory": "resource-optimization",
+            "ecocode:resource": "resource-optimization",
+            "ecocode:database": "data-efficiency",
+            "ecocode:query": "data-efficiency",
+            "ecocode:": "sustainability-patterns"
+          },
+          "defaultCategory": "sustainability-patterns"
+        }
+      },
+      "display": {
+        "category": "Code Sustainability",
+        "icon": "🌱",
+        "groupName": "EcoCode Analysis",
+        "entryTemplate": "📜 JS/TS - {date}",
+        "descriptionTemplate": "{issues} sustainability issues",
+        "fields": [
+          {
+            "key": "issues",
+            "label": "🌱 Issues",
+            "path": "data.issues.length",
+            "type": "number"
+          },
+          {
+            "key": "critical",
+            "label": "🔴 Critical",
+            "path": "data.issues.filter(i => i.severity === 'CRITICAL').length",
+            "type": "number"
+          },
+          {
+            "key": "major",
+            "label": "🟠 Major",
+            "path": "data.issues.filter(i => i.severity === 'MAJOR').length",
+            "type": "number"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-Dsonar.projectKey <key>",
+          "description": "SonarQube project key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "flag": "-Dsonar.sources <path>",
+          "description": "Source code path",
+          "type": "string",
+          "default": "."
+        }
+      ]
+    },
+    {
+      "id": "ecocode-php",
+      "name": "EcoCode PHP",
+      "description": "SonarQube plugin for PHP code sustainability analysis",
+      "command": {
+        "executable": "sonar-scanner",
+        "args": ["-Dsonar.projectKey={projectKey}", "-Dsonar.sources={sources}", "-Dsonar.ecocode.enabled=true"],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "sonarqube-plugin",
+        "package": "ecocode-php",
+        "global": false,
+        "instructions": "Install EcoCode PHP plugin in SonarQube server and configure sonar-scanner"
+      },
+      "detection": {
+        "method": "command",
+        "target": "sonar-scanner --version"
+      },
+      "supportedLanguages": ["php"],
+      "parsing": {
+        "type": "config-driven",
+        "config": {
+          "findingsPath": "issues",
+          "mappings": {
+            "id": "key",
+            "file": "component",
+            "line": "line",
+            "severity": "severity",
+            "message": "message",
+            "rule": "rule",
+            "type": "type"
+          },
+          "severityMap": {
+            "BLOCKER": "critical",
+            "CRITICAL": "critical",
+            "MAJOR": "high",
+            "MINOR": "medium",
+            "INFO": "low"
+          },
+          "categoryMap": {
+            "ecocode:performance": "performance-critical",
+            "ecocode:efficiency": "performance-critical",
+            "ecocode:memory": "resource-optimization",
+            "ecocode:resource": "resource-optimization",
+            "ecocode:database": "data-efficiency",
+            "ecocode:query": "data-efficiency",
+            "ecocode:": "sustainability-patterns"
+          },
+          "defaultCategory": "sustainability-patterns"
+        }
+      },
+      "display": {
+        "category": "Code Sustainability",
+        "icon": "🌱",
+        "groupName": "EcoCode Analysis",
+        "entryTemplate": "🐘 PHP - {date}",
+        "descriptionTemplate": "{issues} sustainability issues",
+        "fields": [
+          {
+            "key": "issues",
+            "label": "🌱 Issues",
+            "path": "data.issues.length",
+            "type": "number"
+          },
+          {
+            "key": "critical",
+            "label": "🔴 Critical",
+            "path": "data.issues.filter(i => i.severity === 'CRITICAL').length",
+            "type": "number"
+          },
+          {
+            "key": "major",
+            "label": "🟠 Major",
+            "path": "data.issues.filter(i => i.severity === 'MAJOR').length",
+            "type": "number"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-Dsonar.projectKey <key>",
+          "description": "SonarQube project key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "flag": "-Dsonar.sources <path>",
+          "description": "Source code path",
+          "type": "string",
+          "default": "."
+        }
+      ]
     }
   ]
 }

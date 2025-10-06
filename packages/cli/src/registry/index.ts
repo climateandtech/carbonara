@@ -16,7 +16,7 @@ export interface AnalysisTool {
     outputFormat: 'json' | 'yaml' | 'text';
   };
   installation: {
-    type: 'npm' | 'pip' | 'binary' | 'docker' | 'built-in';
+    type: 'npm' | 'pip' | 'binary' | 'docker' | 'built-in' | 'sonarqube-plugin';
     package: string;
     global?: boolean;
     instructions: string;
@@ -32,6 +32,26 @@ export interface AnalysisTool {
     type: 'boolean' | 'string' | 'number';
     default?: any;
   }>;
+  supportedLanguages?: string[];
+  parsing?: {
+    type: 'config-driven' | 'custom';
+    customParser?: string;
+    config?: {
+      findingsPath: string;
+      mappings: {
+        id: string;
+        file: string;
+        line: string;
+        severity: string;
+        message: string;
+        rule: string;
+        type: string;
+      };
+      severityMap: Record<string, 'critical' | 'high' | 'medium' | 'low'>;
+      categoryMap: Record<string, string>;
+      defaultCategory: string;
+    };
+  };
 }
 
 export interface ToolRegistry {
@@ -172,6 +192,18 @@ export class AnalysisToolRegistry {
           pipArgs.push(tool.installation.package);
           
           await execa('pip', pipArgs, { stdio: 'inherit' });
+          break;
+        case 'sonarqube-plugin':
+          // For SonarQube plugins, we provide instructions but don't auto-install
+          // since it requires manual SonarQube server configuration
+          console.log(`📋 SonarQube Plugin Installation Instructions:`);
+          console.log(`   ${tool.installation.instructions}`);
+          console.log(`   Plugin: ${tool.installation.package}`);
+          console.log(`   Note: This requires manual installation in your SonarQube server.`);
+          break;
+        case 'built-in':
+          // Built-in tools don't need installation
+          console.log(`✅ ${tool.name} is built-in and ready to use`);
           break;
         default:
           throw new Error(`Installation type ${tool.installation.type} not supported yet`);

@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake } from '../database/index.js';
 import { loadProjectConfig } from '../utils/config.js';
+// Generic parser removed - using simple JSON parsing
 // Built-in analyzers will be imported when added via separate PRs
 
 interface AnalyzeOptions {
@@ -113,12 +114,46 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
 async function runGenericTool(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   // Replace placeholders in command args
-  const args = tool.command.args.map(arg => arg.replace('{url}', url));
+  const args = tool.command.args.map(arg => 
+    arg.replace('{url}', url)
+       .replace('{projectKey}', options.projectKey || 'carbonara-project')
+       .replace('{sources}', options.sources || '.')
+  );
   
   const result = await execa(tool.command.executable, args, {
     stdio: 'pipe'
   });
 
+  // Handle EcoCode/SonarQube tools specially
+  if (tool.id.startsWith('ecocode-')) {
+    try {
+      // For EcoCode tools, we need to fetch results from SonarQube API
+      // This is a simplified approach - in reality, you'd need to configure
+      // SonarQube server URL and authentication
+      const projectKey = options.projectKey || 'carbonara-project';
+      const sonarUrl = options.sonarUrl || 'http://localhost:9000';
+      
+      // Try to fetch issues from SonarQube API
+      const apiResult = await execa('curl', [
+        '-s',
+        `${sonarUrl}/api/issues/search?componentKeys=${projectKey}&types=CODE_SMELL,BUG,VULNERABILITY&ps=500`
+      ], { stdio: 'pipe' });
+      
+      if (apiResult.stdout) {
+        return JSON.parse(apiResult.stdout);
+      }
+    } catch (error) {
+      console.warn(chalk.yellow(`⚠️  Could not fetch SonarQube results: ${error}`));
+      console.log(chalk.blue('💡 Make sure SonarQube server is running and accessible'));
+    }
+  }
+
+  // Use simple JSON parsing for now
+  if (tool.parsing) {
+    return JSON.parse(result.stdout);
+  }
+
+  // Fallback to simple parsing
   if (tool.command.outputFormat === 'json') {
     return JSON.parse(result.stdout);
   } else if (tool.command.outputFormat === 'yaml') {
