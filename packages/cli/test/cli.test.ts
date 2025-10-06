@@ -100,14 +100,13 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze command should require tool and URL arguments', () => {
-    try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze`, { encoding: 'utf8' });
-    } catch (error: any) {
-      expect(error.status).toBe(1);
-      // Should show usage help when arguments are missing
-      expect(error.stderr.toString()).toContain('error: missing required argument');
-    }
+  test('analyze command should show help when arguments are missing', () => {
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze`, { encoding: 'utf8' });
+    expect(result).toContain('Usage: carbonara analyze');
+    expect(result).toContain('Run analysis with specified tool');
+    expect(result).toContain('Arguments:');
+    expect(result).toContain('tool');
+    expect(result).toContain('url');
   });
 
   test('analyze command should handle invalid tool', () => {
@@ -122,16 +121,15 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze test-analyzer should require URL argument', () => {
-    try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer`, { 
-        encoding: 'utf8',
-        stdio: 'pipe'
-      });
-    } catch (error: any) {
-      expect(error.status).toBe(1);
-      expect(error.stderr.toString()).toContain('missing required argument');
-    }
+  test('analyze command with tool but no URL should show help', () => {
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer`, { 
+      encoding: 'utf8',
+      stdio: 'pipe'
+    });
+    expect(result).toContain('Usage: carbonara analyze');
+    expect(result).toContain('Arguments:');
+    expect(result).toContain('tool');
+    expect(result).toContain('url');
   });
 
   test('analyze test-analyzer should handle invalid URL gracefully', () => {

@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 import * as path from 'path';
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './src/test/e2e',
+  outputDir: './src/test/e2e/test-results',
   timeout: 60 * 1000,
   expect: {
     timeout: 20 * 1000,
@@ -11,7 +12,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Only one worker to avoid VSCode instance conflicts
-  reporter: 'html',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: './src/test/e2e/playwright-report' }]
+  ],
   use: {
     actionTimeout: 20 * 1000,
     navigationTimeout: 60 * 1000,
@@ -28,8 +32,8 @@ export default defineConfig({
   ],
 
   webServer: undefined, // We don't need a web server for VSCode extension testing
-  
+
   // Global setup and teardown
-  globalSetup: './e2e/global-setup.ts',
-  globalTeardown: './e2e/global-teardown.ts',
+  globalSetup: './src/test/e2e/global-setup.ts',
+  globalTeardown: './src/test/e2e/global-teardown.ts',
 }); 

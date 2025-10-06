@@ -9,6 +9,7 @@ node_modules/
 out/**/*.map
 out/test/
 .turbo/
+dist/
 
 # Development files
 .git/
@@ -16,6 +17,8 @@ out/test/
 .eslintrc.json
 tsconfig.json
 webpack.config.js
+.claude/
+carbonara.db
 
 # Parent directory files (monorepo structure)
 ../**
@@ -26,6 +29,11 @@ webpack.config.js
 test/
 **/*.test.*
 e2e/
+
+# test logs and artifacts
+src/test/e2e/test-results/
+src/test/e2e/playwright-report/
+src/test/e2e/screenshots/
 
 # Documentation (except README)
 *.md
