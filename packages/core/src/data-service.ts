@@ -96,12 +96,29 @@ export class DataService {
         INSERT INTO projects (name, path, metadata)
         VALUES (?, ?, ?)
       `);
-      
+
       stmt.run([name, projectPath, JSON.stringify(metadata)], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
       });
-      
+
+      stmt.finalize();
+    });
+  }
+
+  async updateProjectCO2Variables(projectId: number, variables: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const stmt = this.db.prepare(`
+        UPDATE projects
+        SET co2_variables = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `);
+
+      stmt.run([JSON.stringify(variables), projectId], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+
       stmt.finalize();
     });
   }
@@ -170,17 +187,17 @@ export class DataService {
     if (projectId || toolName) {
       query += ' WHERE';
       const conditions = [];
-      
+
       if (projectId) {
         conditions.push('project_id = ?');
         params.push(projectId);
       }
-      
+
       if (toolName) {
         conditions.push('tool_name = ?');
         params.push(toolName);
       }
-      
+
       query += ' ' + conditions.join(' AND ');
     }
 
@@ -200,13 +217,31 @@ export class DataService {
     });
   }
 
+  async getAllAssessmentData(): Promise<AssessmentDataEntry[]> {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT * FROM assessment_data ORDER BY timestamp DESC',
+        (err, rows: any[]) => {
+          if (err) reject(err);
+          else {
+            const assessmentData = rows.map(row => ({
+              ...row,
+              data: row.data ? JSON.parse(row.data) : {}
+            }));
+            resolve(assessmentData);
+          }
+        }
+      );
+    });
+  }
+
   async close(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         resolve();
         return;
       }
-      
+
       this.db.close((err) => {
         if (err && (err as any).code !== 'SQLITE_MISUSE') {
           reject(err);
@@ -217,3 +252,13 @@ export class DataService {
     });
   }
 }
+
+export const createDataLake = (dbPath?: string | DatabaseConfig) => {
+  if (typeof dbPath === 'string') {
+    return new DataService({ dbPath });
+  }
+  return new DataService(dbPath);
+};
+
+// Alias for backwards compatibility
+export const DataLake = DataService;

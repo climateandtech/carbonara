@@ -6,7 +6,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { Command } from 'commander';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
-import { createDataLake } from '../database/index.js';
+import { createDataLake } from '@carbonara/core';
 import { loadProjectConfig } from '../utils/config.js';
 // Built-in analyzers will be imported when added via separate PRs
 
