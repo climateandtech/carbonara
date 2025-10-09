@@ -1,0 +1,2 @@
+rules:
+  - id: ignore-battery-optimizations

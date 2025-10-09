@@ -1,0 +1,2 @@
+rules:
+  - id: optimize-read-file-exceptions

@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-multiple-if-else-statement

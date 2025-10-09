@@ -1,0 +1,2 @@
+rules:
+  - id: importing-everything-from-library-should-be-avoided

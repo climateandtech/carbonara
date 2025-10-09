@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-usage-of-static-collections

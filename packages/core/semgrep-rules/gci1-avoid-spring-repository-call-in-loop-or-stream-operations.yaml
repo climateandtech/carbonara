@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-spring-repository-call-in-loop-or-stream-operations

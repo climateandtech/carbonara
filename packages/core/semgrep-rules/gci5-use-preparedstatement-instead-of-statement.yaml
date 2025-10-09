@@ -1,0 +1,2 @@
+rules:
+  - id: use-preparedstatement-instead-of-statement

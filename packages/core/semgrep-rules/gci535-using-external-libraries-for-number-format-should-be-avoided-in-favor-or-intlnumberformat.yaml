@@ -1,0 +1,2 @@
+rules:
+  - id: using-external-libraries-for-number-format-should-be-avoided-in-favor-or-intlnumberformat

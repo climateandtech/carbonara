@@ -1,0 +1,2 @@
+rules:
+  - id: css-animations-should-be-avoided

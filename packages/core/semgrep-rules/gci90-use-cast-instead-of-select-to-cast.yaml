@@ -1,0 +1,2 @@
+rules:
+  - id: use-cast-instead-of-select-to-cast

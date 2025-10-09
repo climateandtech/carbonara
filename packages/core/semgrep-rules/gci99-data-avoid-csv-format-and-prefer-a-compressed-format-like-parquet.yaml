@@ -1,0 +1,2 @@
+rules:
+  - id: data-avoid-csv-format-and-prefer-a-compressed-format-like-parquet

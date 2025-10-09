@@ -1,0 +1,2 @@
+rules:
+  - id: gccollect-should-not-be-called

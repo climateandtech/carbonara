@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-iterative-matrix-operations

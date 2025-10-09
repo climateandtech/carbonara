@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-getting-the-size-of-the-collection-in-the-loop

@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-raising-runtime-exceptions-when-a-check-is-possible

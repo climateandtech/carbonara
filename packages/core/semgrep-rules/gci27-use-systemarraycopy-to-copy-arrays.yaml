@@ -1,0 +1,2 @@
+rules:
+  - id: use-systemarraycopy-to-copy-arrays

@@ -1,0 +1,2 @@
+rules:
+  - id: images-should-not-have-an-empty-source-attribute

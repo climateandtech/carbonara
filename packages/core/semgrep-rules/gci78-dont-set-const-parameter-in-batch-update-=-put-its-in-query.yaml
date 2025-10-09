@@ -1,0 +1,2 @@
+rules:
+  - id: dont-set-const-parameter-in-batch-update-=-put-its-in-query

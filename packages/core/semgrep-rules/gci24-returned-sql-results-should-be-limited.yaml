@@ -1,0 +1,2 @@
+rules:
+  - id: returned-sql-results-should-be-limited

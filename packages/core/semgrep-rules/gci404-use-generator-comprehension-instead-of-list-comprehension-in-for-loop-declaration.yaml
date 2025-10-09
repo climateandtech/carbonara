@@ -1,0 +1,2 @@
+rules:
+  - id: use-generator-comprehension-instead-of-list-comprehension-in-for-loop-declaration

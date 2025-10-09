@@ -1,0 +1,2 @@
+rules:
+  - id: multiple-access-of-same-dom-element-should-be-limited

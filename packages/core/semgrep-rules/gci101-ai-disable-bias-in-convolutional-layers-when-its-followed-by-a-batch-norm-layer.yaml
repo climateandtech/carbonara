@@ -1,0 +1,2 @@
+rules:
+  - id: ai-disable-bias-in-convolutional-layers-when-its-followed-by-a-batch-norm-layer

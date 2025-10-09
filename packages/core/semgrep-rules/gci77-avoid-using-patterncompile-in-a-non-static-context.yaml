@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-using-patterncompile-in-a-non-static-context

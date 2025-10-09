@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-using-double-quote-prefer-using-simple-quote

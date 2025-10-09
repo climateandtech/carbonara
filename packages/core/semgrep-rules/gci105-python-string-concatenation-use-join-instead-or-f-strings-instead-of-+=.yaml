@@ -1,0 +1,2 @@
+rules:
+  - id: python-string-concatenation-use-join-instead-or-f-strings-instead-of-+=

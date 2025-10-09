@@ -1,0 +1,2 @@
+rules:
+  - id: dont-use-items-to-iterate-over-a-dictionary-when-only-keys-or-values-are-needed

@@ -1,0 +1,2 @@
+rules:
+  - id: do-not-call-a-function-when-declaring-a-for-type-loop

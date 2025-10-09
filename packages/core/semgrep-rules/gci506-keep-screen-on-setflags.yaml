@@ -1,0 +1,2 @@
+rules:
+  - id: keep-screen-on-setflags

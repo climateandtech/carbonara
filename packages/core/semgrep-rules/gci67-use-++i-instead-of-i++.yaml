@@ -1,0 +1,2 @@
+rules:
+  - id: use-++i-instead-of-i++

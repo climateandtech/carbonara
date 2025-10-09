@@ -1,0 +1,2 @@
+rules:
+  - id: variable-can-be-made-constant

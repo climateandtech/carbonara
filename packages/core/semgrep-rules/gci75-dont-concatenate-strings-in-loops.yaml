@@ -1,0 +1,2 @@
+rules:
+  - id: dont-concatenate-strings-in-loops

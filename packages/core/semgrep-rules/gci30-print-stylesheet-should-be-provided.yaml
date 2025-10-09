@@ -1,0 +1,2 @@
+rules:
+  - id: print-stylesheet-should-be-provided

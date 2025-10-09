@@ -1,0 +1,2 @@
+rules:
+  - id: dataai-pandas-avoid-reading-unnecessary-columns-in-csv-files

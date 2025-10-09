@@ -1,0 +1,2 @@
+rules:
+  - id: avoid-querying-sql-columns-that-are-not-used

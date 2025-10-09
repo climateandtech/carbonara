@@ -1,0 +1,2 @@
+rules:
+  - id: use-stringlength-instead-of-comparison-with-empty-string

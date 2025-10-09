@@ -1,0 +1,2 @@
+rules:
+  - id: autoplay-should-be-avoided-for-video-and-audio-content

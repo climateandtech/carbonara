@@ -1,0 +1,2 @@
+rules:
+  - id: shorthand-css-notations-should-be-used-to-reduce-stylesheets-size

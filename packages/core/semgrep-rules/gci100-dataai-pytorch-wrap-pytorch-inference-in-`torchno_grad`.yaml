@@ -1,0 +1,2 @@
+rules:
+  - id: dataai-pytorch-wrap-pytorch-inference-in-`torchno_grad`

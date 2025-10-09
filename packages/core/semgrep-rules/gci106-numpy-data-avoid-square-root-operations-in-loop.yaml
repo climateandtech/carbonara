@@ -1,0 +1,2 @@
+rules:
+  - id: numpy-data-avoid-square-root-operations-in-loop

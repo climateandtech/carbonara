@@ -1,0 +1,2 @@
+rules:
+  - id: api-collections-should-be-preferred-with-pagination
