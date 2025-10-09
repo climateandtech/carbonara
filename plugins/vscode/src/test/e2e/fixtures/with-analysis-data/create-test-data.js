@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 // Script to create test data for the with-analysis-data fixture
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
@@ -12,9 +11,11 @@ if (fs.existsSync(dbPath)) {
   fs.unlinkSync(dbPath);
 }
 
-const db = new sqlite3.Database(dbPath);
+(async () => {
+  const initSqlJs = require('sql.js');
+  const SQL = await initSqlJs();
+  const db = new SQL.Database();
 
-db.serialize(() => {
   // Create tables
   db.run(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -58,13 +59,13 @@ db.serialize(() => {
 
   // Insert project
   db.run(`
-    INSERT INTO projects (id, name, path, metadata, co2_variables) 
+    INSERT INTO projects (id, name, path, metadata, co2_variables)
     VALUES (1, 'Test Project with Analysis Data', '${__dirname}', '{}', '{}')
   `);
 
   // Insert greenframe analysis data (updated to match old API format)
   db.run(`
-    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp) 
+    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
     VALUES (1, 'greenframe', 'web-analysis', ?, 'test', '2025-01-15T10:30:00.000Z')
   `, [JSON.stringify({
     url: 'https://example.com',
@@ -91,7 +92,7 @@ db.serialize(() => {
 
   // Insert CO2 assessment data
   db.run(`
-    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp) 
+    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
     VALUES (1, 'co2-assessment', 'questionnaire', ?, 'test', '2025-01-15T09:15:00.000Z')
   `, [JSON.stringify({
     impactScore: 75,
@@ -111,7 +112,7 @@ db.serialize(() => {
 
   // Insert GreenFrame analysis data
   db.run(`
-    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp) 
+    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
     VALUES (1, 'greenframe', 'web-analysis', ?, 'test', '2025-01-15T11:45:00.000Z')
   `, [JSON.stringify({
     url: 'https://test-site.com',
@@ -128,6 +129,10 @@ db.serialize(() => {
   })]);
 
   console.log('✅ Test database created with sample analysis data');
-});
 
-db.close();
+  // Save database to file
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(dbPath, buffer);
+  db.close();
+})();
