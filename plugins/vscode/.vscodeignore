@@ -6,9 +6,8 @@ src/
 # Build artifacts
 node_modules/
 .vscode-test/
-out/**/*.map
-!out/cli
 .turbo/
+out/
 
 # Development files
 .git/
@@ -17,6 +16,7 @@ out/**/*.map
 tsconfig.json
 webpack.config.js
 .claude/
+carbonara.db
 
 # Parent directory files (monorepo structure)
 ../**
@@ -28,6 +28,11 @@ test/
 **/*.test.*
 e2e/
 out/test/
+
+# test logs and artifacts
+src/test/e2e/test-results/
+src/test/e2e/playwright-report/
+src/test/e2e/screenshots/
 
 # Documentation (except README)
 *.md

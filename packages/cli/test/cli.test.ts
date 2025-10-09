@@ -100,13 +100,15 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze command should require tool and URL arguments', () => {
+  test('analyze command should show help when arguments are missing', () => {
     try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze`, { encoding: 'utf8' });
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze`, {
+        encoding: 'utf8',
+        stdio: 'pipe'
+      });
     } catch (error: any) {
       expect(error.status).toBe(1);
-      // Should show usage help when arguments are missing
-      expect(error.stderr.toString()).toContain('error: missing required argument');
+      expect(error.stderr.toString()).toContain("missing required argument 'tool'");
     }
   });
 
@@ -122,15 +124,15 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze test-analyzer should require URL argument', () => {
+  test('analyze command with tool but no URL should show help', () => {
     try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer`, { 
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer`, {
         encoding: 'utf8',
         stdio: 'pipe'
       });
     } catch (error: any) {
       expect(error.status).toBe(1);
-      expect(error.stderr.toString()).toContain('missing required argument');
+      expect(error.stderr.toString()).toContain("missing required argument 'url'");
     }
   });
 

@@ -4,6 +4,7 @@
   "description": "Multi-Editor Plugin Architecture client for VS Code",
   "version": "0.1.0",
   "publisher": "carbonara",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/carbonara/carbonara"
@@ -130,7 +131,7 @@
         {
           "id": "carbonara",
           "title": "Carbonara",
-          "icon": "$(leaf)"
+          "icon": "icon.svg"
         }
       ]
     },

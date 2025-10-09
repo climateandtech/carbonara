@@ -1,6 +1,19 @@
 import { test, expect } from '@playwright/test';
 import { VSCodeLauncher, VSCodeInstance, WorkspaceFixture } from './helpers/vscode-launcher';
-import { SELECTORS, UI_TEXT } from '../src/constants/ui-text';
+import { SELECTORS, UI_TEXT } from '../../constants/ui-text';
+import * as path from 'path';
+import * as fs from 'fs';
+
+const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
+
+// Ensure screenshots directory exists
+if (!fs.existsSync(SCREENSHOTS_DIR)) {
+  fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+}
+
+function getScreenshotPath(filename: string): string {
+  return path.join(SCREENSHOTS_DIR, filename);
+}
 
 async function setupTest(workspaceFixture: WorkspaceFixture): Promise<VSCodeInstance> {
   const vscode = await VSCodeLauncher.launch(workspaceFixture);
@@ -103,10 +116,10 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
           }
         }
       } catch (error) {
-        console.log('ℹ️ Sidebar test inconclusive:', error.message);
+        console.log('ℹ️ Sidebar test inconclusive:', error instanceof Error ? error.message : String(error));
       }
       
-      await vscode.window.screenshot({ path: 'existing-project-loaded.png' });
+      await vscode.window.screenshot({ path: getScreenshotPath('existing-project-loaded.png') });
       
     } finally {
       await VSCodeLauncher.close(vscode);
@@ -143,10 +156,10 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
             await expect(mobileAppProject).toBeVisible({ timeout: 5000 });
             console.log('✅ Multiple projects found and displayed for selection');
             
-            await vscode.window.screenshot({ path: 'multiple-projects-selection.png' });
+            await vscode.window.screenshot({ path: getScreenshotPath('multiple-projects-selection.png') });
           } catch (error) {
-            console.log('❌ Multiple projects not found as expected:', error.message);
-            await vscode.window.screenshot({ path: 'multiple-projects-failed.png' });
+            console.log('❌ Multiple projects not found as expected:', error instanceof Error ? error.message : String(error));
+            await vscode.window.screenshot({ path: getScreenshotPath('multiple-projects-failed.png') });
           }
         }
       }
@@ -191,7 +204,7 @@ test.describe('Workspace Scenarios - Project State Testing', () => {
             console.log('ℹ️ Invalid project handling behavior unclear');
           }
           
-          await vscode.window.screenshot({ path: 'invalid-project-handling.png' });
+          await vscode.window.screenshot({ path: getScreenshotPath('invalid-project-handling.png') });
         }
       }
     } finally {
