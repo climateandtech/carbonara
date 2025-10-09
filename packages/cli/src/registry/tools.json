@@ -248,6 +248,114 @@
           "type": "boolean"
         }
       ]
+    },
+    {
+      "id": "semgrep",
+      "name": "Semgrep",
+      "description": "Static analysis tool for finding bugs, detecting vulnerabilities, and enforcing code standards",
+      "command": {
+        "executable": "built-in",
+        "args": [],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "built-in",
+        "package": "built-in",
+        "global": false,
+        "instructions": "Built-in static analysis tool. Requires Python 3.7+ for full functionality. Run 'carbonara semgrep --setup' to configure bundled environment."
+      },
+      "detection": {
+        "method": "built-in",
+        "target": "always-available"
+      },
+      "display": {
+        "category": "Code Analysis",
+        "icon": "🔍",
+        "groupName": "Semgrep Analysis",
+        "entryTemplate": "🔍 {target} - {date}",
+        "descriptionTemplate": "{total_matches} findings ({error_count} errors, {warning_count} warnings)",
+        "fields": [
+          {
+            "key": "target",
+            "label": "🎯 Target",
+            "path": "data.target",
+            "type": "string"
+          },
+          {
+            "key": "total_matches",
+            "label": "🔍 Findings",
+            "path": "data.stats.total_matches",
+            "type": "number",
+            "format": "{value}"
+          },
+          {
+            "key": "error_count",
+            "label": "🚨 Errors",
+            "path": "data.stats.error_count",
+            "type": "number",
+            "format": "{value}"
+          },
+          {
+            "key": "warning_count",
+            "label": "⚠️ Warnings",
+            "path": "data.stats.warning_count",
+            "type": "number",
+            "format": "{value}"
+          },
+          {
+            "key": "info_count",
+            "label": "ℹ️ Info",
+            "path": "data.stats.info_count",
+            "type": "number",
+            "format": "{value}"
+          },
+          {
+            "key": "files_scanned",
+            "label": "📁 Files",
+            "path": "data.stats.files_scanned",
+            "type": "number",
+            "format": "{value}"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table|sarif)",
+          "type": "string",
+          "default": "table"
+        },
+        {
+          "flag": "-s, --severity <level>",
+          "description": "Filter by severity (error|warning|info)",
+          "type": "string"
+        },
+        {
+          "flag": "--save",
+          "description": "Save results to file",
+          "type": "boolean"
+        },
+        {
+          "flag": "--fix",
+          "description": "Apply available fixes (experimental)",
+          "type": "boolean"
+        },
+        {
+          "flag": "--bundled",
+          "description": "Use bundled Python environment",
+          "type": "boolean"
+        },
+        {
+          "flag": "--setup",
+          "description": "Setup bundled Semgrep environment",
+          "type": "boolean"
+        },
+        {
+          "flag": "--list-rules",
+          "description": "List available rules",
+          "type": "boolean"
+        }
+      ]
     }
   ]
 }
