@@ -237,74 +237,25 @@ describe('CLI analyze command with project management', () => {
     expect(fs.existsSync(dbPath)).toBe(true);
     
     // Check that project was created in database
-    const sqlite3 = require('sqlite3');
-    const db = new sqlite3.Database(dbPath);
-    
-    return new Promise<void>((resolve, reject) => {
-      let isResolved = false;
-      let cleanupHandlers: Array<() => void> = [];
-      
-      const cleanup = () => {
-        if (!isResolved) {
-          try {
-            if (!db.closed) {
-              db.close();
-            }
-          } catch (err) {
-            // Ignore errors during cleanup
-          }
-          // Remove all cleanup handlers
-          cleanupHandlers.forEach(handler => {
-            process.removeListener('uncaughtException', handler);
-            process.removeListener('unhandledRejection', handler);
-          });
-        }
-      };
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const dbData = fs.readFileSync(dbPath);
+    const db = new SQL.Database(dbData);
 
-      const errorHandler = (err: any) => {
-        cleanup();
-        reject(err);
-      };
+    try {
+      // Check project count
+      const projectResult = db.exec('SELECT COUNT(*) as count FROM projects');
+      expect(projectResult[0].values[0][0]).toBe(1);
 
-      // Add error handlers
-      const wrappedHandler = () => errorHandler(null);
-      cleanupHandlers.push(wrappedHandler);
-      process.on('uncaughtException', wrappedHandler);
-      process.on('unhandledRejection', wrappedHandler);
+      // Check assessment data count
+      const dataResult = db.exec('SELECT COUNT(*) as count FROM assessment_data WHERE project_id IS NOT NULL');
+      expect(dataResult[0].values[0][0]).toBe(1);
 
-      // Use a single timeout for the entire test
-      const testTimeout = setTimeout(() => {
-        if (!isResolved) {
-          cleanup();
-          reject(new Error('Test timeout - database operations took too long'));
-        }
-      }, 10000);
-
-      db.serialize(() => {
-        db.get('SELECT COUNT(*) as count FROM projects', (err: any, row: any) => {
-          if (err) {
-            cleanup();
-            clearTimeout(testTimeout);
-            reject(err);
-            return;
-          }
-          expect(row.count).toBe(1);
-          
-          db.get('SELECT COUNT(*) as count FROM assessment_data WHERE project_id IS NOT NULL', (err2: any, row2: any) => {
-            cleanup();
-            clearTimeout(testTimeout);
-            
-            if (err2) {
-              reject(err2);
-            } else {
-              expect(row2.count).toBe(1);
-              isResolved = true;
-              resolve();
-            }
-          });
-        });
-      });
-    });
+      db.close();
+    } catch (err) {
+      db.close();
+      throw err;
+    }
   });
 
   test('analyze should use existing projectId when available in config', async () => {
@@ -324,116 +275,59 @@ describe('CLI analyze command with project management', () => {
     
     // Create database with existing project
     const dbPath = path.join(testDir, 'carbonara.db');
-    const sqlite3 = require('sqlite3');
-    const db = new sqlite3.Database(dbPath);
-    
-    return new Promise<void>((resolve, reject) => {
-      let isResolved = false;
-      let cleanupHandlers: Array<() => void> = [];
-      
-      const cleanup = () => {
-        if (!isResolved) {
-          try {
-            if (!db.closed) {
-              db.close();
-            }
-          } catch (err) {
-            // Ignore errors during cleanup
-          }
-          // Remove all cleanup handlers
-          cleanupHandlers.forEach(handler => {
-            process.removeListener('uncaughtException', handler);
-            process.removeListener('unhandledRejection', handler);
-          });
-        }
-      };
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const db = new SQL.Database();
 
-      const errorHandler = (err: any) => {
-        cleanup();
-        reject(err);
-      };
+    // Create tables
+    db.run(`CREATE TABLE projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      path TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 
-      // Add error handlers
-      const wrappedHandler = () => errorHandler(null);
-      cleanupHandlers.push(wrappedHandler);
-      process.on('uncaughtException', wrappedHandler);
-      process.on('unhandledRejection', wrappedHandler);
+    db.run(`CREATE TABLE assessment_data (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER,
+      tool_name TEXT NOT NULL,
+      data_type TEXT NOT NULL,
+      data JSON NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      source TEXT,
+      FOREIGN KEY (project_id) REFERENCES projects (id)
+    )`);
 
-      // Use a single timeout for the entire test
-      const testTimeout = setTimeout(() => {
-        if (!isResolved) {
-          cleanup();
-          reject(new Error('Test timeout - database operations took too long'));
-        }
-      }, 10000);
+    // Insert existing project with ID 42
+    db.run('INSERT INTO projects (id, name, path) VALUES (42, "Test Project", ?)', [testDir]);
 
-      db.serialize(() => {
-        // Create tables
-        db.run(`CREATE TABLE projects (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          path TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
-        
-        db.run(`CREATE TABLE assessment_data (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          project_id INTEGER,
-          tool_name TEXT NOT NULL,
-          data_type TEXT NOT NULL,
-          data JSON NOT NULL,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          source TEXT,
-          FOREIGN KEY (project_id) REFERENCES projects (id)
-        )`);
-        
-        // Insert existing project with ID 42
-        db.run('INSERT INTO projects (id, name, path) VALUES (42, "Test Project", ?)', [testDir], (err: any) => {
-          if (err) {
-            cleanup();
-            clearTimeout(testTimeout);
-            reject(err);
-            return;
-          }
+    // Save database to file
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(dbPath, buffer);
+    db.close();
 
-          db.close();
-          
-          try {
-            // Run analyze command
-            const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, { 
-              encoding: 'utf8',
-              stdio: 'pipe',
-              timeout: 15000
-            });
-            
-            expect(result).toContain('analysis completed');
-            expect(result).toContain('Results saved to project database');
-            
-            // Verify data was saved with correct project_id
-            const db2 = new sqlite3.Database(dbPath);
-            const verifyTimeout = setTimeout(() => {
-              db2.close();
-              reject(new Error('Database verification timeout'));
-            }, 5000);
-
-            db2.get('SELECT project_id FROM assessment_data WHERE tool_name = "test-analyzer"', (err2: any, row: any) => {
-              cleanup();
-              clearTimeout(testTimeout);
-              
-              if (err2) {
-                reject(err2);
-              } else {
-                expect(row.project_id).toBe(42);
-                isResolved = true;
-                resolve();
-              }
-            });
-          } catch (error) {
-            clearTimeout(testTimeout);
-            reject(error);
-          }
-        });
-      });
+    // Run analyze command
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 15000
     });
+
+    expect(result).toContain('analysis completed');
+    expect(result).toContain('Results saved to project database');
+
+    // Verify data was saved with correct project_id
+    const dbData = fs.readFileSync(dbPath);
+    const db2 = new SQL.Database(dbData);
+
+    try {
+      const queryResult = db2.exec('SELECT project_id FROM assessment_data WHERE tool_name = "test-analyzer"');
+      expect(queryResult[0].values[0][0]).toBe(42);
+      db2.close();
+    } catch (err) {
+      db2.close();
+      throw err;
+    }
   });
 });
