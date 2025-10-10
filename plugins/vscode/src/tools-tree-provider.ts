@@ -155,8 +155,16 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
                 return;
             }
 
-            // Only if no workspace tools.json, try CLI
-            console.log('🔧 No workspace tools.json, trying CLI...');
+            // Try bundled registry (for packaged extension)
+            console.log('🔧 No workspace tools.json, trying bundled registry...');
+            if (await this.loadBundledRegistry()) {
+                console.log('✅ Loaded tools from bundled registry');
+                this._onDidChangeTreeData.fire();
+                return;
+            }
+
+            // Try CLI registry (for development in monorepo)
+            console.log('🔧 No bundled registry, trying CLI...');
             const cliPath = await this.findCarbonaraCLI();
             if (cliPath) {
                 console.log('🔧 CLI found at:', cliPath);
@@ -169,7 +177,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             console.log('🔧 No CLI found, showing no tools message');
             this.tools = [];
             this._onDidChangeTreeData.fire();
-            
+
         } catch (error: any) {
             console.error('🔧 Failed to load tools:', error);
             this.tools = [];
@@ -177,18 +185,59 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         }
     }
 
+    private async loadBundledRegistry(): Promise<boolean> {
+        try {
+            // Look for registry bundled with the extension
+            // __dirname in the compiled extension points to dist/, and registry is at dist/registry/
+            const bundledRegistryPath = path.join(__dirname, 'registry', 'tools.json');
+            console.log(`🔧 Checking for bundled registry at: ${bundledRegistryPath}`);
+
+            if (!fs.existsSync(bundledRegistryPath)) {
+                console.log('❌ Bundled registry not found');
+                return false;
+            }
+
+            console.log('🔧 Found bundled registry, loading...');
+            const registryContent = fs.readFileSync(bundledRegistryPath, 'utf8');
+            const registry = JSON.parse(registryContent);
+
+            // Transform and load tools
+            this.tools = await Promise.all(registry.tools.map(async (tool: any) => {
+                const isBuiltIn = tool.installation?.type === 'built-in';
+                const isInstalled = isBuiltIn ? true : await this.detectToolInstallation(tool);
+                return {
+                    id: tool.id,
+                    name: tool.name,
+                    description: tool.description,
+                    type: isBuiltIn ? 'built-in' : 'external',
+                    command: tool.command?.executable || tool.command,
+                    installation: tool.installation,
+                    detection: tool.detection,
+                    isInstalled
+                };
+            }));
+
+            console.log(`✅ Loaded ${this.tools.length} tools from bundled registry`);
+            return true;
+
+        } catch (error) {
+            console.log('❌ Failed to load bundled registry:', error);
+            return false;
+        }
+    }
+
     private async loadToolsFromRegistry(cliPath: string): Promise<void> {
         try {
             console.log(`🔧 Loading tools from registry`);
-            
+
             // Best practice: Use environment variable for registry path
-            const registryPath = process.env.CARBONARA_REGISTRY_PATH || 
+            const registryPath = process.env.CARBONARA_REGISTRY_PATH ||
                 path.join(path.dirname(cliPath), 'registry', 'tools.json');
-            
+
             if (fs.existsSync(registryPath)) {
                 const registryContent = fs.readFileSync(registryPath, 'utf8');
                 const registry = JSON.parse(registryContent);
-                
+
                 // Transform registry format to match our interface
                 this.tools = registry.tools.map((tool: any) => ({
                     id: tool.id,
@@ -200,7 +249,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
                     detection: tool.detection,
                     isInstalled: tool.installation?.type === 'built-in' ? true : false
                 }));
-                
+
                 // Check installation status for external tools
                 await this.checkToolInstallationStatus();
                 console.log(`✅ Loaded ${this.tools.length} tools from registry`);
