@@ -1,0 +1,10 @@
+rules:
+  - id: prefer-appendleft-over-insert-zero
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      Prefer using `appendleft()` over `insert(0)` for better performance.
+            If using collections.deque, `appendleft()` is O(1) while `insert(0)` is O(n).
+            Consider: $OBJ.appendleft($VALUE)
+    pattern: $OBJ.insert(0, $VALUE)
