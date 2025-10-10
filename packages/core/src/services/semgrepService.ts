@@ -7,8 +7,13 @@ import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
+import { fileURLToPath } from 'url';
 
 const fsAccess = promisify(fs.access);
+
+// ESM-compliant __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Represents severity levels for Semgrep findings
