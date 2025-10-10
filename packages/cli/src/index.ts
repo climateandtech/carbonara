@@ -51,9 +51,32 @@ program
   .option("--timeout <ms>", "Analysis timeout in milliseconds", "30000")
   .action(analyzeCommand);
 
-program
+const toolsCmd = program
   .command("tools")
-  .description("Manage analysis tools")
+  .description("Manage analysis tools");
+
+toolsCmd
+  .command("list")
+  .description("List all available tools")
+  .action(() => toolsCommand({ list: true }));
+
+toolsCmd
+  .command("install <tool>")
+  .description("Install analysis tool")
+  .action((tool) => toolsCommand({ install: tool }));
+
+toolsCmd
+  .command("uninstall <tool>")
+  .description("Uninstall analysis tool")
+  .action((tool) => toolsCommand({ uninstall: tool }));
+
+toolsCmd
+  .command("refresh")
+  .description("Refresh tool installation status")
+  .action(() => toolsCommand({ refresh: true }));
+
+// Keep the old option-based interface for backward compatibility
+toolsCmd
   .option("-l, --list", "List all available tools")
   .option("-i, --install <tool>", "Install analysis tool")
   .option("-u, --uninstall <tool>", "Uninstall analysis tool")

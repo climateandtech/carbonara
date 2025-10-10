@@ -6,7 +6,7 @@ import { spawn } from 'child_process';
 import { AssessmentTreeProvider } from './assessment-tree-provider';
 import { DataTreeProvider } from './data-tree-provider';
 import { ToolsTreeProvider } from './tools-tree-provider';
-import type { SemgrepMatch, SemgrepResult } from '@carbonara/core';
+import { createSemgrepService, type SemgrepMatch, type SemgrepResult } from '@carbonara/core';
 
 
 let carbonaraStatusBar: vscode.StatusBarItem;
@@ -626,7 +626,14 @@ function resolveCarbonaraCli(): ResolvedCli | null {
         return { mode: 'path', path: envCli };
     }
 
-    // 2) If a global binary exists, prefer that to avoid bundling/ESM issues
+    // 2) Check for bundled CLI in the extension (preferred)
+    const extensionDir = path.dirname(__filename);
+    const bundledCli = path.join(extensionDir, 'node_modules', '@carbonara', 'cli', 'dist', 'index.js');
+    if (fs.existsSync(bundledCli)) {
+        return { mode: 'path', path: bundledCli };
+    }
+
+    // 3) If a global binary exists, use that as fallback
     const globalCandidates = [
         path.join((process.env.HOME || ''), '.npm', 'bin', 'carbonara'),
         '/usr/local/bin/carbonara',
@@ -637,7 +644,7 @@ function resolveCarbonaraCli(): ResolvedCli | null {
         if (fs.existsSync(p)) return { mode: 'path', path: p };
     }
 
-    // 3) As a last resort, try just calling the binary by name and let PATH resolve it at runtime
+    // 4) As a last resort, try just calling the binary by name and let PATH resolve it at runtime
     return { mode: 'global' };
 }
 
@@ -811,134 +818,117 @@ async function runSemgrepOnFile() {
     return vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: 'Running Semgrep analysis...',
-        cancellable: true
-    }, async (progress, token) => {
-        return new Promise<void>((resolve) => {
-            const resolved = resolveCarbonaraCli();
+        cancellable: false
+    }, async () => {
+        try {
+            // Create Semgrep service instance
+            const semgrep = createSemgrepService({
+                useBundledPython: false,
+                timeout: 60000
+            });
 
-            if (!resolved) {
-                output.appendLine('Error: Carbonara CLI not found');
-                vscode.window.showErrorMessage('Carbonara CLI not found. Please install it first.');
-                resolve();
+            // Check setup before running
+            output.appendLine('Checking Semgrep setup...');
+            const setup = await semgrep.checkSetup();
+
+            if (!setup.isValid) {
+                output.appendLine('Semgrep setup issues detected:');
+                setup.errors.forEach((error) => {
+                    output.appendLine(`  • ${error}`);
+                });
+                output.show();
+                vscode.window.showErrorMessage(
+                    'Semgrep is not properly configured. Check Output for details.',
+                    'View Output'
+                ).then(selection => {
+                    if (selection === 'View Output') {
+                        output.show();
+                    }
+                });
                 return;
             }
 
-            const args = ['semgrep', filePath, '--output', 'json'];
-            let child: import('child_process').ChildProcess;
+            output.appendLine('Running analysis...');
 
-            if (resolved.mode === 'path') {
-                if (resolved.path.endsWith('.js')) {
-                    child = spawn('node', [resolved.path, ...args], { stdio: 'pipe' });
-                } else {
-                    child = spawn(resolved.path, args, { stdio: 'pipe' });
-                }
-            } else {
-                child = spawn('carbonara', args, { stdio: 'pipe' });
+            // Run analysis on the file
+            const result = await semgrep.analyzeFile(filePath);
+
+            if (!result.success) {
+                output.appendLine('Analysis failed:');
+                result.errors.forEach((error) => {
+                    output.appendLine(`  • ${error}`);
+                });
+                output.show();
+                vscode.window.showErrorMessage('Semgrep analysis failed. Check Output for details.');
+                return;
             }
 
-            let stdoutData = '';
-            let stderrData = '';
+            // Convert Semgrep results to VSCode diagnostics
+            const diagnostics: vscode.Diagnostic[] = result.matches.map(match => {
+                const range = new vscode.Range(
+                    match.start_line - 1,
+                    match.start_column,
+                    match.end_line - 1,
+                    match.end_column
+                );
 
-            token.onCancellationRequested(() => {
-                output.appendLine('Analysis cancelled by user');
-                try { child.kill(); } catch {}
-            });
-
-            child.stdout?.on('data', (data) => {
-                stdoutData += data.toString();
-            });
-
-            child.stderr?.on('data', (data) => {
-                const text = data.toString();
-                stderrData += text;
-                output.append(text);
-            });
-
-            child.on('close', (code) => {
-                if (code === 0 || stdoutData) {
-                    try {
-                        const result: SemgrepResult = JSON.parse(stdoutData);
-
-                        // Convert Semgrep results to VSCode diagnostics
-                        const diagnostics: vscode.Diagnostic[] = result.matches.map(match => {
-                            const range = new vscode.Range(
-                                match.start_line - 1,
-                                match.start_column,
-                                match.end_line - 1,
-                                match.end_column
-                            );
-
-                            // Map severity
-                            let severity: vscode.DiagnosticSeverity;
-                            if (match.severity === 'ERROR') {
-                                severity = vscode.DiagnosticSeverity.Error;
-                            } else if (match.severity === 'WARNING') {
-                                severity = vscode.DiagnosticSeverity.Warning;
-                            } else {
-                                severity = vscode.DiagnosticSeverity.Information;
-                            }
-
-                            const diagnostic = new vscode.Diagnostic(range, match.message, severity);
-                            diagnostic.source = 'semgrep';
-                            diagnostic.code = match.rule_id;
-
-                            return diagnostic;
-                        });
-
-                        // Apply diagnostics to the document
-                        const uri = vscode.Uri.file(filePath);
-                        semgrepDiagnostics.set(uri, diagnostics);
-
-                        // Display summary
-                        output.appendLine(`\nAnalysis complete!`);
-                        output.appendLine(`Files scanned: ${result.stats.files_scanned}`);
-                        output.appendLine(`Total findings: ${result.stats.total_matches}`);
-                        output.appendLine(`  Errors: ${result.stats.error_count}`);
-                        output.appendLine(`  Warnings: ${result.stats.warning_count}`);
-                        output.appendLine(`  Info: ${result.stats.info_count}`);
-
-                        if (result.matches.length > 0) {
-                            output.appendLine(`\nFindings:`);
-                            result.matches.forEach((match, index) => {
-                                output.appendLine(`\n${index + 1}. [${match.severity}] ${match.rule_id}`);
-                                output.appendLine(`   ${filePath}:${match.start_line}:${match.start_column}`);
-                                output.appendLine(`   ${match.message}`);
-                            });
-
-                            vscode.window.showWarningMessage(
-                                `Semgrep found ${result.stats.total_matches} issue(s). Underlines added to code.`,
-                                'View Output'
-                            ).then(selection => {
-                                if (selection === 'View Output') {
-                                    output.show();
-                                }
-                            });
-                        } else {
-                            output.appendLine('\n✓ No issues found!');
-                            // Clear any previous diagnostics
-                            semgrepDiagnostics.set(uri, []);
-                            vscode.window.showInformationMessage('Semgrep: No issues found!');
-                        }
-                    } catch (error) {
-                        output.appendLine(`Error parsing Semgrep results: ${error}`);
-                        vscode.window.showErrorMessage('Failed to parse Semgrep results');
-                    }
+                // Map severity
+                let severity: vscode.DiagnosticSeverity;
+                if (match.severity === 'ERROR') {
+                    severity = vscode.DiagnosticSeverity.Error;
+                } else if (match.severity === 'WARNING') {
+                    severity = vscode.DiagnosticSeverity.Warning;
                 } else {
-                    output.appendLine(`\nSemgrep failed with exit code ${code}`);
-                    if (stderrData) {
-                        output.appendLine(stderrData);
-                    }
-                    vscode.window.showErrorMessage(`Semgrep analysis failed. Check Output for details.`);
+                    severity = vscode.DiagnosticSeverity.Information;
                 }
-                resolve();
+
+                const diagnostic = new vscode.Diagnostic(range, match.message, severity);
+                diagnostic.source = 'semgrep';
+                diagnostic.code = match.rule_id;
+
+                return diagnostic;
             });
 
-            child.on('error', (err) => {
-                output.appendLine(`Failed to start Semgrep: ${err.message}`);
-                vscode.window.showErrorMessage('Failed to run Semgrep. Is Carbonara CLI installed?');
-                resolve();
-            });
-        });
+            // Apply diagnostics to the document
+            const uri = vscode.Uri.file(filePath);
+            semgrepDiagnostics.set(uri, diagnostics);
+
+            // Display summary
+            output.appendLine(`\nAnalysis complete!`);
+            output.appendLine(`Files scanned: ${result.stats.files_scanned}`);
+            output.appendLine(`Total findings: ${result.stats.total_matches}`);
+            output.appendLine(`  Errors: ${result.stats.error_count}`);
+            output.appendLine(`  Warnings: ${result.stats.warning_count}`);
+            output.appendLine(`  Info: ${result.stats.info_count}`);
+
+            if (result.matches.length > 0) {
+                output.appendLine(`\nFindings:`);
+                result.matches.forEach((match, index) => {
+                    output.appendLine(`\n${index + 1}. [${match.severity}] ${match.rule_id}`);
+                    output.appendLine(`   ${filePath}:${match.start_line}:${match.start_column}`);
+                    output.appendLine(`   ${match.message}`);
+                });
+
+                vscode.window.showWarningMessage(
+                    `Semgrep found ${result.stats.total_matches} issue(s). Underlines added to code.`,
+                    'View Output'
+                ).then(selection => {
+                    if (selection === 'View Output') {
+                        output.show();
+                    }
+                });
+            } else {
+                output.appendLine('\n✓ No issues found!');
+                // Clear any previous diagnostics
+                semgrepDiagnostics.set(uri, []);
+                vscode.window.showInformationMessage('Semgrep: No issues found!');
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            output.appendLine(`\nError: ${errorMessage}`);
+            output.show();
+            vscode.window.showErrorMessage(`Semgrep analysis failed: ${errorMessage}`);
+        }
     });
 }
 

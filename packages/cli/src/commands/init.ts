@@ -2,7 +2,7 @@ import { input, select } from '@inquirer/prompts';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
-import { createDataLake } from '../database/index.js';
+import { createDataLake } from '@carbonara/core';
 
 interface InitOptions {
   path: string;

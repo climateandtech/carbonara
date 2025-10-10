@@ -263,11 +263,10 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run build",
-    "build": "npm run build:esbuild",
-    "build:esbuild": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
-    "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
-    "package": "vsce package",
+    "build": "tsc -p ./ && npm run copy-deps",
+    "copy-deps": "mkdir -p dist/node_modules/@carbonara/core dist/node_modules/@carbonara/cli dist/node_modules/sql.js && cp -r ../../packages/core/dist dist/node_modules/@carbonara/core/ && cp ../../packages/core/package.json dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/python dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/semgrep-rules dist/node_modules/@carbonara/core/ && cp -r ../../packages/cli/dist dist/node_modules/@carbonara/cli/ && cp ../../packages/cli/package.json dist/node_modules/@carbonara/cli/ && cp -r ../../node_modules/sql.js/dist dist/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json dist/node_modules/sql.js/",
+    "watch": "tsc -watch -p ./",
+    "package": "npm run build && vsce package --no-dependencies",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",
@@ -294,7 +293,6 @@
     "@types/vscode": "^1.104.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
-    "esbuild": "^0.25.0",
     "glob": "^11.0.3",
     "mocha": "^10.2.0",
     "playwright": "^1.40.0",

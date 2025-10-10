@@ -3,7 +3,7 @@ import chalk from "chalk";
 import path from "path";
 import fs from "fs";
 import { z } from "zod";
-import { createDataLake } from "../database/index.js";
+import { createDataLake } from "@carbonara/core";
 import { loadProjectConfig } from "../utils/config.js";
 
 // CO2 Assessment Schema

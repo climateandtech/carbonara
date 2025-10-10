@@ -4,7 +4,8 @@ src/
 *.map
 
 # Build artifacts
-node_modules/
+node_modules/**
+!node_modules/@carbonara/**
 .vscode-test/
 .turbo/
 out/
@@ -28,6 +29,7 @@ test/
 **/*.test.*
 e2e/
 out/test/
+dist/test/
 
 # test logs and artifacts
 src/test/e2e/test-results/
