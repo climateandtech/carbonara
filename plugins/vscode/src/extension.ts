@@ -22,6 +22,9 @@ let semgrepDiagnostics: vscode.DiagnosticCollection;
 // Debounce timer for automatic Semgrep analysis
 let semgrepAnalysisTimer: NodeJS.Timeout | undefined;
 
+// Track files with diagnostics and their line numbers for incremental analysis
+const filesWithDiagnostics = new Map<string, Set<number>>();
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Carbonara extension is now active!');
 
@@ -102,6 +105,15 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.onDidChangeActiveTextEditor(editor => {
             if (editor) {
                 runSemgrepOnFileChange(editor);
+            }
+        })
+    );
+
+    // Set up incremental Semgrep analysis on document changes
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(event => {
+            if (event.document && event.contentChanges.length > 0) {
+                handleDocumentChange(event);
             }
         })
     );
@@ -701,9 +713,9 @@ async function runSemgrepOnFile() {
             const diagnostics: vscode.Diagnostic[] = result.matches.map(match => {
                 const range = new vscode.Range(
                     match.start_line - 1,
-                    match.start_column,
+                    Math.max(0, match.start_column - 1),
                     match.end_line - 1,
-                    match.end_column
+                    Math.max(0, match.end_column - 1)
                 );
 
                 // Map severity
@@ -726,6 +738,15 @@ async function runSemgrepOnFile() {
             // Apply diagnostics to the document
             const uri = vscode.Uri.file(filePath);
             semgrepDiagnostics.set(uri, diagnostics);
+
+            // Track which lines have diagnostics for incremental re-analysis
+            const lineSet = new Set<number>();
+            diagnostics.forEach(diagnostic => {
+                for (let line = diagnostic.range.start.line; line <= diagnostic.range.end.line; line++) {
+                    lineSet.add(line);
+                }
+            });
+            filesWithDiagnostics.set(filePath, lineSet);
 
             // Display summary
             output.appendLine(`\nAnalysis complete!`);
@@ -769,6 +790,28 @@ async function runSemgrepOnFile() {
 function clearSemgrepResults() {
     semgrepDiagnostics.clear();
     vscode.window.showInformationMessage('Semgrep results cleared');
+}
+
+function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
+    const filePath = event.document.uri.fsPath;
+
+    // Only process supported file types
+    const supportedExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rb', '.php', '.c', '.cpp', '.cs', '.swift', '.kt'];
+    const fileExtension = path.extname(filePath);
+
+    if (!supportedExtensions.includes(fileExtension)) {
+        return;
+    }
+
+    // Find the editor for this document
+    const editor = vscode.window.visibleTextEditors.find(
+        e => e.document.uri.fsPath === filePath
+    );
+
+    if (editor) {
+        console.log(`Code changed in ${path.basename(filePath)}, triggering Semgrep re-analysis`);
+        runSemgrepOnFileChange(editor);
+    }
 }
 
 async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
@@ -821,9 +864,9 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
             const diagnostics: vscode.Diagnostic[] = result.matches.map(match => {
                 const range = new vscode.Range(
                     match.start_line - 1,
-                    match.start_column,
+                    Math.max(0, match.start_column - 1),
                     match.end_line - 1,
-                    match.end_column
+                    Math.max(0, match.end_column - 1)
                 );
 
                 // Map severity
@@ -846,6 +889,15 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
             // Apply diagnostics to the document
             const uri = vscode.Uri.file(filePath);
             semgrepDiagnostics.set(uri, diagnostics);
+
+            // Track which lines have diagnostics for incremental re-analysis
+            const lineSet = new Set<number>();
+            diagnostics.forEach(diagnostic => {
+                for (let line = diagnostic.range.start.line; line <= diagnostic.range.end.line; line++) {
+                    lineSet.add(line);
+                }
+            });
+            filesWithDiagnostics.set(filePath, lineSet);
 
             console.log(`Automatic Semgrep analysis complete: ${result.stats.total_matches} issue(s) found`);
         } catch (error) {

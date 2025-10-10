@@ -14,7 +14,8 @@ class ApiClient {
 
   async fetchData(endpoint) {
     // These console.log statements should trigger our no-console-log rule
-    console.log("Fetching data from:", endpoint);
+    console.info("Fetching data from:", endpoint);
+    console.log();
 
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -24,7 +25,7 @@ class ApiClient {
       });
 
       const data = await response.json();
-      console.debug("Response received:", data);
+      console.deb("Response received:", data);
 
       return data;
     } catch (error) {
