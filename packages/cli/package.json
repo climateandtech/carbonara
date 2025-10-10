@@ -16,6 +16,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@carbonara/core": "0.1.0",
     "chalk": "^4.1.2",
     "commander": "^14.0.1",
     "cypress": "^13.17.0",

@@ -1,0 +1,46 @@
+rules:
+  - id: no-console-log-in-production
+    pattern-either:
+      - pattern: console.log(...)
+      - pattern: console.debug(...)
+      - pattern: console.info(...)
+    message: Found console logging statement that should be removed or replaced with proper logging in production
+    languages:
+      - javascript
+      - typescript
+    severity: WARNING
+    metadata:
+      category: best-practice
+      likelihood: HIGH
+      impact: LOW
+      confidence: HIGH
+      subcategory:
+        - production-code-quality
+    fix-regex:
+      regex: '.*console\.(log|debug|info)\(.*\);?\s*\n?'
+      replacement: ''
+      
+  - id: hardcoded-api-key
+    pattern-either:
+      - pattern: |
+          $KEY = "sk-..."
+      - pattern: |
+          $KEY = 'sk-...'
+      - pattern: |
+          apiKey: "..."
+      - pattern: |
+          apiKey: '...'
+    message: Potential hardcoded API key found. Use environment variables instead.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    metadata:
+      category: security
+      subcategory:
+        - hardcoded-secrets
+      confidence: MEDIUM
+      likelihood: HIGH
+      impact: HIGH
+      owasp:
+        - A07:2021 - Identification and Authentication Failures
