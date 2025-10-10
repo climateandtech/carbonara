@@ -4,7 +4,8 @@ src/
 *.map
 
 # Build artifacts
-node_modules/
+node_modules/**
+!node_modules/@carbonara/**
 .vscode-test/
 out/**/*.map
 out/test/
