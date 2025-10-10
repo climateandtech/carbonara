@@ -19,6 +19,9 @@ let currentProjectPath: string | null = null;
 // Diagnostics collection for Semgrep results
 let semgrepDiagnostics: vscode.DiagnosticCollection;
 
+// Debounce timer for automatic Semgrep analysis
+let semgrepAnalysisTimer: NodeJS.Timeout | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Carbonara extension is now active!');
 
@@ -93,6 +96,20 @@ export function activate(context: vscode.ExtensionContext) {
         checkProjectStatus();
     });
     context.subscriptions.push(watcher);
+
+    // Set up automatic Semgrep analysis on file focus change
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(editor => {
+            if (editor) {
+                runSemgrepOnFileChange(editor);
+            }
+        })
+    );
+
+    // Run Semgrep on the currently active file when extension activates
+    if (vscode.window.activeTextEditor) {
+        runSemgrepOnFileChange(vscode.window.activeTextEditor);
+    }
 
     // Check if project is already initialized
     checkProjectStatus();
@@ -752,4 +769,88 @@ async function runSemgrepOnFile() {
 function clearSemgrepResults() {
     semgrepDiagnostics.clear();
     vscode.window.showInformationMessage('Semgrep results cleared');
+}
+
+async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
+    // Clear any pending analysis
+    if (semgrepAnalysisTimer) {
+        clearTimeout(semgrepAnalysisTimer);
+    }
+
+    // Only analyze files with supported extensions
+    const supportedExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rb', '.php', '.c', '.cpp', '.cs', '.swift', '.kt'];
+    const filePath = editor.document.uri.fsPath;
+    const fileExtension = path.extname(filePath);
+
+    if (!supportedExtensions.includes(fileExtension)) {
+        return;
+    }
+
+    // Debounce the analysis by 500ms to avoid running too frequently
+    semgrepAnalysisTimer = setTimeout(async () => {
+        try {
+            // Save the document if it has unsaved changes
+            if (editor.document.isDirty) {
+                await editor.document.save();
+            }
+
+            console.log(`Running automatic Semgrep analysis on ${path.basename(filePath)}`);
+
+            // Create Semgrep service instance
+            const semgrep = createSemgrepService({
+                useBundledPython: false,
+                timeout: 60000
+            });
+
+            // Check setup before running (silent check)
+            const setup = await semgrep.checkSetup();
+            if (!setup.isValid) {
+                console.log('Semgrep setup is not valid, skipping automatic analysis');
+                return;
+            }
+
+            // Run analysis on the file
+            const result = await semgrep.analyzeFile(filePath);
+
+            if (!result.success) {
+                console.log('Semgrep analysis failed:', result.errors);
+                return;
+            }
+
+            // Convert Semgrep results to VSCode diagnostics
+            const diagnostics: vscode.Diagnostic[] = result.matches.map(match => {
+                const range = new vscode.Range(
+                    match.start_line - 1,
+                    match.start_column,
+                    match.end_line - 1,
+                    match.end_column
+                );
+
+                // Map severity
+                let severity: vscode.DiagnosticSeverity;
+                if (match.severity === 'ERROR') {
+                    severity = vscode.DiagnosticSeverity.Error;
+                } else if (match.severity === 'WARNING') {
+                    severity = vscode.DiagnosticSeverity.Warning;
+                } else {
+                    severity = vscode.DiagnosticSeverity.Information;
+                }
+
+                const diagnostic = new vscode.Diagnostic(range, match.message, severity);
+                diagnostic.source = 'semgrep';
+                diagnostic.code = match.rule_id;
+
+                return diagnostic;
+            });
+
+            // Apply diagnostics to the document
+            const uri = vscode.Uri.file(filePath);
+            semgrepDiagnostics.set(uri, diagnostics);
+
+            console.log(`Automatic Semgrep analysis complete: ${result.stats.total_matches} issue(s) found`);
+        } catch (error) {
+            // Silently fail for automatic analysis
+            console.log('Automatic Semgrep analysis error:', error);
+        }
+    }, 500);
 } 
