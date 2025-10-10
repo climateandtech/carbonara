@@ -24,6 +24,10 @@ carbonara.db
 ../../**
 ../../../**
 
+# Semgrep examples
+dist/node_modules/@carbonara/core/semgrep-rules/examples/*
+dist/node_modules/@carbonara/core/semgrep-rules/README.md
+
 # Test files
 test/
 **/*.test.*
