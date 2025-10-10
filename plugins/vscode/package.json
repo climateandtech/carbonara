@@ -286,6 +286,7 @@
     "playwright:install": "playwright install"
   },
   "dependencies": {
+    "@carbonara/cli": "file:../../packages/cli",
     "@carbonara/core": "file:../../packages/core"
   },
   "devDependencies": {
