@@ -328,6 +328,12 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             return;
         }
 
+        // Special handling for Semgrep
+        if (toolId === 'semgrep') {
+            vscode.commands.executeCommand('carbonara.runSemgrep');
+            return;
+        }
+
         const url = await vscode.window.showInputBox({
             prompt: `Enter URL to analyze with ${tool.name}`,
             placeHolder: 'https://example.com'
@@ -345,19 +351,19 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             }
 
             vscode.window.showInformationMessage(UI_TEXT.NOTIFICATIONS.ANALYSIS_RUNNING(tool.name));
-            
+
             const result = await this.runCarbonaraCommand(cliPath, [
-                'analyze', 
-                tool.id, 
-                url, 
+                'analyze',
+                tool.id,
+                url,
                 '--save'
             ]);
 
             vscode.window.showInformationMessage(UI_TEXT.NOTIFICATIONS.ANALYSIS_COMPLETED(tool.name));
-            
+
             // Refresh data tree to show new results
             vscode.commands.executeCommand('carbonara.refreshData');
-            
+
         } catch (error: any) {
             vscode.window.showErrorMessage(`${UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED} ${error.message}`);
         }
