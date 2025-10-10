@@ -241,9 +241,10 @@
     ]
   },
   "scripts": {
-    "build": "tsc -p ./",
+    "build": "tsc -p ./ && npm run copy-deps",
+    "copy-deps": "mkdir -p out/node_modules/@carbonara/core out/node_modules/sql.js && cp -r ../../packages/core/dist out/node_modules/@carbonara/core/ && cp ../../packages/core/package.json out/node_modules/@carbonara/core/ && cp -r ../../node_modules/sql.js/dist out/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json out/node_modules/sql.js/",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package",
+    "package": "npm run build && vsce package --no-dependencies",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",

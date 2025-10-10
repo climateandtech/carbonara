@@ -41,7 +41,8 @@ export class VSCodeDataProvider {
         return [];
       }
 
-      return await this.dataService.getAssessmentData(project.id);
+      // Load all assessment data (don't filter by project ID)
+      return await this.dataService.getAssessmentData();
     } catch (error) {
       console.error('Failed to load data for project:', error);
       return [];
