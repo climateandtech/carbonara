@@ -243,6 +243,9 @@
     "build": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
+    "package:test": "node scripts/build-with-version.js test",
+    "package:version": "node scripts/build-with-version.js version",
+    "package:release": "node scripts/build-with-version.js release",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-1.0.0.vsix",
     "test": "npm run test:ci-check",
@@ -262,7 +265,7 @@
     "playwright:install": "playwright install"
   },
   "dependencies": {
-    "@carbonara/core": "file:../../packages/core"
+    "@carbonara/rpc-client": "file:../../packages/rpc-client/js"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

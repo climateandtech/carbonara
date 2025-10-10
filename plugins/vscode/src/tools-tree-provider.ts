@@ -406,7 +406,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         // Check if we're in the monorepo
         const workspaceRoot = this.workspaceFolder?.uri.fsPath;
         if (workspaceRoot) {
-            const monorepoCliPath = path.join(workspaceRoot, '..', '..', 'packages', 'cli', 'dist', 'index.js');
+            const monorepoCliPath = path.join(workspaceRoot, '..', '..', '..', 'packages', 'cli', 'dist', 'index.js');
             if (fs.existsSync(monorepoCliPath)) {
                 return monorepoCliPath;
             }

@@ -1,450 +1,25 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { setupCarbonaraCore, type DataGroup, type DataEntry as CoreDataEntry, type DataDetail } from '@carbonara/core';
+import * as fs from 'fs';
+import { spawn } from 'child_process';
 import { UI_TEXT } from './constants/ui-text';
 
-export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<DataItem | undefined | null | void> = new vscode.EventEmitter<DataItem | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<DataItem | undefined | null | void> = this._onDidChangeTreeData.event;
-    
-    private workspaceFolder: vscode.WorkspaceFolder | undefined;
-    private coreServices: Awaited<ReturnType<typeof setupCarbonaraCore>> | null = null;
-    private cachedItems: DataItem[] | null = null;
-
-    constructor() {
-        console.log('🏗️ DataTreeProvider constructor called');
-        this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        console.log(`🏗️ Workspace folder: ${this.workspaceFolder?.uri.fsPath || 'none'}`);
-        
-        // Initialize synchronously - don't wait
-        this.initializeCoreServices();
-        console.log('🏗️ Constructor complete');
-    }
-
-    private async initializeCoreServices(): Promise<void> {
-        console.log('🔧 Starting Carbonara core services initialization...');
-        
-        try {
-            if (!this.workspaceFolder) {
-                console.log('❌ No workspace folder available');
-                this.coreServices = null;
-                this._onDidChangeTreeData.fire();
-                return;
-            }
-            
-            // Read database path from config
-            let dbPath: string;
-            const configPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.config.json');
-            
-            try {
-                if (require('fs').existsSync(configPath)) {
-                    const config = JSON.parse(require('fs').readFileSync(configPath, 'utf8'));
-                    if (config.database?.path) {
-                        // If path is relative, make it relative to workspace
-                        dbPath = path.isAbsolute(config.database.path) 
-                            ? config.database.path 
-                            : path.join(this.workspaceFolder.uri.fsPath, config.database.path);
-                    } else {
-                        dbPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.db');
-                    }
-                } else {
-                    dbPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.db');
-                }
-            } catch (error) {
-                console.error('❌ Error reading config:', error);
-                dbPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.db');
-            }
-            
-            console.log(`📁 Workspace folder: ${this.workspaceFolder.uri.fsPath}`);
-            console.log(`🗄️ Database path: ${dbPath}`);
-            console.log(`📊 Database exists: ${require('fs').existsSync(dbPath)}`);
-            
-            // Test individual steps to isolate the hanging issue
-            console.log('⏳ Step 1: Creating data service...');
-            const { createDataService, createSchemaService, createVSCodeDataProvider } = await import('@carbonara/core');
-            
-            const dataService = createDataService({ dbPath });
-            console.log('✅ Data service created');
-            
-            console.log('⏳ Step 2: Initializing database with 10s timeout...');
-            const dbInitTimeout = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Database initialization timed out after 10 seconds')), 10000)
-            );
-            
-            await Promise.race([
-                dataService.initialize(),
-                dbInitTimeout
-            ]);
-            console.log('✅ Database initialized');
-            
-            console.log('⏳ Step 3: Creating schema service...');
-            const schemaService = createSchemaService();
-            
-            console.log('⏳ Step 4: Loading tool schemas with 5s timeout...');
-            const schemaTimeout = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Schema loading timed out after 5 seconds')), 5000)
-            );
-            
-            await Promise.race([
-                schemaService.loadToolSchemas(),
-                schemaTimeout
-            ]);
-            console.log('✅ Schemas loaded');
-            
-            console.log('⏳ Step 5: Creating VSCode provider...');
-            const vscodeProvider = createVSCodeDataProvider(dataService, schemaService);
-            console.log('✅ VSCode provider created');
-            
-            this.coreServices = {
-                dataService,
-                schemaService,
-                vscodeProvider
-            };
-            
-            console.log('✅ Core services initialized successfully!');
-            
-            // Test the services immediately
-            try {
-                const projectPath = this.workspaceFolder.uri.fsPath;
-                const testData = await this.coreServices.vscodeProvider.loadDataForProject(projectPath);
-                console.log(`🧪 Test data load: Found ${testData.length} entries`);
-            } catch (testError) {
-                console.error('⚠️ Test data load failed:', testError);
-            }
-            
-        } catch (error) {
-            console.error('❌ Core services initialization failed:', error);
-            console.error('📋 Full error details:', {
-                message: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : 'No stack trace',
-                name: error instanceof Error ? error.name : 'Unknown'
-            });
-            this.coreServices = null;
-        } finally {
-            // Always trigger refresh to update UI (either with data or error state)
-            console.log('🔄 Triggering UI refresh after initialization attempt');
-            this._onDidChangeTreeData.fire();
-        }
-    }
-
-    async refresh(): Promise<void> {
-        console.log('🔄 DataTreeProvider.refresh() called - clearing cache and refreshing');
-        // Clear cached data to force reload from database
-        this.cachedItems = null;
-        this._onDidChangeTreeData.fire();
-    }
-
-    getTreeItem(element: DataItem): vscode.TreeItem {
-        return element;
-    }
-
-    getChildren(element?: DataItem): DataItem[] | Promise<DataItem[]> {
-        console.log(`🔍 getChildren called - element: ${element?.label || 'root'}`);
-        
-        if (!this.workspaceFolder) {
-            console.log('⚠️ No workspace folder');
-            return [new DataItem('No workspace folder', '', vscode.TreeItemCollapsibleState.None, 'info')];
-        }
-
-        if (!this.coreServices) {
-            console.log('⚠️ Core services not ready yet, returning loading message');
-            // Show current initialization status in UI
-            let dbPath = 'unknown';
-            let dbExists = false;
-            
-            if (this.workspaceFolder) {
-                // Try to read database path from config
-                const configPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.config.json');
-                try {
-                    if (require('fs').existsSync(configPath)) {
-                        const config = JSON.parse(require('fs').readFileSync(configPath, 'utf8'));
-                        if (config.database?.path) {
-                            // If path is relative, make it relative to workspace
-                            dbPath = path.isAbsolute(config.database.path) 
-                                ? config.database.path 
-                                : path.join(this.workspaceFolder.uri.fsPath, config.database.path);
-                        } else {
-                            dbPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.db');
-                        }
-                    } else {
-                        dbPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.db');
-                    }
-                    dbExists = require('fs').existsSync(dbPath);
-                } catch (error) {
-                    dbPath = `Error reading config: ${error}`;
-                }
-            }
-            return [
-                new DataItem('🔄 Loading data...', 'Initializing services', vscode.TreeItemCollapsibleState.None, 'info'),
-                new DataItem(`📁 Workspace: ${this.workspaceFolder?.uri.fsPath || 'None'}`, '', vscode.TreeItemCollapsibleState.None, 'info'),
-                new DataItem(`🗄️ Database: ${dbPath}`, '', vscode.TreeItemCollapsibleState.None, 'info'),
-                new DataItem(`📊 DB exists: ${dbExists}`, '', vscode.TreeItemCollapsibleState.None, 'info'),
-                new DataItem('⏳ Waiting for initialization...', 'Check VSCode Developer Console for errors', vscode.TreeItemCollapsibleState.None, 'info')
-            ];
-        }
-
-        console.log('✅ Core services ready, loading real data');
-        
-        if (element) {
-            // Handle child elements - for now return empty
-            return [];
-        } else {
-            // Load root items with real data
-            return this.loadRootItemsSync();
-        }
-    }
-
-    private loadRootItemsSync(): DataItem[] {
-        console.log('📊 loadRootItemsSync: Loading data synchronously');
-        
-        if (!this.coreServices || !this.workspaceFolder) {
-            return [new DataItem('No services or workspace', '', vscode.TreeItemCollapsibleState.None, 'info')];
-        }
-
-        // If we have cached data, return it
-        if (this.cachedItems) {
-            console.log(`📊 Returning ${this.cachedItems.length} cached items`);
-            return this.cachedItems;
-        }
-
-        // Start async data loading in background and return loading message
-        this.loadRootItemsAsync().then(items => {
-            console.log(`📊 Async load completed, caching ${items.length} items`);
-            this.cachedItems = items;
-            // When data is ready, fire refresh to update UI
-            this._onDidChangeTreeData.fire();
-        }).catch(error => {
-            console.error('❌ Async load failed:', error);
-            this.cachedItems = [new DataItem(UI_TEXT.DATA_TREE.ERROR_LOADING, error.message, vscode.TreeItemCollapsibleState.None, 'error')];
-            this._onDidChangeTreeData.fire();
-        });
-        
-        return [new DataItem(UI_TEXT.DATA_TREE.LOADING, UI_TEXT.DATA_TREE.LOADING_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
-    }
-
-    private async loadRootItemsAsync(): Promise<DataItem[]> {
-        try {
-            console.log('📊 loadRootItemsAsync: Starting async data load');
-            const projectPath = this.workspaceFolder!.uri.fsPath;
-            const dbPath = path.join(projectPath, 'carbonara.db');
-            
-            console.log(`🗄️ Database path: ${dbPath}`);
-            console.log(`📊 Database exists: ${require('fs').existsSync(dbPath)}`);
-            
-            if (!require('fs').existsSync(dbPath)) {
-                return [new DataItem('❌ Database not found', `No database at ${dbPath}`, vscode.TreeItemCollapsibleState.None, 'error')];
-            }
-            
-            // Load assessment data
-            const assessmentData = await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
-            console.log(`📊 Found ${assessmentData.length} assessment entries`);
-            
-            if (assessmentData.length === 0) {
-                return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
-            }
-            
-            // Create grouped items
-            const groups = await this.coreServices!.vscodeProvider.createGroupedItems(projectPath);
-            console.log(`📊 Found ${groups.length} groups`);
-            
-            const items: DataItem[] = [];
-            groups.forEach((group, groupIndex) => {
-                console.log(`  Group ${groupIndex}: ${group.displayName} (${group.entries.length} entries)`);
-                
-                // Add group header
-                items.push(new DataItem(
-                    group.displayName,
-                    group.toolName,
-                    vscode.TreeItemCollapsibleState.Expanded,
-                    'group',
-                    group.toolName
-                ));
-                
-                // Add entries
-                group.entries.forEach((entry) => {
-                    items.push(new DataItem(
-                        entry.label,
-                        entry.description,
-                        vscode.TreeItemCollapsibleState.Collapsed,
-                        'entry',
-                        entry.toolName,
-                        entry.id
-                    ));
-                });
-            });
-            
-            console.log(`📊 Returning ${items.length} total items`);
-            return items;
-            
-        } catch (error) {
-            console.error('❌ Error loading root items:', error);
-            return [new DataItem('❌ Error loading data', error instanceof Error ? error.message : 'Unknown error', vscode.TreeItemCollapsibleState.None, 'error')];
-        }
-    }
-
-    private async createGroupedItems(): Promise<DataItem[]> {
-        if (!this.coreServices || !this.workspaceFolder) {
-            console.log('⚠️ createGroupedItems: No core services or workspace folder');
-            return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
-        }
-
-        try {
-            console.log('🚀 createGroupedItems: Starting data loading process...');
-            const startTime = Date.now();
-            
-            const projectPath = this.workspaceFolder.uri.fsPath;
-            const dbPath = path.join(projectPath, 'carbonara.db');
-            const dbExists = require('fs').existsSync(dbPath);
-            
-            console.log(`🔍 createGroupedItems: Project path: ${projectPath}`);
-            console.log(`🗄️ Database path: ${dbPath}`);
-            console.log(`📊 Database exists: ${dbExists}`);
-            
-            if (!dbExists) {
-                console.log('❌ Database file does not exist, cannot load data');
-                return [new DataItem('❌ Database not found', `No database at ${dbPath}`, vscode.TreeItemCollapsibleState.None, 'error')];
-            }
-            
-            // Step 1: Test data service directly
-            console.log('📊 Step 1: Loading assessment data directly...');
-            const step1Start = Date.now();
-            const assessmentData = await this.coreServices.vscodeProvider.loadDataForProject(projectPath);
-            const step1Time = Date.now() - step1Start;
-            console.log(`✅ Step 1 completed in ${step1Time}ms: Found ${assessmentData.length} assessment entries`);
-            
-            if (assessmentData.length === 0) {
-                console.log('⚠️ No assessment data found in database');
-                return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
-            }
-            
-            // Step 2: Create grouped items
-            console.log('📊 Step 2: Creating grouped items...');
-            const step2Start = Date.now();
-            const groups = await this.coreServices.vscodeProvider.createGroupedItems(projectPath);
-            const step2Time = Date.now() - step2Start;
-            console.log(`✅ Step 2 completed in ${step2Time}ms: Found ${groups.length} groups`);
-            
-            groups.forEach((group, index) => {
-                console.log(`  Group ${index}: ${group.displayName} (${group.entries.length} entries)`);
-            });
-            
-            if (groups.length === 0) {
-                console.log('⚠️ createGroupedItems: No groups found, returning "No data available"');
-                return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
-            }
-
-            // Step 3: Convert groups to DataItems
-            console.log('📊 Step 3: Converting groups to DataItems...');
-            const step3Start = Date.now();
-
-            const items: DataItem[] = [];
-            
-            groups.forEach((group, groupIndex) => {
-                console.log(`  Converting group ${groupIndex}: ${group.displayName}`);
-                
-                // Add group header
-                const groupItem = new DataItem(
-                    group.displayName,
-                    group.toolName,
-                    vscode.TreeItemCollapsibleState.Expanded,
-                    'group',
-                    group.toolName
-                );
-                items.push(groupItem);
-                console.log(`    Added group item: "${groupItem.label}"`);
-                
-                // Add entries
-                group.entries.forEach((entry, entryIndex) => {
-                    const entryItem = new DataItem(
-                        entry.label,
-                        entry.description,
-                        vscode.TreeItemCollapsibleState.Collapsed,
-                        'entry',
-                        entry.toolName,
-                        entry.id
-                    );
-                    items.push(entryItem);
-                    console.log(`    Added entry ${entryIndex}: "${entryItem.label}"`);
-                });
-            });
-            
-            const step3Time = Date.now() - step3Start;
-            const totalTime = Date.now() - startTime;
-            console.log(`✅ Step 3 completed in ${step3Time}ms`);
-            console.log(`🎉 createGroupedItems completed in ${totalTime}ms total, returning ${items.length} items`);
-            
-            return items;
-        } catch (error) {
-            console.error('Error creating grouped items:', error);
-            return [new DataItem('Error loading data', '', vscode.TreeItemCollapsibleState.None, 'error')];
-        }
-    }
-
-    async exportData(format: 'json' | 'csv'): Promise<void> {
-        
-        if (!this.coreServices || !this.workspaceFolder) {
-            vscode.window.showErrorMessage('No workspace or services available');
-            return;
-        }
-
-        try {
-            const projectPath = this.workspaceFolder.uri.fsPath;
-            const exportData = await this.coreServices.vscodeProvider.exportData(projectPath, format);
-            
-            const timestamp = new Date().toISOString().split('T')[0];
-            const filename = `carbonara-export-${timestamp}.${format}`;
-            const filePath = path.join(this.workspaceFolder.uri.fsPath, filename);
-            
-            require('fs').writeFileSync(filePath, exportData);
-            
-            vscode.window.showInformationMessage(`Data exported to ${filename}`);
-        } catch (error) {
-            console.error('Export failed:', error);
-            vscode.window.showErrorMessage('Failed to export data');
-        }
-    }
-
-    async clearData(): Promise<void> {
-        const answer = await vscode.window.showWarningMessage(
-            'This will delete all stored data for this project. This action cannot be undone.',
-            'Delete All Data',
-            'Cancel'
-        );
-        
-        if (answer === 'Delete All Data') {
-            // Implementation would go here
-            vscode.window.showInformationMessage('Data clearing is not yet implemented');
-        }
-    }
-
-    async getProjectStats(): Promise<{ totalEntries: number; toolCounts: { [toolName: string]: number } }> {
-        
-        if (!this.coreServices || !this.workspaceFolder) {
-            return { totalEntries: 0, toolCounts: {} };
-        }
-
-        try {
-            const projectPath = this.workspaceFolder.uri.fsPath;
-            return await this.coreServices.vscodeProvider.getProjectStats(projectPath);
-        } catch (error) {
-            console.error('Error getting project stats:', error);
-            return { totalEntries: 0, toolCounts: {} };
-        }
-    }
-}
-
 export class DataItem extends vscode.TreeItem {
+    public toolName?: string;
+    public entries?: any[];
+    
     constructor(
         public readonly label: string,
         public readonly description: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly type: 'group' | 'entry' | 'detail' | 'info' | 'error',
-        public readonly toolName?: string,
+        toolName?: string,
         public readonly entryId?: number
     ) {
         super(label, collapsibleState);
         this.tooltip = description;
         this.description = description;
+        this.toolName = toolName;
         
         // Set context value for menu contributions
         switch (type) {
@@ -479,5 +54,420 @@ export class DataItem extends vscode.TreeItem {
                 this.iconPath = new vscode.ThemeIcon('info');
                 break;
         }
+    }
+}
+
+export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<DataItem | undefined | null | void> = new vscode.EventEmitter<DataItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<DataItem | undefined | null | void> = this._onDidChangeTreeData.event;
+    
+    private workspaceFolder: vscode.WorkspaceFolder | undefined;
+    private cachedData: any[] = [];
+
+    constructor() {
+        console.log('🏗️ DataTreeProvider constructor called');
+        this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        console.log(`🏗️ Workspace folder: ${this.workspaceFolder?.name || 'none'}`);
+        
+        // Load data asynchronously and handle errors
+        this.loadData().catch(error => {
+            console.error('🏗️ Failed to load data in constructor:', error);
+            // Fire change event even if loading failed so UI shows appropriate message
+            this._onDidChangeTreeData.fire();
+        });
+    }
+
+    refresh(): void {
+        console.log('🔄 DataTreeProvider.refresh() called - clearing cache and refreshing');
+        this.cachedData = [];
+        this.loadData(); // loadData() already calls _onDidChangeTreeData.fire()
+    }
+
+    getTreeItem(element: DataItem): vscode.TreeItem {
+        return element;
+    }
+
+    getChildren(element?: DataItem): Thenable<DataItem[]> {
+        console.log(`🔍 getChildren called - element: ${element?.label || 'root'}`);
+        
+        if (!this.workspaceFolder) {
+            console.log('⚠️ No workspace folder');
+            return Promise.resolve([new DataItem('No workspace folder', 'Open a workspace to view data', vscode.TreeItemCollapsibleState.None, 'info')]);
+        }
+
+        if (element) {
+            // Handle different element types
+            if (element.type === 'group') {
+                return this.loadGroupEntries(element);
+            } else if (element.type === 'entry') {
+                return this.loadEntryDetails(element);
+            } else {
+                // Info/error items have no children
+                return Promise.resolve([]);
+            }
+        } else {
+            // Root level - show all data
+            return this.loadRootData();
+        }
+    }
+
+    private async loadRootData(): Promise<DataItem[]> {
+        try {
+            console.log('📊 Loading root data...');
+            
+            // If we have cached data, return it
+            if (this.cachedData.length > 0) {
+                console.log(`📊 Returning ${this.cachedData.length} cached data entries`);
+                return this.convertDataToTreeItems(this.cachedData);
+            }
+
+            // Load data from CLI
+            await this.loadDataFromCLI('carbonara');
+            
+            if (this.cachedData.length === 0) {
+                return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
+            }
+
+            console.log(`📊 Loaded ${this.cachedData.length} data entries from CLI`);
+            return this.convertDataToTreeItems(this.cachedData);
+            
+        } catch (error) {
+            console.error('❌ Error loading root data:', error);
+            return [new DataItem('Error loading data', error instanceof Error ? error.message : String(error), vscode.TreeItemCollapsibleState.None, 'error')];
+        }
+    }
+
+    private async loadGroupEntries(group: DataItem): Promise<DataItem[]> {
+        console.log(`📊 Loading entries for group: ${group.label}`);
+        
+        if (!group.entries) {
+            return [new DataItem('No entries', 'No data entries found for this group', vscode.TreeItemCollapsibleState.None, 'info')];
+        }
+
+        return group.entries.map((entry: any, index: number) => {
+            const entryLabel = entry.url || entry.timestamp || `Entry ${index + 1}`;
+            const entryDescription = entry.timestamp ? `Analyzed on ${entry.timestamp}` : 'Analysis entry';
+            
+            return new DataItem(
+                entryLabel,
+                entryDescription,
+                vscode.TreeItemCollapsibleState.Collapsed,
+                'entry',
+                group.toolName,
+                entry.id
+            );
+        });
+    }
+
+    private async loadEntryDetails(entry: DataItem): Promise<DataItem[]> {
+        console.log(`📊 Loading details for entry: ${entry.label}`);
+        
+        if (!entry.entries || entry.entries.length === 0) {
+            return [new DataItem('No details available', 'No detailed data found for this entry', vscode.TreeItemCollapsibleState.None, 'info')];
+        }
+
+        const entryData = entry.entries[0];
+        const details: DataItem[] = [];
+
+        // Add basic information
+        if (entryData.timestamp) {
+            details.push(new DataItem('Analysis Date', entryData.timestamp, vscode.TreeItemCollapsibleState.None, 'detail'));
+        }
+        
+        if (entryData.tool_name) {
+            details.push(new DataItem('Tool Used', entryData.tool_name, vscode.TreeItemCollapsibleState.None, 'detail'));
+        }
+        
+        if (entryData.url) {
+            details.push(new DataItem('URL', entryData.url, vscode.TreeItemCollapsibleState.None, 'detail'));
+        }
+
+        // Add data results if available
+        if (entryData.data) {
+            Object.keys(entryData.data).forEach(key => {
+                const value = entryData.data[key];
+                details.push(new DataItem(
+                    key,
+                    typeof value === 'object' ? JSON.stringify(value) : String(value),
+                    vscode.TreeItemCollapsibleState.None,
+                    'detail'
+                ));
+            });
+        }
+
+        // Add summary if available
+        if (entryData.summary) {
+            if (entryData.summary.status) {
+                details.push(new DataItem('Status', entryData.summary.status, vscode.TreeItemCollapsibleState.None, 'detail'));
+            }
+            if (entryData.summary.message) {
+                details.push(new DataItem('Message', entryData.summary.message, vscode.TreeItemCollapsibleState.None, 'detail'));
+            }
+        }
+
+        return details.length > 0 ? details : [new DataItem('No details available', 'No detailed data found for this entry', vscode.TreeItemCollapsibleState.None, 'info')];
+    }
+
+    private async loadData(): Promise<void> {
+        console.log('📊 DataTreeProvider.loadData() called');
+        try {
+            // ALWAYS try workspace data first
+            if (await this.loadWorkspaceData()) {
+                console.log('✅ Loaded data from workspace');
+                this._onDidChangeTreeData.fire();
+                return;
+            }
+
+            // Only if no workspace data, try CLI
+            console.log('📊 No workspace data, trying CLI...');
+            const cliPath = await this.findCarbonaraCLI();
+            if (cliPath) {
+                console.log('📊 CLI found at:', cliPath);
+                await this.loadDataFromCLI(cliPath);
+                this._onDidChangeTreeData.fire();
+                return;
+            }
+
+            // Last resort: show "no data available" message
+            console.log('📊 No CLI found, showing no data message');
+            this.cachedData = [];
+            this._onDidChangeTreeData.fire();
+            
+        } catch (error: any) {
+            console.error('❌ Failed to load data:', error);
+            this.cachedData = [];
+            this._onDidChangeTreeData.fire();
+        }
+    }
+
+    private async loadWorkspaceData(): Promise<boolean> {
+        console.log('📊 loadWorkspaceData called');
+        
+        if (!this.workspaceFolder) {
+            console.log('❌ No workspace folder available');
+            return false;
+        }
+
+        const workspaceDataPath = path.join(this.workspaceFolder.uri.fsPath, 'carbonara.db');
+        console.log(`📊 Checking workspace data at: ${workspaceDataPath}`);
+        
+        if (!fs.existsSync(workspaceDataPath)) {
+            console.log('❌ Workspace data not found');
+            return false;
+        }
+
+        console.log('📊 Found workspace data, loading...');
+        try {
+            await this.loadDataFromCLI('carbonara');
+            console.log(`✅ Loaded ${this.cachedData.length} data entries from workspace`);
+            return true;
+            
+        } catch (error) {
+            console.log('❌ Failed to load workspace data:', error);
+            return false;
+        }
+    }
+
+    private async loadDataFromCLI(cliPath: string): Promise<void> {
+        try {
+            console.log(`📊 Loading data from CLI`);
+            
+            const data = await this.runCarbonaraCommand(['data', '--json']);
+            const parsedData = JSON.parse(data);
+            this.cachedData = Array.isArray(parsedData) ? parsedData : [];
+            console.log(`✅ Loaded ${this.cachedData.length} data entries from CLI`);
+            
+        } catch (error: any) {
+            console.error('❌ Failed to load data from CLI:', error);
+            this.cachedData = [];
+        }
+    }
+
+    private async findCarbonaraCLI(): Promise<string | null> {
+        // Check environment variable first
+        const envPath = process.env.CARBONARA_CLI_PATH;
+        if (envPath && fs.existsSync(envPath)) {
+            return envPath;
+        }
+
+        // Check if we're in the monorepo
+        const workspaceRoot = this.workspaceFolder?.uri.fsPath;
+        if (workspaceRoot) {
+            const monorepoCliPath = path.join(workspaceRoot, '..', '..', '..', 'packages', 'cli', 'dist', 'index.js');
+            if (fs.existsSync(monorepoCliPath)) {
+                return monorepoCliPath;
+            }
+        }
+
+        // Try global installation
+        try {
+            await this.runCommand('carbonara', ['--version']);
+            return 'carbonara';
+        } catch {
+            return null;
+        }
+    }
+
+    private convertDataToTreeItems(data: any[]): DataItem[] {
+        if (data.length === 0) {
+            return [new DataItem(UI_TEXT.DATA_TREE.NO_DATA, UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION, vscode.TreeItemCollapsibleState.None, 'info')];
+        }
+
+        // Group data by tool name
+        const groupedData: { [toolName: string]: any[] } = {};
+        data.forEach(entry => {
+            const toolName = entry.tool_name || 'Unknown Tool';
+            if (!groupedData[toolName]) {
+                groupedData[toolName] = [];
+            }
+            groupedData[toolName].push(entry);
+        });
+
+        // Create tree items for each group
+        const items: DataItem[] = [];
+        Object.keys(groupedData).forEach(toolName => {
+            const entries = groupedData[toolName];
+            const groupLabel = `Analysis results from ${toolName}`;
+            const groupDescription = `${entries.length} analysis ${entries.length === 1 ? 'entry' : 'entries'}`;
+            
+            const groupItem = new DataItem(
+                groupLabel,
+                groupDescription,
+                vscode.TreeItemCollapsibleState.Expanded,
+                'group',
+                toolName
+            );
+            
+            // Store entries in the group item for later access
+            groupItem.entries = entries;
+            items.push(groupItem);
+        });
+
+        return items;
+    }
+
+    // Public methods for commands
+    public async exportData(format: 'json' | 'csv' = 'json'): Promise<void> {
+        if (!this.workspaceFolder) {
+            vscode.window.showErrorMessage('No workspace folder available');
+            return;
+        }
+
+        try {
+            vscode.window.showInformationMessage('Exporting data...');
+            
+            const result = await this.runCarbonaraCommand([
+                'export',
+                `--format=${format}`
+            ]);
+
+            // Save to file
+            const timestamp = new Date().toISOString().split('T')[0];
+            const filename = `carbonara-export-${timestamp}.${format}`;
+            const uri = await vscode.window.showSaveDialog({
+                defaultUri: vscode.Uri.file(path.join(this.workspaceFolder.uri.fsPath, filename)),
+                filters: {
+                    'JSON': ['json'],
+                    'CSV': ['csv'],
+                    'All Files': ['*']
+                }
+            });
+
+            if (uri) {
+                fs.writeFileSync(uri.fsPath, result);
+                vscode.window.showInformationMessage(`Data exported to ${path.basename(uri.fsPath)}`);
+            }
+            
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`Failed to export data: ${error.message}`);
+        }
+    }
+
+    public async clearData(): Promise<void> {
+        if (!this.workspaceFolder) {
+            vscode.window.showErrorMessage('No workspace folder available');
+            return;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+            'Are you sure you want to clear all analysis data?',
+            'Yes', 'No'
+        );
+
+        if (confirm === 'Yes') {
+            try {
+                await this.runCarbonaraCommand(['clear']);
+                this.refresh();
+                vscode.window.showInformationMessage('Analysis data cleared');
+            } catch (error: any) {
+                vscode.window.showErrorMessage(`Failed to clear data: ${error.message}`);
+            }
+        }
+    }
+
+    public async getProjectStats(): Promise<{ totalEntries: number; toolCounts: { [toolName: string]: number } }> {
+        if (!this.workspaceFolder) {
+            return { totalEntries: 0, toolCounts: {} };
+        }
+
+        try {
+            // Load current data to calculate stats
+            await this.loadDataFromCLI('carbonara');
+            
+            const toolCounts: { [toolName: string]: number } = {};
+            let totalEntries = 0;
+
+            this.cachedData.forEach(entry => {
+                const toolName = entry.tool_name || 'Unknown Tool';
+                toolCounts[toolName] = (toolCounts[toolName] || 0) + 1;
+                totalEntries++;
+            });
+
+            return { totalEntries, toolCounts };
+        } catch (error) {
+            console.error('Error getting project stats:', error);
+            return { totalEntries: 0, toolCounts: {} };
+        }
+    }
+
+    private async runCarbonaraCommand(args: string[]): Promise<string> {
+        if (!this.workspaceFolder) {
+            throw new Error('No workspace folder available');
+        }
+
+        return this.runCommand('carbonara', args);
+    }
+
+    private runCommand(command: string, args: string[]): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const process = spawn(command, args, {
+                cwd: this.workspaceFolder?.uri.fsPath,
+                stdio: ['ignore', 'pipe', 'pipe'],
+                shell: true
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            process.stdout?.on('data', (data) => {
+                stdout += data.toString();
+            });
+
+            process.stderr?.on('data', (data) => {
+                stderr += data.toString();
+            });
+
+            process.on('close', (code) => {
+                if (code === 0) {
+                    resolve(stdout);
+                } else {
+                    reject(new Error(stderr || `Process exited with code ${code}`));
+                }
+            });
+
+            process.on('error', (error) => {
+                reject(error);
+            });
+        });
     }
 }

@@ -216,3 +216,6 @@ carbonara-export-*.json
 !test/fixtures/**/carbonara-export-*.json
 
 test/*.cursor/
+
+# VSCode extension test files
+plugins/vscode/carbonara-vscode-test-*

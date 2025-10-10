@@ -15,6 +15,38 @@ let toolsTreeProvider: ToolsTreeProvider;
 
 let currentProjectPath: string | null = null;
 
+async function initializeTreeProviders(context: vscode.ExtensionContext) {
+    // Wait for workspace folder to be available
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max wait
+    
+    while (attempts < maxAttempts) {
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+            console.log(`✅ Workspace folder detected: ${vscode.workspace.workspaceFolders[0].name}`);
+            break;
+        }
+        
+        console.log(`⏳ Waiting for workspace folder... (attempt ${attempts + 1}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+    
+    if (attempts >= maxAttempts) {
+        console.log('⚠️ Workspace folder not detected after 5 seconds, proceeding anyway');
+    }
+
+    // Create and register tree views
+    assessmentTreeProvider = new AssessmentTreeProvider();
+    dataTreeProvider = new DataTreeProvider();
+    console.log('🔧 Creating ToolsTreeProvider...');
+    toolsTreeProvider = new ToolsTreeProvider();
+    console.log('🔧 Registering tree data providers...');
+    vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
+    vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
+    vscode.window.registerTreeDataProvider('carbonara.toolsTree', toolsTreeProvider);
+    console.log('✅ All tree providers registered');
+}
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Carbonara extension is now active!');
 
@@ -27,16 +59,8 @@ export function activate(context: vscode.ExtensionContext) {
     carbonaraStatusBar.command = 'carbonara.showMenu';
     carbonaraStatusBar.show();
 
-    // Create and register tree views
-    assessmentTreeProvider = new AssessmentTreeProvider();
-    dataTreeProvider = new DataTreeProvider();
-    console.log('🔧 Creating ToolsTreeProvider...');
-    toolsTreeProvider = new ToolsTreeProvider();
-    console.log('🔧 Registering tree data providers...');
-    vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
-    vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
-    vscode.window.registerTreeDataProvider('carbonara.toolsTree', toolsTreeProvider);
-    console.log('✅ All tree providers registered');
+    // Initialize tree providers after workspace is ready
+    initializeTreeProviders(context);
 
     // Register commands
     const commands = [

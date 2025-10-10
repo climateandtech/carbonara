@@ -4,7 +4,7 @@ src/
 *.map
 
 # Build artifacts
-out/
+# out/ - commented out because this contains the compiled extension
 node_modules/
 .vscode-test/
 

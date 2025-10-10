@@ -143,7 +143,7 @@ suite('Tree Provider Tests', () => {
 });
 
 suite('CLI Integration Tests', () => {
-	const testWorkspaceRoot = path.join(__dirname, '..', '..', '..', 'e2e', 'fixtures', 'with-carbonara-project');
+	const testWorkspaceRoot = path.join(__dirname, '..', '..', '..', 'e2e', 'fixtures', 'with-analysis-data');
 	
 	test('Should find CLI in monorepo structure', function() {
 		this.timeout(5000);
