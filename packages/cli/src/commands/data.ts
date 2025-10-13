@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
-import { createDataLake } from '../database/index.js';
+import { createDataLake } from '@carbonara/core';
 import { loadProjectConfig } from '../utils/config.js';
 
 interface DataOptions {
@@ -79,8 +79,8 @@ async function listData(dataLake: any, projectId: number) {
   console.log(chalk.blue('📋 Stored Data'));
   console.log('═'.repeat(50));
 
-  // Get all assessment data
-  const assessmentData = await dataLake.getAssessmentData(projectId);
+  // Get all assessment data (don't filter by projectId to show all data)
+  const assessmentData = await dataLake.getAssessmentData();
   
   if (assessmentData.length === 0) {
     console.log(chalk.gray('No data found.'));
@@ -220,7 +220,8 @@ async function showData(dataLake: any, projectId: number, config: any) {
 async function exportData(dataLake: any, projectId: number, format: 'json' | 'csv') {
   console.log(chalk.blue(`📤 Exporting data as ${format.toUpperCase()}...`));
 
-  const assessmentData = await dataLake.getAssessmentData(projectId);
+  // Export all data (don't filter by projectId)
+  const assessmentData = await dataLake.getAssessmentData();
   
   if (assessmentData.length === 0) {
     console.log(chalk.gray('No data to export.'));
@@ -303,8 +304,9 @@ function convertToCSV(data: any[]): string {
 }
 
 async function outputJsonData(dataLake: any, projectId: number) {
-  const assessmentData = await dataLake.getAssessmentData(projectId);
-  
+  // Output all data as JSON (don't filter by projectId)
+  const assessmentData = await dataLake.getAssessmentData();
+
   // Output raw JSON to stdout (no formatting or colors)
   console.log(JSON.stringify(assessmentData));
 } 

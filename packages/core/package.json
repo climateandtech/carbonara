@@ -11,12 +11,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "sqlite3": "^5.1.6"
+    "sql.js": "1.13.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "^1.0.0"
+    "@types/node": "^22.9.0",
+    "@types/sql.js": "^1.4.9",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "files": [
     "dist/**/*"

@@ -4,6 +4,24 @@ import * as fs from 'fs';
 import { spawn } from 'child_process';
 import { UI_TEXT } from './constants/ui-text';
 
+/*
+// ===== CORE INTEGRATION APPROACH (from main branch) =====
+// Uncomment these imports and use the core integration approach instead of CLI
+// import { setupCarbonaraCore, createDataService, createSchemaService, createVSCodeDataProvider, type DataGroup, type DataEntry as CoreDataEntry, type DataDetail } from '@carbonara/core';
+
+// Core integration would use:
+// - setupCarbonaraCore() for initialization
+// - createDataService() for database operations  
+// - createVSCodeDataProvider() for VSCode-specific data handling
+// - Direct core service calls instead of CLI commands
+
+// To switch to core integration:
+// 1. Uncomment the core imports above
+// 2. Comment out the CLI imports (fs, spawn)
+// 3. Replace CLI methods with core service calls
+// 4. Update constructor to use initializeCoreServices() instead of CLI initialization
+*/
+
 export class DataItem extends vscode.TreeItem {
     public toolName?: string;
     public entries?: any[];

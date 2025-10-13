@@ -1,0 +1,2 @@
+# Python dependencies for Semgrep runner
+semgrep>=1.138.0
