@@ -1,0 +1,15 @@
+rules:
+  - id: gci4-php-local-vars-over-global-vars
+    languages:
+      - php
+    severity: INFO
+    message: >-
+      Prefer local variables as parameters. When calling a global variable, the interpretation engine must check that it exists in all the scopes, that it has a value, etc.
+      Passing global variables as arguments gives them the status of local variables inside the function, thus saving computing time (CPU cycles).
+      Consider passing the variable as a function parameter instead of using the global keyword.
+    patterns:
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+          }
+      - pattern: global $VAR;

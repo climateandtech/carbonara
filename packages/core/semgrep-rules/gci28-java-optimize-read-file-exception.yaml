@@ -1,0 +1,15 @@
+rules:
+  - id: gci28-java-optimize-read-file-exception
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      Optimize read file exception Consider using a more efficient approach.
+    patterns:
+      - pattern-inside: |
+          try {
+            ...
+          } catch (FileNotFoundException $E) {
+            ...
+          }
+      - pattern: new FileInputStream(...)
