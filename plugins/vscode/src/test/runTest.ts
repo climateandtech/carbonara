@@ -12,13 +12,30 @@ async function main() {
 		const extensionTestsPath = path.resolve(__dirname, './suite/index');
 
 		// Download VS Code, unzip it and run the integration test
+		const launchArgs = [
+			'--disable-extensions', // Disable other extensions
+			'--disable-workspace-trust'
+		];
+
+		// Add headless mode for CI environments
+		if (process.env.CI === 'true') {
+			launchArgs.push(
+				'--no-sandbox',
+				'--disable-gpu',
+				'--disable-dev-shm-usage',
+				'--disable-setuid-sandbox',
+				'--no-first-run',
+				'--no-default-browser-check',
+				'--disable-background-timer-throttling',
+				'--disable-backgrounding-occluded-windows',
+				'--disable-renderer-backgrounding'
+			);
+		}
+
 		await runTests({
 			extensionDevelopmentPath,
 			extensionTestsPath,
-			launchArgs: [
-				'--disable-extensions', // Disable other extensions
-				'--disable-workspace-trust'
-			]
+			launchArgs
 		});
 	} catch (err) {
 		console.error('Failed to run tests');
