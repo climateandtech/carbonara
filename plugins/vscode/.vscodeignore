@@ -5,8 +5,25 @@ src/
 
 # Build artifacts
 out/
-node_modules/
 .vscode-test/
+node_modules/
+.turbo/
+
+# Test files
+**/test/
+**/tests/
+**/*.test.*
+**/e2e/
+**/test-build/
+dist/**/*.test.*
+dist/test/
+dist/tests/
+
+# Important: Include the WASM file
+!dist/sql-wasm.wasm
+
+# Scripts
+**/scripts/
 
 # Development files
 .git/
@@ -14,6 +31,8 @@ node_modules/
 .eslintrc.json
 tsconfig.json
 webpack.config.js
+vite.config.ts
+esbuild.js
 
 # Parent directory files (monorepo structure)
 ../**
@@ -23,6 +42,10 @@ webpack.config.js
 # Test files
 test/
 **/*.test.*
+e2e/
+
+# Scripts
+scripts/
 
 # Documentation (except README)
 *.md
