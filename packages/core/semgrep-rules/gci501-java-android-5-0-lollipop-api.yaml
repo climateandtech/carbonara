@@ -1,0 +1,9 @@
+rules:
+  - id: gci501-java-android-5-0-lollipop-api
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      The Android 5.0 Lollipop (API 21) release introduces a job scheduler API via the Job Scheduler class. Compared to a custom Sync Adapter or the alarm manager, the Job Scheduler supports batch scheduling of jobs. The Android system can combine jobs so that battery consumption is reduced.
+    pattern: |
+      $OBJ.getSystemService(...)

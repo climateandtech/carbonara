@@ -1,0 +1,8 @@
+rules:
+  - id: gci74-python-database-servers-resolve-schema-fields
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      Database servers have to resolve schema fields when using asterisk symbol (`*`). Knowing and using the schema saves CPU cycles and network transfer.
+    pattern-regex: '"SELECT\s+\*\s+FROM\s+'

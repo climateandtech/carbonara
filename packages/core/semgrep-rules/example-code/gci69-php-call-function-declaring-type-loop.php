@@ -1,18 +1,18 @@
-# Non-compliant examples
+<?php
+// Non-compliant examples
 for ($i = 0; $i <= foo(); $i++) {  // Noncompliant
 	// ......
 }
 
 
-# Compliant solutions
+// Compliant solutions
 $maxI = foo();
 for ($i = 0; $i <= $maxI; $i++) {
   .....
 }
 
-  OR
+  // OR
 
 for ($i = 0, $maxI = foo(); $i <= $maxI; $i++) {
   .....
-}
 }

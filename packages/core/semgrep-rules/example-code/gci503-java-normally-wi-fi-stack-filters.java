@@ -3,7 +3,10 @@ WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService
 WifiManager.MulticastLock lock = wifiManager.createMulticastLock("tag");
 lock.acquire();
 
+
+// Compliant solutions
 WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 WifiManager.MulticastLock lock = wifiManager.createMulticastLock("tag");
 lock.acquire();
-lock.release()
+// Use the lock only when needed
+lock.release();

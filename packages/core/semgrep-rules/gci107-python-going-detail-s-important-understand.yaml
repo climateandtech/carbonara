@@ -1,0 +1,13 @@
+rules:
+  - id: gci107-python-going-detail-s-important-understand
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      Before going into more detail, it's important to understand how vectorization works in Python. When performing a calculation on an array/matrix, there are several feasible methods: The first is to go through the list and perform the calculation element by element, known as an iterative approach. The second method consists of applying the calculation to the entire array/matrix at once, which is known as vectorization. Although it's not feasible to do this in all cases without applying real parallelism using a GPU, for example, we speak of vectorization when we use the built-in functions of TensorFlow, NumPy or Pandas. We'll also have an iterative loop, but it will be executed in lower-level code (C). As with the use of built-in functions in general, since low-level languages like C are optimized, execution will be much faster and therefore emit less CO2.
+    patterns:
+      - pattern: |
+          for $I in range(...):
+              for $J in range(...):
+                  for $K in range(...):
+                      $RESULTS[$I][$J] += $A[$I][$K] * $B[$K][$J]

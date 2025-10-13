@@ -4,7 +4,7 @@ rules:
       - java
     severity: INFO
     message: >-
-      Optimize read file exception Consider using a more efficient approach.
+      Optimize read file exception
     patterns:
       - pattern-inside: |
           try {

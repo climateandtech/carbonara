@@ -1,0 +1,9 @@
+rules:
+  - id: gci35-python-inside-complex-code-parts-example
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      Inside complex code parts (for example multiple loops, complex data constructions...), avoid using try...catch. For the moment, this rule only deals with "file open" use case in try...catch blocks. When an exception is thrown, a variable (the exception itself) is created in a catch block, and it's destruction consumes unnecessary CPU cycles and RAM. Prefer using logical tests in this cases.
+    pattern-regex: 'try:[\s\S]+?except:[\s\S]+?finally:[\s\S]+?\.close\(\)'
+    multiline: true

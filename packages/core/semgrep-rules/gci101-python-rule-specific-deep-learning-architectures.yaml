@@ -1,0 +1,9 @@
+rules:
+  - id: gci101-python-rule-specific-deep-learning-architectures
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      This rule is specific to Deep Learning architectures built with convolutional layers followed by Batch Normalization. Using a bias term in a convolutional layer that is immediately followed by a Batch Normalization (BatchNorm) layer is redundant and unnecessary. In such cases, the bias added by the convolution is effectively canceled out during the normalization process, as BatchNorm subtracts the mean and applies its own learnable affine transformation. As a result, the bias from the convolutional layer has no practical effect on the model's output. Removing it reduces the number of parameters—improving model efficiency slightly in terms of memory usage and emissions—while maintaining or even slightly improving training accuracy.
+    pattern: |
+      $OBJ.Sequential(...)

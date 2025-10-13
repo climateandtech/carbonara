@@ -1,0 +1,9 @@
+rules:
+  - id: gci100-python-rule-specific-python-because-s
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      This rule is specific to Python because it's related to PyTorch library, which is widely used for deep learning and machine learning tasks in Python. Using a PyTorch model in evaluation mode without wrapping inference in `torch.no_grad()` leads to unnecessary gradient tracking, which increases memory usage and energy consumption. This rule applies specifically to PyTorch, but aligns with general energy efficiency and eco-design principles: avoid performing unnecessary computations.
+    pattern: |
+      $OBJ.eval(...)

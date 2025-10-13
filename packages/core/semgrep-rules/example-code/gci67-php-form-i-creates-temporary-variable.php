@@ -1,6 +1,7 @@
-# Non-compliant examples
+<?php
+// Non-compliant examples
 $i++
 
 
-# Compliant solutions
+// Compliant solutions
 ++$i

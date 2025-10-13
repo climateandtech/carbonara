@@ -1,0 +1,9 @@
+rules:
+  - id: gci504-java-transmitting-file-network-infrastructure-without
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      Transmitting a file over a network infrastructure without compressing it consumes more energy than with compression. More precisely, energy efficiency is improved in case the data is compressed at least by 10%, transmitted and decompressed at the other network node. From the Android client side, it means making a post HTTP request using a `GZIPOutputStream` instead of the classical OutputStream, along with the `HttpURLConnection` object.
+    pattern: |
+      $OBJ.openConnection(...)

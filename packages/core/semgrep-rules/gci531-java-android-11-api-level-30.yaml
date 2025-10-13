@@ -1,0 +1,9 @@
+rules:
+  - id: gci531-java-android-11-api-level-30
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      In Android 11 (API level 30) or higher, a call to `Surface#setFrameRate(float frameRate, int compatibility)` results in a change to the display refresh rate. However, a regular app displays 60 frames per second (60Hz). In order to optimize content refreshes and hence saving energy, this frequency should not be raised to 90Hz or 120Hz, despite this is now supported by many devices.
+    pattern: |
+      $OBJ.setFrameRate(...)

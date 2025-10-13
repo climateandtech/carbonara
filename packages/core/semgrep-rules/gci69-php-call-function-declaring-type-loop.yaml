@@ -1,0 +1,8 @@
+rules:
+  - id: gci69-php-call-function-declaring-type-loop
+    languages:
+      - php
+    severity: INFO
+    message: >-
+      Do not call a function when declaring a for-type loop in order to avoid function calls each iteration. It saves CPU cycles.
+    pattern-regex: 'for\s*\([^;]*;\s*[^;]*<=\s*\w+\([^)]*\)\s*;[^)]*\)'

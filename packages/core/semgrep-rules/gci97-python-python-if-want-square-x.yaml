@@ -1,0 +1,9 @@
+rules:
+  - id: gci97-python-python-if-want-square-x
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      In Python, if you want to square x, you can do x*x or x**2. At a lower level, these are two different instructions for the CPU This rule will also be relevant for higher powers, but for reasons of readability and occurrence, the squaring rule remains the most relevant.
+    pattern: |
+      $OBJ.pow(...)

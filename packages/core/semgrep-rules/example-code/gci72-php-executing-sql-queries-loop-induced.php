@@ -1,6 +1,7 @@
-# Non-compliant examples
+<?php
+// Non-compliant examples
 public function foo() {
-    ...
+    // ...
     $baseQuery = "SELECT name FROM users where id = ";
 
     for ($i = 0; $i < 20; ++$i) {
@@ -11,16 +12,16 @@ public function foo() {
         $result = mysql_query($this->Query);// Noncompliant
 
         // iterate through the result
-        ...
+        // ...
         mysql_close($connection);
     }
-    ...
+    // ...
 }
 
 
-# Compliant solutions
+// Compliant solutions
 public function foo() {
-    ...
+    // ...
     $query = "SELECT name FROM users where id in (";
 
     for ($i = 0; $i < 20; ++$i) {
@@ -33,6 +34,6 @@ public function foo() {
     $result = mysql_query($this->Query); // compliant
 
     // iterate through the result
-    ...
+    // ...
     mysql_close($connection);
 }

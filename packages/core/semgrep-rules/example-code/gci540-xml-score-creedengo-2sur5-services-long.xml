@@ -4,3 +4,7 @@
         <action android:name= "android.intent.action.BOOT_COMPLETED"/>
     </intent-filter>
 </receiver>
+
+
+<!-- Compliant solutions -->
+<!-- Avoid using BOOT_COMPLETED if not necessary -->

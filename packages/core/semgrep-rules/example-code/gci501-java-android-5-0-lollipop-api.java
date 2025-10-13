@@ -9,6 +9,8 @@ void setAlarm(Context context) {
 Alarm alarm = new Alarm();
 alarm.setAlarm(this);
 
+
+// Compliant solutions
 JobInfo info = new JobInfo.Builder(123, COMPONENT_NAME)
                           .setRequiresCharging(true)
                           .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)

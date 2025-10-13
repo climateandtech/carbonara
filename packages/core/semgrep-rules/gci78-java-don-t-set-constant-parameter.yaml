@@ -1,0 +1,18 @@
+rules:
+  - id: gci78-java-don-t-set-constant-parameter
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      Don't set a constant parameter in batch update. Instead, put it in query. Creating this parameter and destroying it consumes CPU cycles and RAM unnecessarily.
+    patterns:
+      - pattern-inside: |
+          for ($TYPE $ID : $COLLECTION) { ... }
+      - pattern-either:
+          - pattern: $STMT.setInt($POS, $LITERAL)
+          - pattern: $STMT.setString($POS, $LITERAL)
+          - pattern: $STMT.setDouble($POS, $LITERAL)
+          - pattern: $STMT.setLong($POS, $LITERAL)
+      - metavariable-pattern:
+          metavariable: $LITERAL
+          pattern-regex: '^[0-9]+$|^"[^"]*"$'

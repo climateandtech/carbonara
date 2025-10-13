@@ -1,4 +1,5 @@
-# Non-compliant examples
+<?php
+// Non-compliant examples
 try
 {
   $picture = PDF_open_image_file($PDF, "jpeg", $imgFile, "", 0); // This is the original statement, this works on PHP4
@@ -10,7 +11,7 @@ catch(Exception $ex)
 }
 
 
-# Compliant solutions
+// Compliant solutions
 //try
 if (file_exists($imgFile)) {
     $picture = PDF_open_image_file($PDF, "jpeg", $imgFile, "", 0);

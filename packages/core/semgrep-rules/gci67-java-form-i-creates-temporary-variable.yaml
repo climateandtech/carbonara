@@ -1,0 +1,9 @@
+rules:
+  - id: gci67-java-form-i-creates-temporary-variable
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      The form `$i++` creates a temporary variable whereas `++$i` does not. It save CPU cycles.
+    pattern: |
+      $VAR++

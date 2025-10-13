@@ -1,0 +1,12 @@
+rules:
+  - id: gci79-java-try-resources-statement-any-object
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      Use `try-with-resources` statement for any object that implements the `AutoCloseable` interface, it save computer resources.
+    patterns:
+      - pattern: |
+          $VAR = new FileInputStream($PATH);
+      - pattern-not-inside: |
+          try ($RESOURCES) { ... }

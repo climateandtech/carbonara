@@ -2,3 +2,7 @@
 <manifest>
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>
+
+
+<!-- Compliant solutions -->
+<!-- Only use WAKE_LOCK permission if absolutely necessary and release it promptly -->

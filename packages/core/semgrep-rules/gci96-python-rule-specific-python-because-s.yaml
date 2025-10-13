@@ -1,0 +1,9 @@
+rules:
+  - id: gci96-python-rule-specific-python-because-s
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      This rule is specific to Python because it's related to the Pandas library, which is widely used for data manipulation and analysis in Python. Reading CSV files without explicitly specifying which columns to load leads to unnecessary data loading and increases memory and energy consumption. This guidance is specific to the use of the Pandas library in Python, but it aligns with the more general GCI74: Avoid SELECT * from table in SQL. To ensure low environmental impact and optimal performance, always use the usecols parameter in pandas.read_csv() to select only the required columns.
+    pattern: |
+      $OBJ.read_csv(...)

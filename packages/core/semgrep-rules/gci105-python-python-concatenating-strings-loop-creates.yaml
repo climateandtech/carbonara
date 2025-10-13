@@ -1,0 +1,9 @@
+rules:
+  - id: gci105-python-python-concatenating-strings-loop-creates
+    languages:
+      - python
+    severity: INFO
+    message: >-
+      With Python, concatenating strings with `+=` in a loop creates many intermediate strings, leading to high memory usage and performance degradation. Prefer using f-strings (formatted string literals) or `str.join()` for better performance and lower environmental impact.
+    pattern: |
+      $STR += $VALUE

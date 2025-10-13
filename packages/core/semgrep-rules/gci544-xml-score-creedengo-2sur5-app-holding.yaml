@@ -1,0 +1,9 @@
+rules:
+  - id: gci544-xml-score-creedengo-2sur5-app-holding
+    languages:
+      - xml
+    severity: INFO
+    message: >-
+      Score creedengo: 2sur5 An app holding the permission `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` asks the user to allow it to ignore battery optimizations (that is, put them on the whitelist of apps). Most applications should not use this; there are many facilities provided by the platform for applications to operate correctly in the various power saving modes.
+    pattern: |
+      <uses-permission android:name="..." />

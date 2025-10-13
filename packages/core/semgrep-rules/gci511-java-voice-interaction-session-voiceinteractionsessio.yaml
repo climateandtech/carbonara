@@ -1,0 +1,9 @@
+rules:
+  - id: gci511-java-voice-interaction-session-voiceinteractionsessio
+    languages:
+      - java
+    severity: INFO
+    message: >-
+      During a voice interaction session, `VoiceInteractionSession#setKeepAwake(boolean keepAwake)` allows to decide whether it will keep the device awake while it is running a voice activity. By default, the system holds a wake lock for it while in this state, so that it can work even if the screen is off. Setting this to `false` removes that wake lock, allowing the CPU to go to sleep and hence does not let this continue to drain the battery.
+    pattern: |
+      VoiceInteractionSession(...)

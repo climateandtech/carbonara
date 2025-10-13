@@ -1,0 +1,17 @@
+rules:
+  - id: gci3-php-fetch-size-before-collection
+    languages:
+      - php
+    severity: INFO
+    message: >-
+      When iterating over any collection, fetch the size of the collection in advance to avoid fetching it on each iteration.
+      This saves CPU cycles and therefore consumes less power.
+      Note: This applies to count(), sizeof(), and iterator_count() methods.
+      Consider storing the size in a variable before the loop: $size = count($array);
+    pattern-either:
+      - pattern-regex: 'for\s*\([^;]+;\s*\$\w+\s*<\s*(count|sizeof|iterator_count)\s*\([^)]+\)\s*;'
+      - pattern-regex: 'for\s*\([^;]+;\s*(count|sizeof|iterator_count)\s*\([^)]+\)\s*>\s*\$\w+\s*;'
+      - pattern-regex: 'while\s*\(\s*\$\w+\s*<\s*(count|sizeof|iterator_count)\s*\([^)]+\)\s*\)'
+      - pattern-regex: 'while\s*\(\s*(count|sizeof|iterator_count)\s*\([^)]+\)\s*>\s*\$\w+\s*\)'
+      - pattern-regex: 'while\s*\(\s*\$\w+\s*<\s*(count|sizeof|iterator_count)\s*\([^)]+\)\s*\);'
+      - pattern-regex: 'while\s*\(\s*(count|sizeof|iterator_count)\s*\([^)]+\)\s*>\s*\$\w+\s*\);'
