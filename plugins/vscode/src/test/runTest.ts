@@ -17,14 +17,6 @@ async function main() {
 			'--disable-workspace-trust'
 		];
 
-		// Add headless mode for CI environments
-		if (process.env.CI === 'true') {
-			launchArgs.push(
-				'--no-sandbox',
-				'--disable-gpu'
-			);
-		}
-
 		await runTests({
 			extensionDevelopmentPath,
 			extensionTestsPath,
