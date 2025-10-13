@@ -21,19 +21,7 @@ async function main() {
 		if (process.env.CI === 'true') {
 			launchArgs.push(
 				'--no-sandbox',
-				'--disable-gpu',
-				'--disable-dev-shm-usage',
-				'--disable-setuid-sandbox',
-				'--no-first-run',
-				'--no-default-browser-check',
-				'--disable-background-timer-throttling',
-				'--disable-backgrounding-occluded-windows',
-				'--disable-renderer-backgrounding',
-				'--headless',
-				'--disable-web-security',
-				'--disable-features=VizDisplayCompositor',
-				'--run-all-compositor-stages-before-draw',
-				'--disable-ipc-flooding-protection'
+				'--disable-gpu'
 			);
 		}
 
