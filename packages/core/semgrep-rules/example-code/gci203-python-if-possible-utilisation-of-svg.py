@@ -1,0 +1,36 @@
+# Non-compliant examples
+img_jpg = "image.jpg"
+
+public void foo() {
+    // ...
+    image_format = testImage("image.jpg")
+    // ...
+}
+
+public void foo() {
+    // ...
+    return '<html><img src="xx/xx/image.bmp"></html>'
+    // ...
+}
+
+
+# Compliant solutions
+img_svg = "image.svg"
+
+public void foo() {
+    // ...
+    image_format = testImage("image.svg")
+    // ...
+}
+
+public void foo() {
+    // ...
+    return '<html><img src="xx/xx/image.svg"></html>'
+    // ...
+}
+
+public void foo() {
+    // ...
+    return ('<html><svg width="100" height="100"><circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow"/></svg></html>')
+    // ...
+}

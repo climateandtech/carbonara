@@ -1,0 +1,21 @@
+// Non-compliant examples
+private static void printFileJava7() throws IOException {
+    FileInputStream input = new FileInputStream("file.txt");
+    int data = input.read();
+    while(data != -1){
+        System.out.print((char) data);
+        data = input.read();
+    }
+}
+
+
+// Compliant solutions
+private static void printFileJava7() throws IOException {
+    try(FileInputStream input = new FileInputStream("file.txt")) {
+        int data = input.read();
+        while(data != -1){
+            System.out.print((char) data);
+            data = input.read();
+        }
+    }
+}

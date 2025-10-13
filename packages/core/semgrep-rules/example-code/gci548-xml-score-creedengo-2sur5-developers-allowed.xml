@@ -1,0 +1,10 @@
+<!-- Non-compliant examples -->
+<style name="Theme.MyTheme" parent="@android:style/Theme.Holo.Light"/>
+
+<application android:label="@string/app_name" android:theme="@android:style/Theme.Holo.Light"/>
+
+
+<!-- Compliant solutions -->
+<style name="Theme.MyTheme" parent="@android:style/Theme.Holo"/>
+
+<application android:label="@string/app_name" android:theme="@android:style/Theme.Holo"/>

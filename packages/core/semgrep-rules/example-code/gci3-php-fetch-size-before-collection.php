@@ -1,0 +1,85 @@
+$array = array('orange', 'banana', 'apple', 'carrot', 'collard', 'pea');
+
+// FOR STATEMENTS / Right operand
+for ($i = 0; $i < count($array); ++$i) {
+	var_dump($array[$i]);
+}
+
+// FOR STATEMENTS / Left operand
+for ($i = 0; count($array) > $i; ++$i) {
+	var_dump($array[$i]);
+}
+
+// WHILE STATEMENTS / Right operand
+$i = 0;
+while($i < count($array)) {
+	var_dump($array[$i]);
+	++$i;
+}
+
+// WHILE STATEMENTS / Left operand
+$i = 0;
+while(count($array) > $i) {
+	var_dump($array[$i]);
+	++$i;
+}
+
+// DO WHILE STATEMENTS / Right operand
+$i = 0;
+do {
+	var_dump($array[$i]);
+	++$i;
+} while ($i < count($array));
+
+// DO WHILE STATEMENTS / Left operand
+$i = 0;
+do {
+	var_dump($array[$i]);
+	++$i;
+} while (count($array) > $i);
+
+
+$array = array('orange', 'banana', 'apple', 'carrot', 'collard', 'pea');
+// FOR STATEMENTS / Right operand
+$size = sizeof($array);
+for ($i = 0; $i < $size; ++$i) {
+	var_dump($array[$i]);
+}
+
+// FOR STATEMENTS / Left operand
+$size = sizeof($array);
+for ($i = 0; $size > $i; ++$i) {
+	var_dump($array[$i]);
+}
+
+// WHILE STATEMENTS / Right operand
+$i = 0;
+$size = count($array);
+while($i < $size) {
+	var_dump($array[$i]);
+	++$i;
+}
+
+// WHILE STATEMENTS / Left operand
+$i = 0;
+$size = count($array);
+while($size > $i) {
+	var_dump($array[$i]);
+	++$i;
+}
+
+// DO WHILE STATEMENTS / Right operand
+$i = 0;
+$size = count($array);
+do {
+	var_dump($array[$i]);
+	++$i;
+} while ($i < $size);
+
+// DO WHILE STATEMENTS / Left operand
+$i = 0;
+$size = count($array);
+do {
+	var_dump($array[$i]);
+	++$i;
+} while ($size > $i);
