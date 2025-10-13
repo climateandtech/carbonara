@@ -278,6 +278,114 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
     }
   });
 
+  test('Scenario 1: Load workspace with existing data - data should appear', async () => {
+    console.log('🔍 Testing Scenario 1: Load workspace with existing data...');
+    
+    // Launch with data fixture
+    await VSCodeLauncher.close(vscode);
+    vscode = await VSCodeLauncher.launch('with-analysis-data');
+    await VSCodeLauncher.waitForExtension(vscode.window);
+    
+    await VSCodeLauncher.openSidebar(vscode.window);
+    
+    // Open Data & Results section
+    const dataSection = vscode.window.locator('.pane-header').filter({ hasText: 'Data & Results' });
+    await expect(dataSection).toBeVisible({ timeout: 10000 });
+    await dataSection.click();
+    
+    // Find the data tree
+    const allTrees = vscode.window.locator('[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view');
+    
+    let dataTree = null;
+    for (let i = 0; i < await allTrees.count(); i++) {
+      const tree = allTrees.nth(i);
+      const rows = tree.locator('.monaco-list-row');
+      if (await rows.count() > 0) {
+        const texts = await rows.allTextContents();
+        const hasAnalysisData = texts.some(text => 
+          text.includes('Analysis results from greenframe') || 
+          text.includes('Analysis results from co2-assessment')
+        );
+        if (hasAnalysisData) {
+          dataTree = tree;
+          break;
+        }
+      }
+    }
+    
+    // ASSERTION: Data tree must exist and show analysis results
+    expect(dataTree).not.toBeNull();
+    
+    const dataRows = dataTree!.locator('.monaco-list-row');
+    const dataTexts = await dataRows.allTextContents();
+    
+    // ASSERTION: Must show analysis results (not "No data available")
+    const hasAnalysisResults = dataTexts.some(text => 
+      text.includes('Analysis results from greenframe') || 
+      text.includes('Analysis results from co2-assessment')
+    );
+    expect(hasAnalysisResults).toBe(true);
+    
+    console.log('✅ Scenario 1 completed: Data from fixture displayed correctly.');
+  });
+
+  test('Scenario 2: Load workspace without data - should show "No data available"', async () => {
+    console.log('🔍 Testing Scenario 2: Load workspace without data...');
+    
+    // Launch with empty database fixture
+    await VSCodeLauncher.close(vscode);
+    vscode = await VSCodeLauncher.launch('empty-workspace');
+    await VSCodeLauncher.waitForExtension(vscode.window);
+    
+    await VSCodeLauncher.openSidebar(vscode.window);
+    
+    // Data & Results section should already be open, no need to click
+    const dataSection = vscode.window.locator('.pane-header').filter({ hasText: 'Data & Results' });
+    await expect(dataSection).toBeVisible({ timeout: 10000 });
+    
+    // Wait for the tree to load
+    await vscode.window.waitForTimeout(2000);
+    
+    // Find the data tree
+    const allTrees = vscode.window.locator('[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view');
+    
+    let dataTree = null;
+    for (let i = 0; i < await allTrees.count(); i++) {
+      const tree = allTrees.nth(i);
+      const rows = tree.locator('.monaco-list-row');
+      const rowCount = await rows.count();
+      
+      if (rowCount > 0) {
+        const texts = await rows.allTextContents();
+        const hasNoDataMessage = texts.some(text => 
+          text.includes('No data available')
+        );
+        if (hasNoDataMessage) {
+          dataTree = tree;
+          break;
+        }
+      } else {
+        // Empty tree might be the data tree
+        dataTree = tree;
+        break;
+      }
+    }
+    
+    // ASSERTION: Data tree must exist and show "No data available"
+    expect(dataTree).not.toBeNull();
+    
+    const dataRows = dataTree!.locator('.monaco-list-row');
+    const dataTexts = await dataRows.allTextContents();
+    
+    // ASSERTION: Must show "No data available" message
+    const hasNoDataMessage = dataTexts.some(text => 
+      text.includes('No data available')
+    );
+    expect(hasNoDataMessage).toBe(true);
+    
+    console.log('✅ Scenario 2 completed: "No data available" message displayed correctly.');
+  });
+
   test('should show Analysis Tools tree view and allow tool interaction', async () => {
     console.log('🔍 Testing Analysis Tools tree view visibility and functionality...');
     
@@ -631,12 +739,11 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
           const lowerText = text.toLowerCase();
           return (
             // Look for our test analysis group or entries
-            lowerText.includes('test analysis') ||
-            // Look for any test domain variation (test-site, test-fix, etc.)
-            text.match(/test-[^.]+\.example\.com/) ||
-            lowerText.includes('test result') ||
-            // Look for timestamp patterns (from screenshot: "02/09/2025")
-            text.match(/\d{2}\/\d{2}\/\d{4}/)
+            lowerText.includes('analysis results from test-analyzer') ||
+            lowerText.includes('analysis entry') ||
+            lowerText.includes('analyzed on') ||
+            // Look for timestamp patterns (from screenshot: "2025-10-09 21:44:31")
+            text.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)
           );
         });
         
@@ -652,10 +759,10 @@ test.describe('Carbonara VSCode Extension E2E Tests', () => {
         // ASSERTION: Must have actual test analysis results
         if (!hasTestAnalysisResults) {
           const expected = [
-            '"Test Analysis" (group name)',
-            '"test-*.example.com" (URL pattern)',
-            '"test result" (description)',
-            '"02/09/2025" (date pattern)'
+            '"Analysis results from test-analyzer" (group name)',
+            '"analysis entry" (entry count)',
+            '"Analyzed on" (timestamp)',
+            '"2025-10-09 21:44:31" (date pattern)'
           ];
           
           const errorMessage = `Expected to find test analysis results in Data & Results tab.
