@@ -28,7 +28,12 @@ async function main() {
 				'--no-default-browser-check',
 				'--disable-background-timer-throttling',
 				'--disable-backgrounding-occluded-windows',
-				'--disable-renderer-backgrounding'
+				'--disable-renderer-backgrounding',
+				'--headless',
+				'--disable-web-security',
+				'--disable-features=VizDisplayCompositor',
+				'--run-all-compositor-stages-before-draw',
+				'--disable-ipc-flooding-protection'
 			);
 		}
 
