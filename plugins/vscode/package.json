@@ -264,7 +264,7 @@
   },
   "scripts": {
     "build": "tsc -p ./ && npm run copy-deps",
-    "copy-deps": "mkdir -p dist/node_modules/@carbonara/core dist/node_modules/sql.js dist/registry && cp -r ../../packages/core/dist dist/node_modules/@carbonara/core/ && cp ../../packages/core/package.json dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/python dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/semgrep-rules dist/node_modules/@carbonara/core/ && cp -r ../../node_modules/sql.js/dist dist/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json dist/node_modules/sql.js/ && cp ../../packages/cli/dist/registry/tools.json dist/registry/tools.json",
+    "copy-deps": "mkdir -p dist/node_modules/@carbonara/core dist/node_modules/sql.js dist/registry && cp -r ../../packages/core/dist dist/node_modules/@carbonara/core/ && cp ../../packages/core/package.json dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/python dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/semgrep dist/node_modules/@carbonara/core/ && cp -r ../../node_modules/sql.js/dist dist/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json dist/node_modules/sql.js/ && cp ../../packages/cli/dist/registry/tools.json dist/registry/tools.json",
     "watch": "tsc -watch -p ./",
     "package": "npm run build && vsce package --no-dependencies",
     "publish": "vsce publish",
