@@ -1,0 +1,12 @@
+rules:
+  - id: gci534-swift-motion-sensor-update-rate
+    languages:
+      - swift
+    severity: INFO
+    message: "Set motion sensor update intervals before starting updates. Use accelerometerUpdateInterval, gyroUpdateInterval, deviceMotionUpdateInterval, or magnetometerUpdateInterval to reduce battery consumption."
+    patterns:
+      - pattern-either:
+          - pattern: $MGR.startAccelerometerUpdates(...)
+          - pattern: $MGR.startGyroUpdates(...)
+          - pattern: $MGR.startDeviceMotionUpdates(...)
+          - pattern: $MGR.startMagnetometerUpdates(...)

@@ -3,7 +3,7 @@ rules:
     languages:
       - java
     severity: INFO
-    message: "Avoid keeping the device awake during voice interaction sessions. Set setKeepAwake(false) to allow the CPU to sleep."
+    message: Avoid keeping the device awake during voice interaction sessions. Set setKeepAwake(false) to allow the CPU to sleep.
     patterns:
       - pattern-either:
           - pattern: $VOICE_SESSION.setKeepAwake(true);

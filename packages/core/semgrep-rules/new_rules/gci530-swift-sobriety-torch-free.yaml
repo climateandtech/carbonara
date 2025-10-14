@@ -1,0 +1,10 @@
+rules:
+  - id: gci530-swift-sobriety-torch-free
+    languages:
+      - swift
+    severity: INFO
+    message: "Avoid turning on torch mode. The flashlight is energy-intensive and should be used sparingly."
+    patterns:
+      - pattern-either:
+          - pattern: $VIDEO_DEVICE.torchMode = .on
+          - pattern: $VIDEO_DEVICE.setTorchModeOn(...)

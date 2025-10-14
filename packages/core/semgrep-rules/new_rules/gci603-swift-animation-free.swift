@@ -4,8 +4,8 @@ import AVFoundation // For CABasicAnimation, CAKeyframeAnimation, CATransition
 
 // == Non compliant Code Example UIKit
 
-// ruleid: gci603-swift-animation-free
 func animateUIKit() {
+// ruleid: gci603-swift-animation-free
     UIView.animate(withDuration: 0.5, animations: {})
     UIView.animate(withDuration: 0.5, animations: {}, completion: nil)
     UIView.animate(withDuration: 0.5, delay: 0, options: [], animations: {}, completion: nil)
@@ -18,18 +18,19 @@ func animateUIKit() {
 
 // == Non compliant Code Example SwiftUI
 
-// ruleid: gci603-swift-animation-free
 struct ContentView: View {
     @State private var showDetails = false
 
     var body: some View {
         VStack {
             Button("Toggle Details") {
+// ruleid: gci603-swift-animation-free
                 withAnimation { // Noncompliant
                     showDetails.toggle()
                 }
             }
             if showDetails {
+                // ruleid: gci603-swift-animation-free
                 Text("Details here")
                     .animation(.default) // Noncompliant
                     .transition(.opacity) // Noncompliant

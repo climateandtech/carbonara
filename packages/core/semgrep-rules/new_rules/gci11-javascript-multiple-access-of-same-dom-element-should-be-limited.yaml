@@ -4,7 +4,7 @@ rules:
       - javascript
       - typescript
     severity: INFO
-    message: "Multiple access of the same DOM element should be limited. Cache the DOM element in a variable."
+    message: Multiple access of the same DOM element should be limited. Cache the DOM element in a variable.
     patterns:
       - pattern: |
           document.getElementById($ID).$PROP;
