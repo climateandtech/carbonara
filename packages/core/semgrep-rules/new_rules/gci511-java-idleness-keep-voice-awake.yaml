@@ -1,0 +1,21 @@
+rules:
+  - id: gci511-java-idleness-keep-voice-awake
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid keeping the device awake during voice interaction sessions. Set setKeepAwake(false) to allow the CPU to sleep."
+    patterns:
+      - pattern-either:
+          - pattern: $VOICE_SESSION.setKeepAwake(true);
+          - patterns:
+              - pattern-inside: |
+                  $FUNC(...) {
+                    ...
+                  }
+              - pattern: new VoiceInteractionSession(...)
+              - pattern-not-inside: |
+                  $FUNC(...) {
+                    ...
+                    $ANY.setKeepAwake(false);
+                    ...
+                  }
