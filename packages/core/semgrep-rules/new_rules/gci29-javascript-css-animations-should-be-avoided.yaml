@@ -1,0 +1,10 @@
+rules:
+  - id: gci29-javascript-css-animations-should-be-avoided
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Avoid using CSS animations and transitions directly. They can impact performance and battery life."
+    patterns:
+      - pattern: |
+          <... style={{ ..., transition: $TRANSITION, ... }} />

@@ -1,8 +1,0 @@
-rules:
-  - id: gci98-java-we-always-try-perform-checks
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      We should always try to perform checks that avoids raising RuntimeExceptions, because Exception produces large objects and represents a problem in the program that should be fixed, not handled. References: * https://docs.oracle.com/javase/tutorial/essential/exceptions/runtime.html * https://www.jmdoudoux.fr/java/dej/chap-exceptions.htm#exceptions-3 * https://www.baeldung.com/java-exceptions#2-unchecked-exceptions * _Effective Java 2/e by Joshua Bloch_ : "Item 58: Use checked exceptions for recoverable conditions and runtime exceptions for programming errors" Use runtime exceptions to indicate programming errors. The great majority of runtime exceptions indicate precondition violations. A precondition violation is simply a failure by the client of an API to adhere to the contract established by the API specification. For example, the contract for array access specifies that the array index must be between zero and the array length minus one. ArrayIndexOutOfBoundsException indicates that this precondition was violated.
-    pattern-regex: 'try\s*\{[^}]*\}\s*catch\s*\((NullPointerException|ArrayIndexOutOfBoundsException|StringIndexOutOfBoundsException|ArithmeticException)'

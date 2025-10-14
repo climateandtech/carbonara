@@ -1,0 +1,11 @@
+rules:
+  - id: gci86-csharp-gc-collect-should-not-be-called
+    languages:
+      - csharp
+    severity: INFO
+    message: "Avoid calling GC.Collect() directly. Let the garbage collector manage memory automatically for better performance."
+    patterns:
+      - pattern-either:
+          - pattern: GC.Collect();
+          - pattern: GC.Collect(generation: $GENERATION);
+      - pattern-not: GC.Collect(generation: 0);

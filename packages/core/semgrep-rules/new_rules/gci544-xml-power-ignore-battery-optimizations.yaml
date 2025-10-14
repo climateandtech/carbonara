@@ -1,0 +1,8 @@
+rules:
+  - id: gci544-xml-power-ignore-battery-optimizations
+    languages:
+      - xml
+    severity: INFO
+    message: "Avoid requesting REQUEST_IGNORE_BATTERY_OPTIMIZATIONS permission. This can negatively affect battery life."
+    patterns:
+      - pattern: <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" .../>

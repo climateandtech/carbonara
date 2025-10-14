@@ -1,9 +1,0 @@
-rules:
-  - id: gci94-java-parameter-of-orelse-evaluated-even
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      Parameter of orElse() is evaluated, even when having a non-empty Optional. Supplier method of orElseGet passed as an argument is only executed when an Optional value isn’t present. Therefore, using orElseGet() will save computing time.
-    pattern: |
-      $OPT.orElse($FUNC(...))

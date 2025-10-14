@@ -1,0 +1,11 @@
+rules:
+  - id: gci12-javascript-multiple-style-changes-should-be-batched
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Multiple style changes should be batched. Apply changes through a CSS class or by setting the 'cssText' property."
+    patterns:
+      - pattern: |
+          $ELEMENT.style.$PROPERTY1 = $VALUE1;
+          $ELEMENT.style.$PROPERTY2 = $VALUE2;

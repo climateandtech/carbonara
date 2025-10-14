@@ -1,9 +1,0 @@
-rules:
-  - id: gci99-python-csv-comma-separated-values-widely
-    languages:
-      - python
-    severity: INFO
-    message: >-
-      CSV for Comma-Separated Values is a widely-used way of storing data. Its main advantage is that it is “human readable”, meaning that a human can understand the data. However, the fact that it is stored per line and in “plain text” can lead to performance problems. On the other hand, Parquet is a storage mode optimized for data compression, as the data is stored in binary form per column. However, it cannot be understood without a dedicated program.
-    pattern: |
-      $OBJ.read_csv(...)

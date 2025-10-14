@@ -1,0 +1,15 @@
+rules:
+  - id: gci2-java-avoid-multiple-if-else-statement
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid multiple if-else statement. Consider using a switch statement or refactoring to reduce cyclomatic complexity."
+    patterns:
+      - pattern: |
+          if ($COND1) {
+            ...
+          } else if ($COND2) {
+            ...
+          } else if ($COND3) {
+            ...
+          }

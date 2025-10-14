@@ -1,0 +1,11 @@
+rules:
+  - id: gci4-python-avoid-using-global-variables
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid using the 'global' keyword to modify global variables. Pass variables as parameters to functions instead."
+    patterns:
+      - pattern-inside: |
+          def $FUNC(...):
+              ...
+      - pattern: global $VAR

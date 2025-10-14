@@ -1,0 +1,8 @@
+rules:
+  - id: gci521-java-sobriety-thrifty-motion-sensor
+    languages:
+      - java
+    severity: INFO
+    message: "Use TYPE_GEOMAGNETIC_ROTATION_VECTOR instead of TYPE_ROTATION_VECTOR for motion sensors to reduce power consumption."
+    patterns:
+      - pattern: $SENSOR_MANAGER.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);

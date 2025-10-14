@@ -1,9 +1,0 @@
-rules:
-  - id: gci515-swift-creation-of-avaudiorecorder-object-used
-    languages:
-      - swift
-    severity: INFO
-    message: >-
-      Creation of an `AVAudioRecorder` object is used to record audio. These class has a method to stop recording and release resources. In addition to unnecessary resources (such as memory and instances of codecs) being held, failure to properly stop and release these object if it is no longer needed may also lead to continuous battery consumption for mobile devices.
-    pattern: |
-      startRecording(...)

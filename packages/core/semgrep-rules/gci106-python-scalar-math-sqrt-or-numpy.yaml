@@ -1,9 +1,0 @@
-rules:
-  - id: gci106-python-scalar-math-sqrt-or-numpy
-    languages:
-      - python
-    severity: INFO
-    message: >-
-      Using scalar `math.sqrt` (or `numpy.sqrt` on individual values) inside loops leads to inefficient code due to repeated function calls and missed opportunities for vectorization. Prefer using vectorized square root operations on entire arrays to improve performance and reduce environmental impact.
-    pattern: |
-      math.sqrt($NUM)

@@ -1,9 +1,0 @@
-rules:
-  - id: gci522-java-introduced-android-9-adaptive-brightness
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      Introduced in Android 9, the adaptive brightness feature raises or lower the brightness of the screen depending on the light in the current environment. For some reasons, developers may disable this feature programmatically, setting the field `WindowManager.LayoutParams#screenBrightness` with the constant `BRIGHTNESS_OVERRIDE_FULL`. This feature was introduced to improve battery life, be careful when deactivating it.
-    pattern: |
-      getWindow(...)

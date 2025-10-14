@@ -1,0 +1,13 @@
+rules:
+  - id: gci93-csharp-return-task-directly
+    languages:
+      - csharp
+    severity: INFO
+    message: "Return Task directly. Avoid awaiting a single Task and then returning void. Return the Task directly for better performance."
+    patterns:
+      - pattern-inside: |
+          public static async Task $METHOD(...) {
+              ...
+          }
+      - pattern: await $TASK;
+      - pattern-not: $VAR = await $TASK;

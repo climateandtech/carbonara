@@ -1,0 +1,8 @@
+rules:
+  - id: gci500-java-batch-sensor-coalesce
+    languages:
+      - java
+    severity: INFO
+    message: "Use SensorManager.registerListener with maxReportLatencyUs to batch sensor events and reduce power consumption."
+    patterns:
+      - pattern: $SENSOR_MANAGER.registerListener($LISTENER, $SENSOR, $DELAY)

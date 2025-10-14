@@ -1,9 +1,0 @@
-rules:
-  - id: gci32-java-initialize-buffer-w-appropriate-size
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      If you know in advance how many characters would be appended, initialize builder/buffer with the appropriate size. They will thus never have to be resized. This saves CPU cycles and therefore consumes less energy.
-    pattern: |
-      new StringBuilder()

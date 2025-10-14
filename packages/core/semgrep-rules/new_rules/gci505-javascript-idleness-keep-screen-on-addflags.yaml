@@ -1,0 +1,11 @@
+rules:
+  - id: gci505-javascript-idleness-keep-screen-on-addflags
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Avoid keeping the screen on unnecessarily. This drains battery. Remove screen-awake calls if not absolutely needed."
+    patterns:
+      - pattern-either:
+          - pattern: useKeepAwake();
+          - pattern: activateKeepAwake();

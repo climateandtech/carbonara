@@ -1,8 +1,0 @@
-<!-- Non-compliant examples -->
-<manifest>
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-</manifest>
-
-
-<!-- Compliant solutions -->
-<!-- Avoid using REQUEST_IGNORE_BATTERY_OPTIMIZATIONS permission unless absolutely necessary -->

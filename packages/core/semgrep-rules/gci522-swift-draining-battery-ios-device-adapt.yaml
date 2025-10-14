@@ -1,9 +1,0 @@
-rules:
-  - id: gci522-swift-draining-battery-ios-device-adapt
-    languages:
-      - swift
-    severity: INFO
-    message: >-
-      To avoid draining the battery, an iOS device adapt its brightness to the environment . Hence, keeping forcing the screen brightness on should be avoided, unless it is absolutely necessary. If so, developers typically force the Brightness to 1 with `UIScreen.main.brightness = a float`.
-    pattern: |
-      CGFloat(...)

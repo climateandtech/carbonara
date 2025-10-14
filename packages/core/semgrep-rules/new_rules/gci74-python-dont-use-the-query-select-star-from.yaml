@@ -1,0 +1,8 @@
+rules:
+  - id: gci74-python-dont-use-the-query-select-star-from
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid using SELECT * FROM. Specify columns explicitly to save CPU cycles and network transfer."
+    patterns:
+      - pattern-regex: 'SELECT \* FROM .*'

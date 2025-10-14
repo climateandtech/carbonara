@@ -1,0 +1,10 @@
+rules:
+  - id: gci36-html-autoplay-should-be-avoided-for-video-and-audio-content
+    languages:
+      - html
+    severity: INFO
+    message: "Autoplay should be avoided for video and audio content. Use 'preload=\"none\"' instead."
+    patterns:
+      - pattern-either:
+          - pattern: <video ... autoplay ...>
+          - pattern: <audio ... autoplay ...>

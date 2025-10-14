@@ -1,9 +1,0 @@
-rules:
-  - id: gci518-java-contrast-classic-bluetooth-bluetooth-low
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      In contrast to classic Bluetooth, Bluetooth Low Energy (BLE) is designed to provide significantly lower power consumption. Its purpose is to save energy on both paired devices but very few developers are aware of this alternative API. From the Android client side, it means append `android.bluetooth.le.\*` imports to `android.bluetooth.*` imports in order to benefits from low-energy features.
-    pattern: |
-      import android.bluetooth.*

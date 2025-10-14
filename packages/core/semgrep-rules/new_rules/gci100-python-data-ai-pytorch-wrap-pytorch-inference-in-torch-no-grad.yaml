@@ -1,0 +1,15 @@
+rules:
+  - id: gci100-python-data-ai-pytorch-wrap-pytorch-inference-in-torch-no-grad
+    languages:
+      - python
+    severity: INFO
+    message: "Wrap PyTorch inference in `torch.no_grad()` to avoid unnecessary gradient tracking, reduce memory usage, and save energy."
+    patterns:
+      - pattern: |
+          model.eval()
+          ...
+          outputs = model(inputs)
+      - pattern-not-inside: |
+          with torch.no_grad():
+              ...
+              outputs = model(inputs)

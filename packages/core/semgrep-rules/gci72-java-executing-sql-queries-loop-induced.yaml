@@ -1,9 +1,0 @@
-rules:
-  - id: gci72-java-executing-sql-queries-loop-induced
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      Executing SQL queries in loop induced unnecessary calculation by the CPU, RAM usage and network transfer.
-    pattern: |
-      $STMT.executeQuery($QUERY)

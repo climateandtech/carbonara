@@ -1,9 +1,0 @@
-rules:
-  - id: gci103-python-iterating-dictionary-python-always-choose
-    languages:
-      - python
-    severity: INFO
-    message: >-
-      When iterating over a dictionary in Python, always choose the iteration method appropriate to your needs: - Use `.keys()` when only keys are needed. - Use `.values()` when only values are needed. - Use `.items()` only when both keys and values are required. Avoid using `.items()` if you only use the key or the value, as this creates an unnecessary tuple, leading to increased memory allocation and slower execution.
-    pattern: |
-      $OBJ.items(...)

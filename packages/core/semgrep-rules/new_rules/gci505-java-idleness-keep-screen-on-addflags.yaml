@@ -1,0 +1,8 @@
+rules:
+  - id: gci505-java-idleness-keep-screen-on-addflags
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid keeping the screen on unnecessarily. This drains battery. Remove FLAG_KEEP_SCREEN_ON if not absolutely needed."
+    patterns:
+      - pattern: $WINDOW.addFlags(FLAG_KEEP_SCREEN_ON);

@@ -1,0 +1,8 @@
+rules:
+  - id: gci83-csharp-replace-enum-tostring-with-nameof
+    languages:
+      - csharp
+    severity: INFO
+    message: "Replace Enum ToString() with nameof for better performance. ToString() is resolved at runtime, nameof at compile time."
+    patterns:
+      - pattern: $ENUM_VALUE.ToString();

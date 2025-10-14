@@ -1,9 +1,0 @@
-rules:
-  - id: gci513-swift-ios-devices-come-equipped-variety
-    languages:
-      - swift
-    severity: INFO
-    message: >-
-      Most iOS devices come equipped with a variety of sensors that measure motion, orientation, and various environmental conditions. In addition to these, the devices include advanced sensors such as the image sensor (commonly referred to as the Camera) and the geo-positioning sensor (commonly referred to as GPS). The common point of all these sensors is that they are power-intensive while in use. A typical issue arises when these sensors continue to process data unnecessarily after the application enters an idle state, typically when paused or when the user stops interacting with it. Consequently, calls must be carefully paired: `CLLocationManager.startUpdatingLocation()` and `CLLocationManager.stopUpdatingLocation()`. Failing to do so can drain the battery in just a few hours.
-    pattern: |
-      $OBJ.init(...)

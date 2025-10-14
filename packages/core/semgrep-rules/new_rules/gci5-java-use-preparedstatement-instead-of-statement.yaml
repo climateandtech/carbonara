@@ -1,0 +1,8 @@
+rules:
+  - id: gci5-java-use-preparedstatement-instead-of-statement
+    languages:
+      - java
+    severity: INFO
+    message: "Use PreparedStatement instead of Statement for performance and security benefits."
+    patterns:
+      - pattern: $CONN.createStatement(...)

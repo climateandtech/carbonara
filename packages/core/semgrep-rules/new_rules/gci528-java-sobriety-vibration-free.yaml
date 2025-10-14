@@ -1,0 +1,10 @@
+rules:
+  - id: gci528-java-sobriety-vibration-free
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid unnecessary vibrations. Vibrations consume power and should be used sparingly."
+    patterns:
+      - pattern-either:
+          - pattern: $VIBRATOR.vibrate(...);
+          - pattern: $VIBRATOR_MANAGER.getDefaultVibrator().vibrate(...);

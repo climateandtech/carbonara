@@ -1,9 +1,0 @@
-rules:
-  - id: gci547-xml-score-creedengo-2sur5-displaying-dark
-    languages:
-      - xml
-    severity: INFO
-    message: >-
-      Score creedengo: 2sur5 Displaying dark colors is particularly beneficial for mobile devices with (AM)OLED screens. Consequently, custom resources like bright colors values and bitmap images with too high luminance should be avoided.
-    pattern: |
-      android:layout_width="match_parent"

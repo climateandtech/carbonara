@@ -1,9 +1,0 @@
-rules:
-  - id: gci548-xml-score-creedengo-2sur5-developers-allowed
-    languages:
-      - xml
-    severity: INFO
-    message: >-
-      Score creedengo: 2sur5 Developers are allowed to apply native themes for their app, or derive new ones through inheritance. This decision has a significant impact on energy consumption since displaying dark colors is particularly beneficial for mobile devices with (AM)OLED screens. By default, Android will set Holo to the Dark theme (parent style `Theme.Holo`) and hence switching to the light theme (parent style `Theme.Holo.Light`) within the manifest or in xml themes should be avoided.
-    pattern: |
-      <application android:theme="..." />

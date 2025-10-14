@@ -1,0 +1,23 @@
+rules:
+  - id: gci603-swift-animation-free
+    languages:
+      - swift
+    severity: INFO
+    message: "Avoid unnecessary animations. Animations consume power and should be used sparingly."
+    patterns:
+      - pattern-either:
+          - pattern: UIView.animate(withDuration: $DURATION, animations: $ANIMATIONS)
+          - pattern: UIView.animate(withDuration: $DURATION, animations: $ANIMATIONS, completion: $COMPLETION)
+          - pattern: UIView.animate(withDuration: $DURATION, delay: $DELAY, options: $OPTIONS, animations: $ANIMATIONS, completion: $COMPLETION)
+          - pattern: UIView.animateKeyframes(withDuration: $DURATION, delay: $DELAY, options: $OPTIONS, animations: $ANIMATIONS, completion: $COMPLETION)
+          - pattern: UIView.transition(with: $VIEW, duration: $DURATION, options: $OPTIONS, animations: $ANIMATIONS, completion: $COMPLETION)
+          - pattern: CABasicAnimation
+          - pattern: CAKeyframeAnimation
+          - pattern: CATransition
+          - pattern: withAnimation(...)
+          - pattern: Animation
+          - pattern: AnyTransition
+          - pattern: .$VIEW_MODIFIER(Animation?)
+          - pattern: .$VIEW_MODIFIER(AnyTransition)
+          - pattern: .onAppear(perform: ...)
+          - pattern: .onDisappear(perform: ...)

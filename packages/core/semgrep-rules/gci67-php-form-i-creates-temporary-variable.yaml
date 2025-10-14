@@ -1,8 +1,0 @@
-rules:
-  - id: gci67-php-form-i-creates-temporary-variable
-    languages:
-      - php
-    severity: INFO
-    message: >-
-      The form `$i++` creates a temporary variable whereas `++$i` does not. It save CPU cycles.
-    pattern-regex: '\$\w+\+\+'

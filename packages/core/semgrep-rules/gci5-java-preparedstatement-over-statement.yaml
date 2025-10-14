@@ -1,9 +1,0 @@
-rules:
-  - id: gci5-java-preparedstatement-over-statement
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      Use `PreparedStatement` instead of `Statement`, because SQL will only commit the query once, whereas if you used only one statement, it would commit the query every time and thus induce unnecessary calculations by the CPU and therefore superfluous energy consumption.
-    pattern: |
-      $CONN.createStatement()

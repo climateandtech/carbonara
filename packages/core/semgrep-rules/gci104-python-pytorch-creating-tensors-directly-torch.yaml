@@ -1,9 +1,0 @@
-rules:
-  - id: gci104-python-pytorch-creating-tensors-directly-torch
-    languages:
-      - python
-    severity: INFO
-    message: >-
-      In PyTorch, prefer creating tensors directly using `torch.rand`, `torch.tensor`, or other Torch methods instead of converting from NumPy arrays. Avoid using `torch.tensor(np.random.rand(...))` or similar patterns when the same result can be achieved directly with PyTorch.
-    pattern: |
-      $OBJ.tensor(...)

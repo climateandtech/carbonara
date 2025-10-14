@@ -1,0 +1,12 @@
+rules:
+  - id: gci503-java-bottleneck-wifi-multicast-lock
+    languages:
+      - java
+    severity: INFO
+    message: "Release Wifi Multicast Lock to avoid battery drain. Ensure every acquire() call has a corresponding release()."
+    patterns:
+      - pattern: $LOCK.acquire();
+      - pattern-not-inside: |
+          $LOCK.acquire();
+          ...
+          $LOCK.release();

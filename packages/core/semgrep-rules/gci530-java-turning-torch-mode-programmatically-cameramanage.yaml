@@ -1,9 +1,0 @@
-rules:
-  - id: gci530-java-turning-torch-mode-programmatically-cameramanage
-    languages:
-      - java
-    severity: INFO
-    message: >-
-      Turning on the torch mode programmatically with `CameraManager#setTorchMode(..., true)` must absolutely be avoided because the flashlight is one of the most energy-intensive component.
-    pattern: |
-      $MANAGER.setTorchMode($ID, true)

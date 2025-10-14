@@ -1,0 +1,9 @@
+rules:
+  - id: gci522-javascript-sobriety-brightness-override
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Avoid overriding screen brightness. Let the system manage brightness for better battery life."
+    patterns:
+      - pattern: Brightness.setSystemBrightnessAsyn(...);

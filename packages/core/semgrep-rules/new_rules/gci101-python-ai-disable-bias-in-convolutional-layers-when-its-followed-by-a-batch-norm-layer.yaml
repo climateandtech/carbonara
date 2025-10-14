@@ -1,0 +1,8 @@
+rules:
+  - id: gci101-python-ai-disable-bias-in-convolutional-layers-when-its-followed-by-a-batch-norm-layer
+    languages:
+      - python
+    severity: INFO
+    message: "Disable bias in convolutional layers when followed by a batch norm layer to reduce redundant parameters, optimize memory, and save energy."
+    patterns:
+      - pattern: nn.Conv2d(..., bias=True)
