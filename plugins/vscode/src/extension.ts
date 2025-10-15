@@ -2,12 +2,16 @@ import * as vscode from 'vscode';
 import { UI_TEXT } from './constants/ui-text';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { spawn } from 'child_process';
 import { AssessmentTreeProvider } from './assessment-tree-provider';
 import { DataTreeProvider } from './data-tree-provider';
 import { ToolsTreeProvider } from './tools-tree-provider';
 import { createSemgrepService, type SemgrepMatch, type SemgrepResult } from '@carbonara/core';
 
+// File size threshold for interactive linting (1MB)
+// Files larger than this will only be linted on save
+const MAX_FILE_SIZE_FOR_INTERACTIVE_LINT = 1024 * 1024; // 1MB in bytes
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
@@ -114,6 +118,18 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeTextDocument(event => {
             if (event.document && event.contentChanges.length > 0) {
                 handleDocumentChange(event);
+            }
+        })
+    );
+
+    // Set up Semgrep analysis on file save for large files
+    context.subscriptions.push(
+        vscode.workspace.onDidSaveTextDocument(document => {
+            const editor = vscode.window.visibleTextEditors.find(
+                e => e.document === document
+            );
+            if (editor) {
+                runSemgrepOnFileSave(editor);
             }
         })
     );
@@ -644,6 +660,23 @@ function checkProjectStatus() {
     }
 }
 
+/**
+ * Writes the content of an editor to a temporary file for analysis.
+ * Returns the path to the temp file, which should be deleted after use.
+ */
+function writeEditorToTempFile(editor: vscode.TextEditor): string {
+    const originalPath = editor.document.uri.fsPath;
+    const ext = path.extname(originalPath);
+    const basename = path.basename(originalPath, ext);
+    const tempFile = path.join(
+        os.tmpdir(),
+        `semgrep-${Date.now()}-${basename}${ext}`
+    );
+
+    fs.writeFileSync(tempFile, editor.document.getText(), 'utf-8');
+    return tempFile;
+}
+
 async function runSemgrepOnFile() {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -653,10 +686,8 @@ async function runSemgrepOnFile() {
 
     const filePath = editor.document.uri.fsPath;
 
-    // Save the document if it has unsaved changes
-    if (editor.document.isDirty) {
-        await editor.document.save();
-    }
+    // Write editor content to temp file instead of auto-saving
+    const tempFile = writeEditorToTempFile(editor);
 
     const output = vscode.window.createOutputChannel('Carbonara Semgrep');
     output.appendLine(`Running Semgrep on ${path.basename(filePath)}...`);
@@ -696,8 +727,8 @@ async function runSemgrepOnFile() {
 
             output.appendLine('Running analysis...');
 
-            // Run analysis on the file
-            const result = await semgrep.analyzeFile(filePath);
+            // Run analysis on the temp file
+            const result = await semgrep.analyzeFile(tempFile);
 
             if (!result.success) {
                 output.appendLine('Analysis failed:');
@@ -783,6 +814,15 @@ async function runSemgrepOnFile() {
             output.appendLine(`\nError: ${errorMessage}`);
             output.show();
             vscode.window.showErrorMessage(`Semgrep analysis failed: ${errorMessage}`);
+        } finally {
+            // Clean up temp file
+            try {
+                if (fs.existsSync(tempFile)) {
+                    fs.unlinkSync(tempFile);
+                }
+            } catch (cleanupError) {
+                console.error('Failed to cleanup temp file:', cleanupError);
+            }
         }
     });
 }
@@ -829,13 +869,24 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
         return;
     }
 
+    // Check file size - skip interactive linting for large files
+    try {
+        const stats = fs.statSync(filePath);
+        if (stats.size > MAX_FILE_SIZE_FOR_INTERACTIVE_LINT) {
+            console.log(`File ${path.basename(filePath)} is too large (${stats.size} bytes), skipping interactive linting`);
+            return;
+        }
+    } catch (error) {
+        console.error('Failed to check file size:', error);
+        return;
+    }
+
     // Debounce the analysis by 500ms to avoid running too frequently
     semgrepAnalysisTimer = setTimeout(async () => {
+        let tempFile: string | null = null;
         try {
-            // Save the document if it has unsaved changes
-            if (editor.document.isDirty) {
-                await editor.document.save();
-            }
+            // Write editor content to temp file instead of auto-saving
+            tempFile = writeEditorToTempFile(editor);
 
             console.log(`Running automatic Semgrep analysis on ${path.basename(filePath)}`);
 
@@ -852,8 +903,8 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
                 return;
             }
 
-            // Run analysis on the file
-            const result = await semgrep.analyzeFile(filePath);
+            // Run analysis on the temp file
+            const result = await semgrep.analyzeFile(tempFile!);
 
             if (!result.success) {
                 console.log('Semgrep analysis failed:', result.errors);
@@ -903,6 +954,112 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
         } catch (error) {
             // Silently fail for automatic analysis
             console.log('Automatic Semgrep analysis error:', error);
+        } finally {
+            // Clean up temp file
+            if (tempFile) {
+                try {
+                    if (fs.existsSync(tempFile)) {
+                        fs.unlinkSync(tempFile);
+                    }
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup temp file:', cleanupError);
+                }
+            }
         }
     }, 500);
+}
+
+/**
+ * Runs Semgrep analysis when a file is saved.
+ * Only analyzes large files that are skipped by interactive linting.
+ */
+async function runSemgrepOnFileSave(editor: vscode.TextEditor) {
+    // Only analyze files with supported extensions
+    const supportedExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rb', '.php', '.c', '.cpp', '.cs', '.swift', '.kt'];
+    const filePath = editor.document.uri.fsPath;
+    const fileExtension = path.extname(filePath);
+
+    if (!supportedExtensions.includes(fileExtension)) {
+        return;
+    }
+
+    // Check file size - only analyze large files on save
+    try {
+        const stats = fs.statSync(filePath);
+        if (stats.size <= MAX_FILE_SIZE_FOR_INTERACTIVE_LINT) {
+            // Small files are handled by interactive linting
+            return;
+        }
+
+        console.log(`File ${path.basename(filePath)} is large (${stats.size} bytes), running Semgrep on save`);
+    } catch (error) {
+        console.error('Failed to check file size:', error);
+        return;
+    }
+
+    // Run analysis (file is already saved, so we can analyze it directly)
+    try {
+        const semgrep = createSemgrepService({
+            useBundledPython: false,
+            timeout: 60000
+        });
+
+        // Check setup before running (silent check)
+        const setup = await semgrep.checkSetup();
+        if (!setup.isValid) {
+            console.log('Semgrep setup is not valid, skipping save analysis');
+            return;
+        }
+
+        // Run analysis on the saved file
+        const result = await semgrep.analyzeFile(filePath);
+
+        if (!result.success) {
+            console.log('Semgrep analysis failed:', result.errors);
+            return;
+        }
+
+        // Convert Semgrep results to VSCode diagnostics
+        const diagnostics: vscode.Diagnostic[] = result.matches.map(match => {
+            const range = new vscode.Range(
+                match.start_line - 1,
+                Math.max(0, match.start_column - 1),
+                match.end_line - 1,
+                Math.max(0, match.end_column - 1)
+            );
+
+            // Map severity
+            let severity: vscode.DiagnosticSeverity;
+            if (match.severity === 'ERROR') {
+                severity = vscode.DiagnosticSeverity.Error;
+            } else if (match.severity === 'WARNING') {
+                severity = vscode.DiagnosticSeverity.Warning;
+            } else {
+                severity = vscode.DiagnosticSeverity.Information;
+            }
+
+            const diagnostic = new vscode.Diagnostic(range, match.message, severity);
+            diagnostic.source = 'semgrep';
+            diagnostic.code = match.rule_id;
+
+            return diagnostic;
+        });
+
+        // Apply diagnostics to the document
+        const uri = vscode.Uri.file(filePath);
+        semgrepDiagnostics.set(uri, diagnostics);
+
+        // Track which lines have diagnostics
+        const lineSet = new Set<number>();
+        diagnostics.forEach(diagnostic => {
+            for (let line = diagnostic.range.start.line; line <= diagnostic.range.end.line; line++) {
+                lineSet.add(line);
+            }
+        });
+        filesWithDiagnostics.set(filePath, lineSet);
+
+        console.log(`Semgrep analysis on save complete: ${result.stats.total_matches} issue(s) found`);
+    } catch (error) {
+        console.log('Semgrep analysis on save error:', error);
+    }
 } 
