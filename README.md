@@ -228,4 +228,16 @@ During pre-1.0 development (0.x.x), minor versions may include breaking changes.
 
 ## 📄 License
 
-To be clarified - All rights reserved
+This project is licensed under the **GNU Affero General Public License version 3.0 or later (AGPL-3.0-or-later)**.
+
+- **Public License**: The project is available under AGPL-3.0-or-later for public use
+- **Full License Text**: See [LICENSE](LICENSE) file for complete terms
+- **Contributor Agreement**: Contributors must agree to our [Contributor License Agreement](CONTRIBUTING.md#contributor-license-agreement) which grants the Carbonara team additional licensing rights
+
+### Dual Licensing
+
+While the public project remains under AGPL-3.0-or-later, the Carbonara team reserves the right to offer alternative licensing terms (including BSD) for commercial use. This dual licensing model is enabled through our Contributor License Agreement.
+
+### Contributing
+
+By contributing to this project, you agree to the terms outlined in [CONTRIBUTING.md](CONTRIBUTING.md), including granting the Carbonara team perpetual rights to relicense your contributions under additional terms.

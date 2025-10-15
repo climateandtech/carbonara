@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2024 Carbonara team
+ */
+
 import * as vscode from "vscode";
 import { UI_TEXT } from "./constants/ui-text";
 import * as path from "path";
