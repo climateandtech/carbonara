@@ -10,6 +10,7 @@ export interface AnalysisTool {
     description: string;
     type: 'external' | 'built-in';
     command: string;
+    vscodeCommand?: string;
     installation?: {
         type: 'npm' | 'pip' | 'binary';
         package: string;
@@ -211,6 +212,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
                     description: tool.description,
                     type: isBuiltIn ? 'built-in' : 'external',
                     command: tool.command?.executable || tool.command,
+                    vscodeCommand: tool.vscodeCommand,
                     installation: tool.installation,
                     detection: tool.detection,
                     isInstalled
@@ -245,6 +247,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
                     description: tool.description,
                     type: tool.installation?.type === 'built-in' ? 'built-in' : 'external',
                     command: tool.command?.executable || tool.command,
+                    vscodeCommand: tool.vscodeCommand,
                     installation: tool.installation,
                     detection: tool.detection,
                     isInstalled: tool.installation?.type === 'built-in' ? true : false
@@ -328,9 +331,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             return;
         }
 
-        // Special handling for Semgrep
-        if (toolId === 'semgrep') {
-            vscode.commands.executeCommand('carbonara.runSemgrep');
+        // Check if tool has a custom VSCode command
+        if (tool.vscodeCommand) {
+            vscode.commands.executeCommand(tool.vscodeCommand);
             return;
         }
 
@@ -398,6 +401,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
                     ...tool,
                     type: isBuiltIn ? 'built-in' : 'external',
                     command: tool.command?.executable || tool.command,
+                    vscodeCommand: tool.vscodeCommand,
                     isInstalled
                 };
             }));
