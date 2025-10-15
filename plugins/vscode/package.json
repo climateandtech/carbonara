@@ -266,14 +266,15 @@
     ]
   },
   "scripts": {
-    "build": "tsc -p ./ && npm run copy-deps",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p ./ && npm run copy-deps",
     "copy-deps": "mkdir -p dist/node_modules/@carbonara/core dist/node_modules/sql.js dist/registry && cp -r ../../packages/core/dist dist/node_modules/@carbonara/core/ && cp ../../packages/core/package.json dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/python dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/semgrep-rules dist/node_modules/@carbonara/core/ && cp -r ../../node_modules/sql.js/dist dist/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json dist/node_modules/sql.js/ && cp ../../packages/cli/dist/registry/tools.json dist/registry/tools.json",
     "watch": "tsc -watch -p ./",
     "package": "npm run build && vsce package --no-dependencies && vsce ls",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",
-    "test:local": "node ./out/test/runTest.js",
+    "test:local": "node ./dist/test/runTest.js",
     "test:ci-check": "if [ \"$CI\" = \"true\" ]; then echo 'Skipping VSCode tests in CI environment'; exit 0; else npm run test:local; fi",
     "test:ui": "playwright test e2e --workers=1",
     "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
