@@ -283,6 +283,7 @@
     "test:ui:empty-workspace": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Empty workspace\" --workers=1",
     "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
     "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
+    "test:ui:semgrep": "playwright test e2e/semgrep.test.ts --workers=1",
     "test:ui:headed": "playwright test e2e --headed --workers=1",
     "playwright:install": "playwright install"
   },
