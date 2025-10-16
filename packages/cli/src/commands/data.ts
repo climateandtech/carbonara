@@ -17,7 +17,8 @@ export async function dataCommand(options: DataOptions) {
     const config = await loadProjectConfig();
     if (!config) {
       if (options.json) {
-        console.log('[]');
+        // In JSON mode, output empty array instead of warning message
+        console.log(JSON.stringify([]));
         return;
       }
       console.log(chalk.yellow('⚠️  No project found. Run "carbonara init" first.'));
@@ -63,6 +64,12 @@ export async function dataCommand(options: DataOptions) {
     await dataLake.close();
 
   } catch (error) {
+    if (options.json) {
+      // In JSON mode, output error as JSON instead of colored text
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(JSON.stringify({ error: errorMessage }));
+      process.exit(1);
+    }
     console.error(chalk.red('❌ Data operation failed:'), error);
     process.exit(1);
   }

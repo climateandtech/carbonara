@@ -353,19 +353,19 @@
       "name": "Semgrep",
       "description": "Static analysis tool for finding bugs, detecting vulnerabilities, and enforcing code standards",
       "command": {
-        "executable": "built-in",
-        "args": [],
+        "executable": "semgrep",
+        "args": ["--config", "auto", "--json", "--no-git-ignore", "{target}"],
         "outputFormat": "json"
       },
       "installation": {
-        "type": "built-in",
-        "package": "built-in",
-        "global": false,
-        "instructions": "Built-in static analysis tool. Requires Python 3.7+ for full functionality. Run 'carbonara semgrep --setup' to configure bundled environment."
+        "type": "pip",
+        "package": "semgrep",
+        "global": true,
+        "instructions": "pip install semgrep"
       },
       "detection": {
-        "method": "built-in",
-        "target": "always-available"
+        "method": "command",
+        "target": "semgrep --version"
       },
       "display": {
         "category": "Code Analysis",
@@ -419,39 +419,8 @@
       },
       "options": [
         {
-          "flag": "-o, --output <format>",
-          "description": "Output format (json|table|sarif)",
-          "type": "string",
-          "default": "table"
-        },
-        {
-          "flag": "-s, --severity <level>",
-          "description": "Filter by severity (error|warning|info)",
-          "type": "string"
-        },
-        {
           "flag": "--save",
           "description": "Save results to database",
-          "type": "boolean"
-        },
-        {
-          "flag": "--fix",
-          "description": "Apply available fixes (experimental)",
-          "type": "boolean"
-        },
-        {
-          "flag": "--bundled",
-          "description": "Use bundled Python environment",
-          "type": "boolean"
-        },
-        {
-          "flag": "--setup",
-          "description": "Setup bundled Semgrep environment",
-          "type": "boolean"
-        },
-        {
-          "flag": "--list-rules",
-          "description": "List available rules",
           "type": "boolean"
         }
       ]

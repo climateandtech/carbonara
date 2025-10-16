@@ -5,23 +5,30 @@ import { mapFindingToCategory, getCategoryInfo, filterFindingsByImpact, CARBONAR
 describe('Highlighting Integration Tests', () => {
   test('should parse Semgrep results correctly', () => {
     const mockSemgrepResult = {
-      success: true,
-      matches: [
+      results: [
         {
-          rule_id: 'test-rule',
+          check_id: 'test-rule',
           path: 'src/test.js',
-          start_line: 10,
-          end_line: 10,
-          start_column: 5,
-          end_column: 15,
-          message: 'Test finding',
-          severity: 'ERROR',
-          code_snippet: 'console.log("test");',
-          fix: 'Remove console.log',
-          metadata: { confidence: 'high' }
+          start: {
+            line: 10,
+            col: 5
+          },
+          end: {
+            line: 10,
+            col: 15
+          },
+          extra: {
+            message: 'Test finding',
+            severity: 'ERROR',
+            metadata: { confidence: 'high' }
+          }
         }
       ],
       errors: [],
+      paths: {
+        scanned: ['src/test.js'],
+        ignored: []
+      },
       stats: {
         total_matches: 1,
         error_count: 1,
@@ -39,7 +46,7 @@ describe('Highlighting Integration Tests', () => {
     expect(result.findings[0].message).toBe('Test finding');
     expect(result.findings[0].category).toBe('code-quality');
     expect(result.findings[0].ruleId).toBe('test-rule');
-    expect(result.findings[0].fix?.description).toBe('Remove console.log');
+    expect(result.findings[0].fix).toBeUndefined(); // Semgrep doesn't provide fix info in basic JSON
     expect(result.findings[0].metadata?.confidence).toBe('high');
     expect(result.stats.totalMatches).toBe(1);
     expect(result.stats.errorCount).toBe(1);
@@ -50,33 +57,47 @@ describe('Highlighting Integration Tests', () => {
   test('should parse Semgrep results with multiple findings', () => {
     const mockSemgrepResult = {
       success: true,
-      matches: [
+      results: [
         {
-          rule_id: 'error-rule',
+          check_id: 'error-rule',
           path: 'src/file1.js',
-          start_line: 5,
-          end_line: 5,
-          start_column: 1,
-          end_column: 10,
-          message: 'Error finding',
-          severity: 'ERROR',
-          code_snippet: 'badCode();',
-          metadata: {}
+          start: {
+            line: 5,
+            col: 1
+          },
+          end: {
+            line: 5,
+            col: 10
+          },
+          extra: {
+            message: 'Error finding',
+            severity: 'ERROR',
+            metadata: {}
+          }
         },
         {
-          rule_id: 'warning-rule',
+          check_id: 'warning-rule',
           path: 'src/file2.js',
-          start_line: 10,
-          end_line: 10,
-          start_column: 1,
-          end_column: 15,
-          message: 'Warning finding',
-          severity: 'WARNING',
-          code_snippet: 'suspiciousCode();',
-          metadata: {}
+          start: {
+            line: 10,
+            col: 1
+          },
+          end: {
+            line: 10,
+            col: 15
+          },
+          extra: {
+            message: 'Warning finding',
+            severity: 'WARNING',
+            metadata: {}
+          }
         }
       ],
       errors: [],
+      paths: {
+        scanned: ['src/file1.js', 'src/file2.js'],
+        ignored: []
+      },
       stats: {
         total_matches: 2,
         error_count: 1,
@@ -192,8 +213,12 @@ describe('Highlighting Integration Tests', () => {
   test('should handle empty results gracefully', () => {
     const emptySemgrepResult = {
       success: true,
-      matches: [],
+      results: [],
       errors: [],
+      paths: {
+        scanned: [],
+        ignored: []
+      },
       stats: {
         total_matches: 0,
         error_count: 0,
@@ -213,12 +238,19 @@ describe('Highlighting Integration Tests', () => {
   test('should handle malformed data gracefully', () => {
     const malformedResult = {
       // Missing required fields
-      matches: [
+      results: [
         {
-          // Missing rule_id, path, etc.
-          severity: 'ERROR'
+          // Missing check_id, path, etc.
+          extra: {
+            severity: 'ERROR'
+          }
         }
-      ]
+      ],
+      errors: [],
+      paths: {
+        scanned: [],
+        ignored: []
+      }
       // Missing stats object
     };
 
@@ -242,13 +274,41 @@ describe('Highlighting Integration Tests', () => {
   test('should map severities correctly for all tools', () => {
     // Test Semgrep severity mapping
     const semgrepResult = {
-      matches: [
-        { rule_id: 'error-rule', path: 'test.js', start_line: 1, end_line: 1, start_column: 1, end_column: 10, message: 'Error', severity: 'ERROR', code_snippet: '', metadata: {} },
-        { rule_id: 'warning-rule', path: 'test.js', start_line: 2, end_line: 2, start_column: 1, end_column: 10, message: 'Warning', severity: 'WARNING', code_snippet: '', metadata: {} },
-        { rule_id: 'info-rule', path: 'test.js', start_line: 3, end_line: 3, start_column: 1, end_column: 10, message: 'Info', severity: 'INFO', code_snippet: '', metadata: {} },
-        { rule_id: 'unknown-rule', path: 'test.js', start_line: 4, end_line: 4, start_column: 1, end_column: 10, message: 'Unknown', severity: 'UNKNOWN', code_snippet: '', metadata: {} }
+      results: [
+        { 
+          check_id: 'error-rule', 
+          path: 'test.js', 
+          start: { line: 1, col: 1 }, 
+          end: { line: 1, col: 10 }, 
+          extra: { message: 'Error', severity: 'ERROR', metadata: {} } 
+        },
+        { 
+          check_id: 'warning-rule', 
+          path: 'test.js', 
+          start: { line: 2, col: 1 }, 
+          end: { line: 2, col: 10 }, 
+          extra: { message: 'Warning', severity: 'WARNING', metadata: {} } 
+        },
+        { 
+          check_id: 'info-rule', 
+          path: 'test.js', 
+          start: { line: 3, col: 1 }, 
+          end: { line: 3, col: 10 }, 
+          extra: { message: 'Info', severity: 'INFO', metadata: {} } 
+        },
+        { 
+          check_id: 'unknown-rule', 
+          path: 'test.js', 
+          start: { line: 4, col: 1 }, 
+          end: { line: 4, col: 10 }, 
+          extra: { message: 'Unknown', severity: 'UNKNOWN', metadata: {} } 
+        }
       ],
       errors: [],
+      paths: {
+        scanned: ['test.js'],
+        ignored: []
+      },
       stats: { total_matches: 4, error_count: 1, warning_count: 1, info_count: 2, files_scanned: 1 }
     };
 
@@ -305,21 +365,30 @@ describe('Highlighting Integration Tests', () => {
 
   test('should handle special characters and edge cases', () => {
     const specialCharsResult = {
-      matches: [
+      results: [
         {
-          rule_id: 'special-rule',
+          check_id: 'special-rule',
           path: 'src/file with spaces.js',
-          start_line: 1,
-          end_line: 1,
-          start_column: 1,
-          end_column: 10,
-          message: 'Message with "quotes" and \'apostrophes\' and newlines\nand tabs\t',
-          severity: 'ERROR',
-          code_snippet: 'console.log("test with special chars: @#$%^&*()");',
-          metadata: { special: 'value with spaces' }
+          start: {
+            line: 1,
+            col: 1
+          },
+          end: {
+            line: 1,
+            col: 10
+          },
+          extra: {
+            message: 'Message with "quotes" and \'apostrophes\' and newlines\nand tabs\t',
+            severity: 'ERROR',
+            metadata: { special: 'value with spaces' }
+          }
         }
       ],
       errors: [],
+      paths: {
+        scanned: ['src/file with spaces.js'],
+        ignored: []
+      },
       stats: { total_matches: 1, error_count: 1, warning_count: 0, info_count: 0, files_scanned: 1 }
     };
 
@@ -414,33 +483,47 @@ describe('Highlighting Integration Tests', () => {
     // Test with actual Semgrep results
     const semgrepResult = {
       success: true,
-      matches: [
+      results: [
         {
-          rule_id: 'no-console',
+          check_id: 'no-console',
           path: 'src/app.js',
-          start_line: 10,
-          end_line: 10,
-          start_column: 1,
-          end_column: 15,
-          message: 'Console statement should be removed in production',
-          severity: 'WARNING',
-          code_snippet: 'console.log("debug");',
-          metadata: {}
+          start: {
+            line: 10,
+            col: 1
+          },
+          end: {
+            line: 10,
+            col: 15
+          },
+          extra: {
+            message: 'Console statement should be removed in production',
+            severity: 'WARNING',
+            metadata: {}
+          }
         },
         {
-          rule_id: 'sql-injection',
+          check_id: 'sql-injection',
           path: 'src/database.js',
-          start_line: 25,
-          end_line: 25,
-          start_column: 1,
-          end_column: 20,
-          message: 'SQL injection vulnerability detected',
-          severity: 'ERROR',
-          code_snippet: 'query = "SELECT * FROM users WHERE id = " + userId;',
-          metadata: {}
+          start: {
+            line: 25,
+            col: 1
+          },
+          end: {
+            line: 25,
+            col: 20
+          },
+          extra: {
+            message: 'SQL injection vulnerability detected',
+            severity: 'ERROR',
+            metadata: {}
+          }
         }
       ],
       errors: [],
+      paths: {
+        scanned: ['src/app.js', 'src/database.js'],
+        ignored: []
+      },
       stats: { total_matches: 2, error_count: 1, warning_count: 1, info_count: 0, files_scanned: 2 }
     };
 

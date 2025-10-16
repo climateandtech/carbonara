@@ -7,7 +7,6 @@ import { assessCommand } from "./commands/assess.js";
 import { dataCommand } from "./commands/data.js";
 import { analyzeCommand } from "./commands/analyze.js";
 import { toolsCommand } from "./commands/tools.js";
-import { semgrepCommand } from "./commands/semgrep.js";
 
 import packageJson from "../package.json" with { type: "json" };
 
@@ -45,7 +44,7 @@ program
   .command("analyze")
   .description("Run analysis with specified tool")
   .argument("<tool>", "Analysis tool to use")
-  .argument("<url>", "URL to analyze")
+  .argument("<target>", "URL or file/directory to analyze")
   .option("-s, --save", "Save results to data lake")
   .option("-o, --output <format>", "Output format (json|table)", "table")
   .option("--timeout <ms>", "Analysis timeout in milliseconds", "30000")
@@ -83,18 +82,6 @@ toolsCmd
   .option("-r, --refresh", "Refresh tool installation status")
   .action(toolsCommand);
 
-program
-  .command("semgrep [target]")
-  .description("Run Semgrep static analysis on files or directories")
-  .option("-o, --output <format>", "Output format: table, json, sarif", "table")
-  .option("-r, --rule-file <file>", "Use specific rule file")
-  .option("-s, --severity <level>", "Filter by severity: error, warning, info")
-  .option("--save", "Save results to file")
-  .option("--fix", "Apply available fixes (experimental)")
-  .option("--bundled", "Use bundled Python environment")
-  .option("--setup", "Setup bundled Semgrep environment")
-  .option("--list-rules", "List available rules")
-  .action(semgrepCommand);
 
 program.on("command:*", () => {
   console.error(

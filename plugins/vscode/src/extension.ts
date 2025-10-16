@@ -17,7 +17,39 @@ let unifiedHighlighter: UnifiedHighlighter;
 
 let currentProjectPath: string | null = null;
 
-export function activate(context: vscode.ExtensionContext) {
+async function initializeTreeProviders(context: vscode.ExtensionContext) {
+    // Wait for workspace folder to be available
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max wait
+    
+    while (attempts < maxAttempts) {
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+            console.log(`✅ Workspace folder detected: ${vscode.workspace.workspaceFolders[0].name}`);
+            break;
+        }
+        
+        console.log(`⏳ Waiting for workspace folder... (attempt ${attempts + 1}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+    
+    if (attempts >= maxAttempts) {
+        console.log('⚠️ Workspace folder not detected after 5 seconds, proceeding anyway');
+    }
+
+    // Create and register tree views
+    assessmentTreeProvider = new AssessmentTreeProvider();
+    dataTreeProvider = new DataTreeProvider();
+    console.log('🔧 Creating ToolsTreeProvider...');
+    toolsTreeProvider = new ToolsTreeProvider();
+    console.log('🔧 Registering tree data providers...');
+    vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
+    vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
+    vscode.window.registerTreeDataProvider('carbonara.toolsTree', toolsTreeProvider);
+    console.log('✅ All tree providers registered');
+}
+
+export async function activate(context: vscode.ExtensionContext) {
     console.log('🚀 Carbonara extension is now active!');
     console.log('🚀 Extension activation started...');
 
@@ -30,11 +62,10 @@ export function activate(context: vscode.ExtensionContext) {
     carbonaraStatusBar.command = 'carbonara.showMenu';
     carbonaraStatusBar.show();
 
-    // Create and register tree views
-    assessmentTreeProvider = new AssessmentTreeProvider();
-    dataTreeProvider = new DataTreeProvider();
-    console.log('🔧 Creating ToolsTreeProvider...');
-    toolsTreeProvider = new ToolsTreeProvider();
+    // Initialize tree providers after workspace is ready
+    await initializeTreeProviders(context);
+    
+    // Create UnifiedHighlighter after tree providers are initialized
     console.log('🔧 Creating UnifiedHighlighter...');
     try {
       unifiedHighlighter = new UnifiedHighlighter(context);
@@ -43,11 +74,6 @@ export function activate(context: vscode.ExtensionContext) {
       console.error('❌ Failed to create UnifiedHighlighter:', error);
       console.error('❌ Error details:', error);
     }
-    console.log('🔧 Registering tree data providers...');
-    vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
-    vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
-    vscode.window.registerTreeDataProvider('carbonara.toolsTree', toolsTreeProvider);
-    console.log('✅ All tree providers registered');
 
     // Register commands
     const commands = [
