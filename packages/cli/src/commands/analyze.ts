@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake } from '@carbonara/core';
 import { loadProjectConfig } from '../utils/config.js';
-// Built-in analyzers will be imported when added via separate PRs
+import { CarbonaraSWDAnalyzer } from '../analyzers/carbonara-swd.js';
 
 interface AnalyzeOptions {
   save: boolean;
@@ -22,12 +22,14 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     return;
   }
   const registry = getToolRegistry();
+  await registry.refreshInstalledTools();
   const tool = registry.getTool(toolId);
 
   if (!tool) {
     console.error(chalk.red(`❌ Unknown analysis tool: ${toolId}`));
     console.log(chalk.yellow('\n📋 Available tools:'));
     
+    // FIXME: Replace with generic tool listing logic
     const installedTools = await registry.getInstalledTools();
     const allTools = registry.getAllTools();
     
@@ -61,7 +63,7 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     process.exit(1);
   }
 
-  if (!registry.isToolInstalled(toolId)) {
+  if (!(await registry.isToolInstalled(toolId))) {
     console.error(chalk.red(`❌ Tool ${tool.name} is not installed`));
     console.log(chalk.yellow('\n💡 Install it with:'));
     console.log(chalk.white(tool.installation.instructions));
@@ -86,6 +88,8 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     
     if (toolId === 'test-analyzer') {
       results = await runTestAnalyzer(url, options, tool);
+    } else if (toolId === 'carbonara-swd') {
+      results = await runCarbonaraSWD(url, options, tool);
     } else if (toolId === 'impact-framework') {
       results = await runImpactFramework(url, options, tool);
     } else {
@@ -109,7 +113,17 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
   }
 }
 
-
+async function runCarbonaraSWD(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+  const analyzer = new CarbonaraSWDAnalyzer();
+  
+  const analyzeOptions: any = {
+    timeout: options.timeout ? parseInt(options.timeout.toString()) : 30000,
+    gridIntensity: options.gridIntensity ? parseFloat(options.gridIntensity.toString()) : 473,
+    returningVisitor: options.returningVisitor || false
+  };
+  
+  return await analyzer.analyze(url, analyzeOptions);
+}
 
 async function runGenericTool(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   // Replace placeholders in command args
@@ -246,7 +260,10 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
   }
 
   // Tool-specific result display logic
-  if (tool.id === 'impact-framework') {
+  if (tool.id === 'carbonara-swd') {
+    const analyzer = new CarbonaraSWDAnalyzer();
+    console.log(analyzer.formatResults(results));
+  } else if (tool.id === 'impact-framework') {
     displayImpactFrameworkResults(results);
   } else if (tool.id === 'greenframe') {
     displayGreenframeResults(results);
