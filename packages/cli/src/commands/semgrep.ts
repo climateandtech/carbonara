@@ -447,7 +447,7 @@ async function saveResults(
   try {
     // Import parser and database utilities
     const { parseToolResults } = await import('../parsers/index.js');
-    const { createDataLake } = await import('../database/index.js');
+    const { createDataLake } = await import('@carbonara/core');
     const { loadProjectConfig } = await import('../utils/config.js');
 
     const config = await loadProjectConfig();

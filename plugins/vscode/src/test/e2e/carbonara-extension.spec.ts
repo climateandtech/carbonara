@@ -936,7 +936,7 @@ ${dataTexts.map((text, i) => `  [${i}] "${text}"`).join('\n')}`;
       
       // Check for different types of findings that Semgrep would detect
       const hasCodeIssues = problemTexts.some(text => 
-        text.includes('infinite') || text.includes('memory') || text.includes('unused')
+        text && (text.includes('infinite') || text.includes('memory') || text.includes('unused'))
       );
       expect(hasCodeIssues).toBe(true);
       console.log('✅ Found code quality issues from Semgrep analysis');
