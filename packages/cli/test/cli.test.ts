@@ -132,7 +132,7 @@ describe('Carbonara CLI - Tests', () => {
       });
     } catch (error: any) {
       expect(error.status).toBe(1);
-      expect(error.stderr.toString()).toContain("missing required argument 'url'");
+      expect(error.stderr.toString()).toContain("missing required argument 'target'");
     }
   });
 

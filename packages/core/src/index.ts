@@ -14,16 +14,6 @@ export {
 export { SchemaService, type ToolDisplayField, type ToolDisplaySchema, type AnalysisToolSchema } from './schema-service.js';
 export { VSCodeDataProvider, type DataGroup, type DataEntry, type DataDetail } from './vscode-data-provider.js';
 
-// Semgrep service exports
-export { 
-  SemgrepService, 
-  createSemgrepService, 
-  setupBundledEnvironment,
-  type SemgrepServiceConfig,
-  type SemgrepResult,
-  type SemgrepMatch,
-  SemgrepSeverity 
-} from './services/semgrepService.js';
 
 // Factory functions for easy setup
 export const createDataService = (config?: { dbPath?: string }) => new DataService(config);

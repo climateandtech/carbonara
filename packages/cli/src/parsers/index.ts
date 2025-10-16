@@ -1,6 +1,45 @@
 // Tool-specific parsers for converting tool outputs to standardized format
-import type { SemgrepResult, SemgrepMatch } from '@carbonara/core';
 import { mapFindingToCategory, getCategoryInfo } from './category-mapping.js';
+
+// Semgrep types (defined locally since they're no longer exported from @carbonara/core)
+export interface SemgrepMatch {
+  check_id: string;
+  path: string;
+  start: {
+    line: number;
+    col: number;
+  };
+  end: {
+    line: number;
+    col: number;
+  };
+  extra: {
+    message: string;
+    severity: 'ERROR' | 'WARNING' | 'INFO';
+    metadata?: {
+      category?: string;
+      confidence?: string;
+      cwe?: string[];
+      owasp?: string[];
+    };
+  };
+}
+
+export interface SemgrepResult {
+  results: SemgrepMatch[];
+  errors: any[];
+  paths: {
+    scanned: string[];
+    ignored: string[];
+  };
+  stats: {
+    total_matches: number;
+    error_count: number;
+    warning_count: number;
+    info_count: number;
+    files_scanned: number;
+  };
+}
 
 export interface StandardizedFinding {
   id: string;
@@ -42,26 +81,22 @@ export interface StandardizedResult {
  * Parse Semgrep results into standardized format
  */
 export function parseSemgrepResults(result: SemgrepResult, target: string): StandardizedResult {
-  const findings: StandardizedFinding[] = result.matches.map((match: SemgrepMatch) => ({
-    id: `${match.rule_id || 'unknown'}-${match.path || 'unknown'}-${match.start_line || 0}-${match.start_column || 0}`,
+  const findings: StandardizedFinding[] = result.results.map((match: SemgrepMatch) => ({
+    id: `${match.check_id || 'unknown'}-${match.path || 'unknown'}-${match.start?.line || 0}-${match.start?.col || 0}`,
     filePath: match.path || '',
     location: {
-      startLine: match.start_line || 1,
-      startColumn: match.start_column || 1,
-      endLine: match.end_line || match.start_line || 1,
-      endColumn: match.end_column || match.start_column || 1
+      startLine: match.start?.line || 1,
+      startColumn: match.start?.col || 1,
+      endLine: match.end?.line || match.start?.line || 1,
+      endColumn: match.end?.col || match.start?.col || 1
     },
-    severity: mapSemgrepSeverity(match.severity || 'INFO'),
-    message: match.message || '',
-    category: mapFindingToCategory('semgrep', match.rule_id || '', 'quality', match.message || '', match.metadata),
-    ruleId: match.rule_id || '',
-    fix: match.fix ? {
-      description: match.fix,
-      replacement: match.fix
-    } : undefined,
+    severity: mapSemgrepSeverity(match.extra?.severity || 'INFO'),
+    message: match.extra?.message || '',
+    category: mapFindingToCategory('semgrep', match.check_id || '', 'quality', match.extra?.message || '', match.extra?.metadata),
+    ruleId: match.check_id || '',
+    fix: undefined, // Semgrep doesn't provide fix information in the basic JSON format
     metadata: {
-      codeSnippet: match.code_snippet || '',
-      ...match.metadata
+      ...match.extra?.metadata
     }
   }));
 

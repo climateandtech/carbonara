@@ -49,7 +49,7 @@ async function initializeTreeProviders(context: vscode.ExtensionContext) {
     console.log('✅ All tree providers registered');
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     console.log('🚀 Carbonara extension is now active!');
     console.log('🚀 Extension activation started...');
 

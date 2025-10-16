@@ -16,8 +16,8 @@ interface AnalyzeOptions {
   [key: string]: any; // Allow dynamic options
 }
 
-export async function analyzeCommand(toolId: string | undefined, url: string | undefined, options: AnalyzeOptions, command: Command) {
-  if (!toolId || !url) {
+export async function analyzeCommand(toolId: string | undefined, target: string | undefined, options: AnalyzeOptions, command: Command) {
+  if (!toolId || !target) {
     command.help();
     return;
   }
@@ -73,23 +73,34 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
   const spinner = ora(`Running ${tool.name} analysis...`).start();
 
   try {
-    // Validate URL
-    try {
-      new URL(url);
-    } catch {
-      throw new Error('Invalid URL provided');
+    // Validate target (URL or file/directory path)
+    const isUrl = target.startsWith('http://') || target.startsWith('https://');
+    const isFilePath = fs.existsSync(target) || path.isAbsolute(target) || target.startsWith('./') || target.startsWith('../');
+    
+    if (isUrl) {
+      // Validate URL
+      try {
+        new URL(target);
+      } catch {
+        throw new Error('Invalid URL provided');
+      }
+    } else if (!isFilePath) {
+      // For non-URLs, check if it's a valid file/directory path
+      if (!fs.existsSync(target)) {
+        throw new Error(`Target path does not exist: ${target}`);
+      }
     }
 
-    spinner.text = `Analyzing with ${tool.name}...`;
+    spinner.text = `Analyzing ${isUrl ? 'URL' : 'target'} with ${tool.name}...`;
     
     let results: any;
     
     if (toolId === 'test-analyzer') {
-      results = await runTestAnalyzer(url, options, tool);
+      results = await runTestAnalyzer(target, options, tool);
     } else if (toolId === 'impact-framework') {
-      results = await runImpactFramework(url, options, tool);
+      results = await runImpactFramework(target, options, tool);
     } else {
-      results = await runGenericTool(url, options, tool);
+      results = await runGenericTool(target, options, tool);
     }
 
     spinner.succeed(`${tool.name} analysis completed!`);
@@ -99,7 +110,7 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
     // Save to database if requested
     if (options.save) {
-      await saveToDatabase(toolId, url, results);
+      await saveToDatabase(toolId, target, results);
     }
 
   } catch (error: any) {
@@ -111,9 +122,11 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
 
 
-async function runGenericTool(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+async function runGenericTool(target: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   // Replace placeholders in command args
-  const args = tool.command.args.map(arg => arg.replace('{url}', url));
+  const args = tool.command.args.map(arg => 
+    arg.replace('{url}', target).replace('{target}', target)
+  );
   
   const result = await execa(tool.command.executable, args, {
     stdio: 'pipe'
@@ -128,14 +141,14 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
   }
 }
 
-async function runTestAnalyzer(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+async function runTestAnalyzer(target: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   // Built-in test analyzer that returns predictable hardcoded results for E2E testing
   // Simulate a brief analysis delay
   await new Promise(resolve => setTimeout(resolve, 500));
   
   // Return predictable test results
   return {
-    url: url,
+    url: target,
     timestamp: new Date().toISOString(),
     tool: 'test-analyzer',
     result: 'success',
@@ -144,17 +157,17 @@ async function runTestAnalyzer(url: string, options: AnalyzeOptions, tool: Analy
       testMetric: 'A+',
       testValue: 42,
       analysisTime: '0.5s',
-      testSite: new URL(url).hostname
+      testSite: new URL(target).hostname
     },
     summary: {
       status: 'completed',
       message: 'Test analysis completed successfully',
-      details: `Analyzed ${url} with test analyzer`
+      details: `Analyzed ${target} with test analyzer`
     }
   };
 }
 
-async function runImpactFramework(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+async function runImpactFramework(target: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   // Create temporary directory for analysis
   const tempDir = path.join(process.cwd(), '.carbonara-temp');
   if (!fs.existsSync(tempDir)) {
@@ -177,7 +190,7 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
           path: '@tngtech/if-webpage-plugins',
           config: {
             scrollToBottom: options.scrollToBottom || false,
-            url: url
+            url: target
           }
         },
         co2js: {
@@ -303,7 +316,7 @@ function displayGreenframeResults(results: any) {
   // Add more Greenframe-specific display logic as needed
 }
 
-async function saveToDatabase(toolId: string, url: string, results: any) {
+async function saveToDatabase(toolId: string, target: string, results: any) {
   try {
     const config = await loadProjectConfig();
     if (!config) {
@@ -342,14 +355,14 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
 
     // Import parser and standardize results
     const { parseToolResults } = await import('../parsers/index.js');
-    const standardizedResult = parseToolResults(toolId, results, url);
+    const standardizedResult = parseToolResults(toolId, results, target);
 
     // Determine data type based on tool
     const dataType = isCodeAnalysisTool(toolId) ? 'code-analysis' : 'web-analysis';
 
     const assessmentData = {
       // Keep original results for backward compatibility
-      url: url,
+      url: target,
       raw_results: JSON.stringify(results),
       timestamp: new Date().toISOString(),
       ...results,
@@ -360,7 +373,7 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
       metadata: standardizedResult.metadata
     };
 
-    await dataLake.storeAssessmentData(projectId, toolId, dataType, assessmentData, url);
+    await dataLake.storeAssessmentData(projectId, toolId, dataType, assessmentData, target);
     await dataLake.close();
 
     console.log(chalk.green('\n✅ Results saved to project database'));
