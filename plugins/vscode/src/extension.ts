@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: AGPL-3.0-or-later
- * Copyright (C) 2024 Carbonara team
+ * Copyright (C) 2025 Carbonara team
  */
 
 import * as vscode from "vscode";
@@ -149,6 +149,11 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   if (carbonaraStatusBar) {
     carbonaraStatusBar.dispose();
+  }
+
+  // Clean up data tree provider and core server
+  if (dataTreeProvider) {
+    dataTreeProvider.dispose();
   }
 }
 
