@@ -487,7 +487,7 @@
     {
       "id": "if-cpu-metrics",
       "name": "IF CPU Metrics",
-      "description": "Monitor CPU utilization metrics using Impact Framework MeasureCpu plugin",
+      "description": "Monitor local CPU utilization and energy consumption while analyzing web applications",
       "command": {
         "executable": "if-run",
         "args": ["--manifest", "{manifest}", "--output", "{output}"],
@@ -505,15 +505,75 @@
       },
       "manifestTemplate": {
         "name": "cpu-metrics-monitoring",
-        "description": "CPU utilization and energy metrics",
+        "description": "Monitor local CPU utilization during web application analysis",
         "initialize": {
           "outputs": ["yaml"],
           "plugins": {
             "cpu-metrics": {
               "method": "MeasureCpu",
               "path": "@tngtech/if-webpage-plugins",
+              "config": {}
+            },
+            "interpolate": {
+              "path": "builtin",
+              "method": "Interpolation",
               "config": {
-                "url": "{url}"
+                "method": "linear",
+                "x": [0, 10, 50, 100],
+                "y": [0.12, 0.32, 0.75, 1.02],
+                "input-parameter": "cpu/utilization",
+                "output-parameter": "cpu-factor"
+              }
+            },
+            "cpu-factor-to-wattage": {
+              "path": "builtin",
+              "method": "Multiply",
+              "config": {
+                "input-parameters": ["cpu-factor", "thermal-design-power"],
+                "output-parameter": "cpu-wattage"
+              }
+            },
+            "wattage-times-duration": {
+              "path": "builtin",
+              "method": "Multiply",
+              "config": {
+                "input-parameters": ["cpu-wattage", "duration"],
+                "output-parameter": "cpu-wattage-times-duration"
+              }
+            },
+            "wattage-to-energy-kwh": {
+              "path": "builtin",
+              "method": "Divide",
+              "config": {
+                "numerator": "cpu-wattage-times-duration",
+                "denominator": 3600000,
+                "output": "cpu-energy-raw"
+              }
+            },
+            "calculate-vcpu-ratio": {
+              "path": "builtin",
+              "method": "Divide",
+              "config": {
+                "numerator": "vcpus-total",
+                "denominator": "vcpus-allocated",
+                "output": "vcpu-ratio"
+              }
+            },
+            "correct-cpu-energy-for-vcpu-ratio": {
+              "path": "builtin",
+              "method": "Divide",
+              "config": {
+                "numerator": "cpu-energy-raw",
+                "denominator": "vcpu-ratio",
+                "output": "cpu/energy"
+              }
+            },
+            "energy-to-carbon": {
+              "path": "builtin",
+              "method": "Multiply",
+              "config": {
+                "input-parameters": ["grid-carbon-intensity", "cpu/energy"],
+                "output-parameter": "carbon"
               }
             }
           }
@@ -522,7 +582,23 @@
           "children": {
             "child": {
               "pipeline": {
-                "observe": ["cpu-metrics"]
+                "observe": ["cpu-metrics"],
+                "regroup": [],
+                "compute": [
+                  "interpolate",
+                  "cpu-factor-to-wattage",
+                  "wattage-times-duration",
+                  "wattage-to-energy-kwh",
+                  "calculate-vcpu-ratio",
+                  "correct-cpu-energy-for-vcpu-ratio",
+                  "energy-to-carbon"
+                ]
+              },
+              "defaults": {
+                "thermal-design-power": 100,
+                "vcpus-total": 8,
+                "vcpus-allocated": 2,
+                "grid-carbon-intensity": 750
               },
               "inputs": [{}]
             }
@@ -533,28 +609,29 @@
         "category": "Impact Analysis",
         "icon": "💻",
         "groupName": "IF CPU Analysis",
-        "entryTemplate": "💻 {url} - {date}",
-        "descriptionTemplate": "CPU: {cpuUtilization}%",
+        "entryTemplate": "💻 Local CPU Analysis - {date}",
+        "descriptionTemplate": "CPU: {cpuUtilization}%, Energy: {energy} kWh",
         "fields": [
-          {
-            "key": "url",
-            "label": "🌐 URL",
-            "path": "data.url",
-            "type": "url"
-          },
           {
             "key": "cpuUtilization",
             "label": "💻 CPU Utilization",
-            "path": "data.tree.children.child.outputs[0]['cpu-utilization']",
+            "path": "data.tree.children.child.outputs[0]['cpu/utilization']",
             "type": "number",
             "format": "{value}%"
           },
           {
             "key": "energy",
             "label": "⚡ Energy",
-            "path": "data.tree.children.child.outputs[0]['energy']",
+            "path": "data.tree.children.child.outputs[0]['cpu/energy']",
             "type": "energy",
             "format": "{value} kWh"
+          },
+          {
+            "key": "carbon",
+            "label": "🌱 CO2 Emissions",
+            "path": "data.tree.children.child.outputs[0]['carbon']",
+            "type": "carbon",
+            "format": "{value}g"
           }
         ]
       },
@@ -677,6 +754,184 @@
           "flag": "--list-rules",
           "description": "List available rules",
           "type": "boolean"
+        }
+      ]
+    },
+
+    {
+      "id": "if-e2e-cpu-metrics",
+      "name": "IF E2E Test CPU Metrics",
+      "description": "Monitor CPU utilization and energy consumption while running E2E tests (Cypress, Playwright, etc.)",
+      "command": {
+        "executable": "if-run",
+        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "outputFormat": "yaml"
+      },
+      "installation": {
+        "type": "npm",
+        "package": "@grnsft/if @tngtech/if-webpage-plugins",
+        "global": true,
+        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+      },
+      "detection": {
+        "method": "command",
+        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+      },
+      "manifestTemplate": {
+        "name": "e2e-test-cpu-monitoring",
+        "description": "Monitor CPU utilization during E2E test execution",
+        "initialize": {
+          "outputs": ["yaml"],
+          "plugins": {
+            "cpu-metrics": {
+              "method": "MeasureCpu",
+              "path": "@tngtech/if-webpage-plugins",
+              "config": {
+                "command": "{testCommand}"
+              }
+            },
+            "interpolate": {
+              "path": "builtin",
+              "method": "Interpolation",
+              "config": {
+                "method": "linear",
+                "x": [0, 10, 50, 100],
+                "y": [0.12, 0.32, 0.75, 1.02],
+                "input-parameter": "cpu/utilization",
+                "output-parameter": "cpu-factor"
+              }
+            },
+            "cpu-factor-to-wattage": {
+              "path": "builtin",
+              "method": "Multiply",
+              "config": {
+                "input-parameters": ["cpu-factor", "thermal-design-power"],
+                "output-parameter": "cpu-wattage"
+              }
+            },
+            "wattage-times-duration": {
+              "path": "builtin",
+              "method": "Multiply",
+              "config": {
+                "input-parameters": ["cpu-wattage", "duration"],
+                "output-parameter": "cpu-wattage-times-duration"
+              }
+            },
+            "wattage-to-energy-kwh": {
+              "path": "builtin",
+              "method": "Divide",
+              "config": {
+                "numerator": "cpu-wattage-times-duration",
+                "denominator": 3600000,
+                "output": "cpu-energy-raw"
+              }
+            },
+            "calculate-vcpu-ratio": {
+              "path": "builtin",
+              "method": "Divide",
+              "config": {
+                "numerator": "vcpus-total",
+                "denominator": "vcpus-allocated",
+                "output": "vcpu-ratio"
+              }
+            },
+            "correct-cpu-energy-for-vcpu-ratio": {
+              "path": "builtin",
+              "method": "Divide",
+              "config": {
+                "numerator": "cpu-energy-raw",
+                "denominator": "vcpu-ratio",
+                "output": "cpu-energy-kwh"
+              }
+            },
+            "energy-to-carbon": {
+              "path": "builtin",
+              "method": "Multiply",
+              "config": {
+                "input-parameters": ["grid-carbon-intensity", "cpu-energy-kwh"],
+                "output-parameter": "carbon"
+              }
+            }
+          }
+        },
+        "tree": {
+          "children": {
+            "child": {
+              "pipeline": {
+                "observe": ["cpu-metrics"],
+                "compute": [
+                  "interpolate",
+                  "cpu-factor-to-wattage",
+                  "wattage-times-duration",
+                  "wattage-to-energy-kwh",
+                  "calculate-vcpu-ratio",
+                  "correct-cpu-energy-for-vcpu-ratio",
+                  "energy-to-carbon"
+                ]
+              },
+              "defaults": {
+                "thermal-design-power": 100,
+                "vcpus-total": 8,
+                "vcpus-allocated": 2,
+                "grid-carbon-intensity": 750
+              },
+              "inputs": [{}]
+            }
+          }
+        }
+      },
+      "display": {
+        "category": "Impact Analysis",
+        "icon": "🧪",
+        "groupName": "IF E2E Analysis",
+        "entryTemplate": "🧪 E2E Test Analysis - {date}",
+        "descriptionTemplate": "CPU: {cpuUtilization}%, Energy: {energy} kWh",
+        "fields": [
+          {
+            "key": "testCommand",
+            "label": "🧪 Test Command",
+            "path": "data.testCommand",
+            "type": "string"
+          },
+          {
+            "key": "cpuUtilization",
+            "label": "💻 CPU Utilization",
+            "path": "data.tree.children.child.outputs[0]['cpu/utilization']",
+            "type": "number",
+            "format": "{value}%"
+          },
+          {
+            "key": "energy",
+            "label": "⚡ Energy",
+            "path": "data.tree.children.child.outputs[0]['cpu-energy-kwh']",
+            "type": "energy",
+            "format": "{value} kWh"
+          },
+          {
+            "key": "carbon",
+            "label": "🌱 CO2 Emissions",
+            "path": "data.tree.children.child.outputs[0]['carbon']",
+            "type": "carbon",
+            "format": "{value}g"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-s, --save",
+          "description": "Save results to data lake",
+          "type": "boolean"
+        },
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table)",
+          "type": "string",
+          "default": "table"
+        },
+        {
+          "flag": "--test-command <command>",
+          "description": "E2E test command to run (e.g., 'npm run test:e2e', 'npx cypress run')",
+          "type": "string"
         }
       ]
     }

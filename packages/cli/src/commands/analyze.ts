@@ -190,7 +190,8 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
         .replace('{url}', url)
         .replace('{scrollToBottom}', (options.scrollToBottom || false).toString())
         .replace('{firstVisitPercentage}', (options.firstVisitPercentage || 0.9).toString())
-        .replace('{returnVisitPercentage}', (1 - (options.firstVisitPercentage || 0.9)).toString());
+        .replace('{returnVisitPercentage}', (1 - (options.firstVisitPercentage || 0.9)).toString())
+        .replace('{testCommand}', (options.testCommand || 'npm test').toString());
     } else if (Array.isArray(obj)) {
       return obj.map(replacePlaceholders);
     } else if (obj && typeof obj === 'object') {

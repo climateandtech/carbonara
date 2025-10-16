@@ -123,6 +123,7 @@ carbonara analyze <tool-id> <url>        # Run analysis with specified tool
   --output <json|table>                  # Output format (default: table)
   --scroll-to-bottom                     # Scroll page during analysis (IF tools)
   --first-visit-percentage <0-1>         # First visit percentage (IF tools)
+  --test-command <command>               # E2E test command to run (if-e2e-cpu-metrics)
 ```
 
 #### Data Management
@@ -147,7 +148,8 @@ carbonara import --database <path>       # Import from another Carbonara databas
 - **greenframe**: Website carbon footprint (`@marmelab/greenframe-cli`)
 - **if-webpage-scan**: Impact Framework webpage analysis with CO2 estimation
 - **if-green-hosting**: Check if website is hosted on green energy
-- **if-cpu-metrics**: Monitor CPU utilization and energy metrics
+- **if-cpu-metrics**: Monitor local CPU utilization and energy consumption during analysis
+- **if-e2e-cpu-metrics**: Monitor CPU utilization while running E2E tests (Cypress, Playwright, etc.)
 
 #### Tool Management
 ```bash
@@ -256,6 +258,23 @@ External tools are automatically tested by generic test suites. To add a new too
   ]
 }
 ```
+
+### E2E Test Integration
+
+Monitor the environmental impact of running your existing E2E test suites:
+
+```bash
+# Monitor CPU usage while running Cypress tests
+carbonara analyze if-e2e-cpu-metrics https://myapp.com --test-command "npx cypress run" --save
+
+# Monitor CPU usage while running Playwright tests  
+carbonara analyze if-e2e-cpu-metrics https://myapp.com --test-command "npx playwright test" --save
+
+# Monitor CPU usage while running custom test script
+carbonara analyze if-e2e-cpu-metrics https://myapp.com --test-command "npm run test:e2e" --save
+```
+
+This measures the CPU utilization, energy consumption, and CO2 emissions of running your tests locally, helping you understand the environmental impact of your testing process.
 
 ## 📦 Versioning
 
