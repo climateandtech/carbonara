@@ -6,17 +6,20 @@ import { spawn } from 'child_process';
 import { AssessmentTreeProvider } from './assessment-tree-provider';
 import { DataTreeProvider } from './data-tree-provider';
 import { ToolsTreeProvider } from './tools-tree-provider';
+import { UnifiedHighlighter, registerUnifiedCommands } from './unified-highlighter';
 
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
+let unifiedHighlighter: UnifiedHighlighter;
 
 let currentProjectPath: string | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Carbonara extension is now active!');
+    console.log('🚀 Carbonara extension is now active!');
+    console.log('🚀 Extension activation started...');
 
     // Create status bar item
     carbonaraStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -32,6 +35,14 @@ export function activate(context: vscode.ExtensionContext) {
     dataTreeProvider = new DataTreeProvider();
     console.log('🔧 Creating ToolsTreeProvider...');
     toolsTreeProvider = new ToolsTreeProvider();
+    console.log('🔧 Creating UnifiedHighlighter...');
+    try {
+      unifiedHighlighter = new UnifiedHighlighter(context);
+      console.log('✅ UnifiedHighlighter created successfully');
+    } catch (error) {
+      console.error('❌ Failed to create UnifiedHighlighter:', error);
+      console.error('❌ Error details:', error);
+    }
     console.log('🔧 Registering tree data providers...');
     vscode.window.registerTreeDataProvider('carbonara.assessmentTree', assessmentTreeProvider);
     vscode.window.registerTreeDataProvider('carbonara.dataTree', dataTreeProvider);
@@ -63,6 +74,15 @@ export function activate(context: vscode.ExtensionContext) {
 
     ];
 
+    // Register unified highlighting commands
+    console.log('🔧 Registering unified highlighting commands...');
+    if (unifiedHighlighter) {
+      registerUnifiedCommands(context, unifiedHighlighter);
+      console.log('✅ Unified highlighting commands registered');
+    } else {
+      console.error('❌ Cannot register commands - unifiedHighlighter is null');
+    }
+
     context.subscriptions.push(carbonaraStatusBar, ...commands);
 
     // Watch for project config changes and refresh views/status accordingly
@@ -86,6 +106,13 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Check if project is already initialized
     checkProjectStatus();
+    
+    // Initialize unified highlighter
+    unifiedHighlighter.initialize().then(() => {
+        console.log('✅ Unified highlighter initialized');
+    }).catch((error) => {
+        console.log('⚠️ Unified highlighter initialization failed:', error);
+    });
 }
 
 export function deactivate() {

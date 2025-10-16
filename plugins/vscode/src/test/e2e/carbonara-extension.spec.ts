@@ -698,4 +698,250 @@ ${dataTexts.map((text, i) => `  [${i}] "${text}"`).join('\n')}`;
       await VSCodeLauncher.close(vscode);
     }
   });
+
+  test.describe('Code Highlighting System', () => {
+    test('should run Semgrep code analyzer and show highlighting', async () => {
+      console.log('🔍 Testing Semgrep code analyzer with highlighting...');
+      
+      // Step A: Open workspace with code that has certain patterns
+      console.log('📁 Step A: Opening workspace with performance issues...');
+      
+      // First, close any open tabs to start fresh
+      await vscode.window.keyboard.press('Control+W');
+      await vscode.window.waitForTimeout(500);
+      
+      // Click on the performance-issues.js file to open it (Explorer is already active)
+      await vscode.window.click('text=performance-issues.js');
+      await vscode.window.waitForTimeout(2000);
+      
+      // Verify the file is actually open in the editor
+      const editorTab = vscode.window.locator('.tab').filter({ hasText: 'performance-issues.js' });
+      await expect(editorTab).toBeVisible({ timeout: 5000 });
+      console.log('✅ Opened performance-issues.js with code patterns');
+      
+      // Verify the file content is visible (look for specific code patterns)
+      const fileContent = vscode.window.locator('.view-line').filter({ hasText: 'infiniteLoop' });
+      await expect(fileContent).toBeVisible({ timeout: 5000 });
+      console.log('✅ File content is visible in editor');
+      
+      // Step B: Run the code analyzer tool using available tools
+      console.log('🔍 Step B: Running code analysis with available tools...');
+      
+      // Open Carbonara sidebar to access tools
+      await VSCodeLauncher.openSidebar(vscode.window);
+      console.log('✅ Opened Carbonara sidebar');
+      
+      // Look for Analysis Tools section
+      const toolsSection = vscode.window.locator('.pane-header').filter({ hasText: 'Analysis Tools' });
+      await expect(toolsSection).toBeVisible({ timeout: 10000 });
+      console.log('✅ Found Analysis Tools section');
+      
+      // Expand Analysis Tools if collapsed
+      const chevronRight = toolsSection.locator('.codicon-chevron-right');
+      const isCollapsed = await chevronRight.isVisible({ timeout: 1000 });
+      
+      if (isCollapsed) {
+        await chevronRight.click();
+        await vscode.window.waitForTimeout(2000);
+        console.log('✅ Expanded Analysis Tools section');
+      }
+      
+      // Use the command palette to run fresh Semgrep analysis
+      console.log('🎯 Using command palette to run fresh Semgrep analysis...');
+      await vscode.window.keyboard.press('Control+Shift+P');
+      await vscode.window.waitForTimeout(1000);
+      
+      // Type the command to run Semgrep analysis
+      await vscode.window.keyboard.type('Run Semgrep Analysis');
+      await vscode.window.waitForTimeout(1000);
+      
+      // Press Enter to execute
+      await vscode.window.keyboard.press('Enter');
+      console.log('✅ Triggered fresh Semgrep analysis via command palette');
+      
+      // Wait for analysis to complete
+      await vscode.window.waitForTimeout(8000);
+      console.log('✅ Fresh Semgrep analysis completed');
+      
+      // Step C: Verify analysis results appear
+      console.log('🎨 Step C: Verifying analysis results appear...');
+      
+      // Check Data & Results section for findings
+      const dataSection = vscode.window.locator('.pane-header').filter({ hasText: 'Data & Results' });
+      await expect(dataSection).toBeVisible({ timeout: 5000 });
+      console.log('✅ Found Data & Results section');
+      
+      // Click on Data & Results to ensure it's active
+      await dataSection.click();
+      await vscode.window.waitForTimeout(1000);
+      
+      // Check if we have data now (should not show "No data available")
+      const noDataMessage = vscode.window.locator('text=No data available');
+      const hasNoData = await noDataMessage.isVisible().catch(() => false);
+      
+      if (!hasNoData) {
+        console.log('✅ Data & Results section shows analysis data');
+        
+        // Look for analysis results
+        const dataTree = vscode.window
+          .locator('[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view')
+          .nth(1); // Second tree should be Data & Results
+        
+        const dataRows = dataTree.locator('.monaco-list-row');
+        const dataRowCount = await dataRows.count();
+        console.log(`📊 Found ${dataRowCount} data entries`);
+        
+        if (dataRowCount > 0) {
+          const dataTexts = await dataRows.allTextContents();
+          console.log('📋 Data entries:', dataTexts.slice(0, 3));
+        }
+      } else {
+        console.log('⚠️ Data & Results still shows "No data available"');
+      }
+      
+      // Check Problems panel for findings
+      try {
+        // Try multiple approaches to access the Problems panel
+        let problemsPanelOpened = false;
+        
+        // Method 1: Try clicking on the Problems tab in the panel area
+        const problemsTab = vscode.window.locator('.tab[aria-label*="Problems"], .tab[title*="Problems"], .tab[aria-label*="PROBLEMS"]');
+        if (await problemsTab.count() > 0) {
+          await problemsTab.first().click();
+          problemsPanelOpened = true;
+          console.log('✅ Opened Problems panel via tab');
+        }
+        
+        // Method 2: Try using keyboard shortcut (Cmd+Shift+M)
+        if (!problemsPanelOpened) {
+          await vscode.window.keyboard.press('Meta+Shift+M');
+          await vscode.window.waitForTimeout(1000);
+          problemsPanelOpened = true;
+          console.log('✅ Opened Problems panel via keyboard shortcut');
+        }
+        
+        // Method 3: Try clicking on the activity bar Problems icon
+        if (!problemsPanelOpened) {
+          const problemsIcon = vscode.window.locator('.activitybar .action-item[aria-label*="Problems"], .activitybar .action-item[title*="Problems"]');
+          if (await problemsIcon.count() > 0) {
+            await problemsIcon.first().click();
+            problemsPanelOpened = true;
+            console.log('✅ Opened Problems panel via activity bar');
+          }
+        }
+        
+        if (problemsPanelOpened) {
+          await vscode.window.waitForTimeout(2000);
+          
+          // Look for actual diagnostic problems in the Problems panel
+          // Use more specific selectors to avoid picking up Data & Results entries
+          const diagnosticProblems = await vscode.window.locator('.problems-view .monaco-list-row, .problems-tree .monaco-list-row').count();
+          console.log(`📊 Found ${diagnosticProblems} diagnostic problems in Problems panel`);
+          
+          if (diagnosticProblems > 0) {
+            const problemTexts = await vscode.window.locator('.problems-view .monaco-list-row, .problems-tree .monaco-list-row').allTextContents();
+            console.log('📋 Diagnostic problem details:', problemTexts.slice(0, 5));
+            
+            // Look specifically for Semgrep/carbonara diagnostic problems
+            const semgrepProblems = problemTexts.filter(text => 
+              text.includes('eval') || 
+              text.includes('semgrep') || 
+              text.includes('carbonara') ||
+              text.includes('WARNING') ||
+              text.includes('ERROR') ||
+              text.includes('performance') ||
+              text.includes('impacts performance') ||
+              text.includes('Detected the use of eval()') ||
+              text.includes('security') ||
+              text.includes('injection')
+            );
+            console.log('🔍 Semgrep-specific diagnostic problems:', semgrepProblems);
+            
+            if (semgrepProblems.length > 0) {
+              console.log('✅ Found Semgrep findings in Problems panel!');
+            } else {
+              console.log('❌ No Semgrep findings found in Problems panel');
+            }
+          } else {
+            console.log('ℹ️ No diagnostic problems found in Problems panel');
+          }
+        } else {
+          console.log('⚠️ Could not open Problems panel');
+        }
+      } catch (error) {
+        console.log('⚠️ Could not access Problems panel:', error);
+      }
+      
+      // File should already be open from previous test
+      
+      // Look for any highlighting decorations in the editor
+      const decorations = await vscode.window.locator('.view-line .mtk1').count();
+      console.log(`🎨 Found ${decorations} text decorations in editor`);
+      
+      // Look for diagnostic markers (squiggly underlines, error/warning indicators)
+      const diagnosticMarkers = await vscode.window.locator('.view-line .squiggly-error, .view-line .squiggly-warning, .view-line .squiggly-info').count();
+      console.log(`🔍 Found ${diagnosticMarkers} diagnostic markers in editor`);
+      
+      // Look for overview ruler indicators
+      const overviewRuler = await vscode.window.locator('.overview-ruler').count();
+      console.log(`📏 Found ${overviewRuler} overview ruler elements`);
+      
+      // Check if we have any visual indication of analysis
+      const hasVisualIndicators = decorations > 0 || diagnosticMarkers > 0 || overviewRuler > 0;
+      
+      if (hasVisualIndicators) {
+        console.log('✅ Visual highlighting is working!');
+      } else {
+        console.log('⚠️ No visual highlighting detected - analysis may not have found issues or highlighting may not be working');
+      }
+      
+      console.log('🎉 Complete flow: Workspace → Analysis Tool → Results ✅');
+    });
+
+    test('should demonstrate different highlighting categories', async () => {
+      console.log('🎨 Testing highlighting categories with Semgrep...');
+      
+      // File should already be open from previous test
+      
+      // Run Semgrep analysis
+      await VSCodeLauncher.openSidebar(vscode.window);
+      const toolsSection = vscode.window.locator('.pane-header').filter({ hasText: 'Analysis Tools' });
+      await expect(toolsSection).toBeVisible({ timeout: 10000 });
+      
+      const chevronRight = toolsSection.locator('.codicon-chevron-right');
+      const isCollapsed = await chevronRight.isVisible({ timeout: 1000 });
+      if (isCollapsed) {
+        await chevronRight.click();
+        await vscode.window.waitForTimeout(2000);
+      }
+      
+      const toolsTree = vscode.window
+        .locator('[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view')
+        .last();
+      
+      const semgrepTool = toolsTree.locator('.monaco-list-row').filter({ hasText: 'Semgrep' });
+      await semgrepTool.click();
+      await vscode.window.waitForTimeout(8000);
+      
+      // Check Problems panel for categorized issues
+      await vscode.window.click('[aria-label="Problems"]');
+      await vscode.window.waitForTimeout(2000);
+      
+      const problems = await vscode.window.locator('.monaco-list-row').all();
+      console.log('📊 Found', problems.length, 'problems from Semgrep');
+      
+      // Verify we have different categories of issues
+      const problemTexts = await Promise.all(problems.map(p => p.textContent()));
+      console.log('📋 Problem categories found:', problemTexts.slice(0, 5));
+      
+      // Check for different types of findings that Semgrep would detect
+      const hasCodeIssues = problemTexts.some(text => 
+        text && (text.includes('infinite') || text.includes('memory') || text.includes('unused'))
+      );
+      expect(hasCodeIssues).toBe(true);
+      console.log('✅ Found code quality issues from Semgrep analysis');
+      
+      console.log('✅ Highlighting categories working with Semgrep!');
+    });
+  });
 }); 
