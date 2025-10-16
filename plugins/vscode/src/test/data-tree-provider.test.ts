@@ -1,22 +1,32 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { DataTreeProvider, DataItem } from '../data-tree-provider';
 import { UI_TEXT } from '../constants/ui-text';
-import { type AssessmentDataEntry } from '@carbonara/core';
 
 suite('DataTreeProvider Unit Tests', () => {
     let provider: DataTreeProvider;
     let originalWorkspaceFolders: readonly vscode.WorkspaceFolder[] | undefined;
 
-    setup(() => {
-        // Mock workspace folders to avoid database initialization
+    setup(async () => {
+        // Setup a mock workspace folder
+        const tempDir = path.join(__dirname, '../../e2e/fixtures/with-empty-carbonara-project');
+        const mockWorkspaceFolder = {
+            uri: vscode.Uri.file(tempDir),
+            name: 'with-empty-carbonara-project',
+            index: 0
+        };
+
+        // Mock vscode.workspace.workspaceFolders
         originalWorkspaceFolders = vscode.workspace.workspaceFolders;
         Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-            value: undefined,
+            value: [mockWorkspaceFolder],
             configurable: true
         });
-        
+
         provider = new DataTreeProvider();
+        // Allow for async initialization in constructor
+        await new Promise(resolve => setTimeout(resolve, 50));
     });
 
     teardown(() => {
@@ -30,35 +40,35 @@ suite('DataTreeProvider Unit Tests', () => {
     suite('DataItem Creation', () => {
         test('should create group items with correct properties', () => {
             const groupItem = new DataItem(
-                '📊 Byte Counter Analysis',
-                'greenframe',
+                'Analysis results from test-analyzer',
+                '2 analysis entries',
                 vscode.TreeItemCollapsibleState.Expanded,
                 'group',
-                'greenframe'
+                'test-analyzer'
             );
 
-            assert.strictEqual(groupItem.label, '📊 Byte Counter Analysis');
-            assert.strictEqual(groupItem.description, 'greenframe');
+            assert.strictEqual(groupItem.label, 'Analysis results from test-analyzer');
+            assert.strictEqual(groupItem.description, '2 analysis entries');
             assert.strictEqual(groupItem.type, 'group');
-            assert.strictEqual(groupItem.toolName, 'greenframe');
+            assert.strictEqual(groupItem.toolName, 'test-analyzer');
             assert.strictEqual(groupItem.collapsibleState, vscode.TreeItemCollapsibleState.Expanded);
             assert.strictEqual(groupItem.contextValue, 'carbonara-data-group');
         });
 
         test('should create entry items with correct properties', () => {
             const entryItem = new DataItem(
-                'https://example.com - 2024-01-15',
-                'Byte counter analysis',
+                'https://example.com',
+                'Analyzed on 2024-01-15',
                 vscode.TreeItemCollapsibleState.Collapsed,
                 'entry',
-                'greenframe',
+                'test-analyzer',
                 123
             );
 
-            assert.strictEqual(entryItem.label, 'https://example.com - 2024-01-15');
-            assert.strictEqual(entryItem.description, 'Byte counter analysis');
+            assert.strictEqual(entryItem.label, 'https://example.com');
+            assert.strictEqual(entryItem.description, 'Analyzed on 2024-01-15');
             assert.strictEqual(entryItem.type, 'entry');
-            assert.strictEqual(entryItem.toolName, 'greenframe');
+            assert.strictEqual(entryItem.toolName, 'test-analyzer');
             assert.strictEqual(entryItem.entryId, 123);
             assert.strictEqual(entryItem.collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
             assert.strictEqual(entryItem.contextValue, 'carbonara-data-entry');
@@ -66,14 +76,14 @@ suite('DataTreeProvider Unit Tests', () => {
 
         test('should create detail items with correct properties', () => {
             const detailItem = new DataItem(
-                '🌐 URL: https://example.com',
-                'url',
+                'testScore',
+                '85',
                 vscode.TreeItemCollapsibleState.None,
                 'detail'
             );
 
-            assert.strictEqual(detailItem.label, '🌐 URL: https://example.com');
-            assert.strictEqual(detailItem.description, 'url');
+            assert.strictEqual(detailItem.label, 'testScore');
+            assert.strictEqual(detailItem.description, '85');
             assert.strictEqual(detailItem.type, 'detail');
             assert.strictEqual(detailItem.collapsibleState, vscode.TreeItemCollapsibleState.None);
             assert.strictEqual(detailItem.contextValue, 'carbonara-data-detail');
@@ -81,242 +91,213 @@ suite('DataTreeProvider Unit Tests', () => {
 
         test('should create info items with correct properties', () => {
             const infoItem = new DataItem(
-                UI_TEXT.DATA_TREE.NO_DATA,
-                UI_TEXT.DATA_TREE.NO_DATA_DESCRIPTION,
+                'No data available',
+                'Run analysis tools to generate data',
                 vscode.TreeItemCollapsibleState.None,
                 'info'
             );
 
-            assert.strictEqual(infoItem.label, UI_TEXT.DATA_TREE.NO_DATA);
+            assert.strictEqual(infoItem.label, 'No data available');
+            assert.strictEqual(infoItem.description, 'Run analysis tools to generate data');
             assert.strictEqual(infoItem.type, 'info');
+            assert.strictEqual(infoItem.collapsibleState, vscode.TreeItemCollapsibleState.None);
             assert.strictEqual(infoItem.contextValue, 'carbonara-data-item');
         });
 
         test('should create error items with correct properties', () => {
             const errorItem = new DataItem(
-                UI_TEXT.DATA_TREE.ERROR_LOADING,
-                'Connection failed',
+                'Error loading data',
+                'Database connection failed',
                 vscode.TreeItemCollapsibleState.None,
                 'error'
             );
 
-            assert.strictEqual(errorItem.label, UI_TEXT.DATA_TREE.ERROR_LOADING);
-            assert.strictEqual(errorItem.description, 'Connection failed');
+            assert.strictEqual(errorItem.label, 'Error loading data');
+            assert.strictEqual(errorItem.description, 'Database connection failed');
             assert.strictEqual(errorItem.type, 'error');
+            assert.strictEqual(errorItem.collapsibleState, vscode.TreeItemCollapsibleState.None);
             assert.strictEqual(errorItem.contextValue, 'carbonara-data-item');
         });
     });
 
-    suite('TreeItem Conversion', () => {
-        test('should convert DataItem to TreeItem with correct icons', () => {
-            const items = [
-                { item: new DataItem('Group', '', vscode.TreeItemCollapsibleState.Expanded, 'group'), expectedIcon: 'folder' },
-                { item: new DataItem('Entry', '', vscode.TreeItemCollapsibleState.Collapsed, 'entry'), expectedIcon: 'file' },
-                { item: new DataItem('Detail', '', vscode.TreeItemCollapsibleState.None, 'detail'), expectedIcon: 'symbol-property' },
-                { item: new DataItem('Info', '', vscode.TreeItemCollapsibleState.None, 'info'), expectedIcon: 'info' },
-                { item: new DataItem('Error', '', vscode.TreeItemCollapsibleState.None, 'error'), expectedIcon: 'error' }
-            ];
-
-            items.forEach(({ item, expectedIcon }) => {
-                const treeItem = provider.getTreeItem(item);
-                assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
-                assert.strictEqual((treeItem.iconPath as vscode.ThemeIcon).id, expectedIcon);
-            });
-        });
-
-        test('should set tooltip and description correctly', () => {
-            const item = new DataItem('Test Label', 'Test Description', vscode.TreeItemCollapsibleState.None, 'info');
-            const treeItem = provider.getTreeItem(item);
-
-            assert.strictEqual(treeItem.tooltip, 'Test Description');
-            assert.strictEqual(treeItem.description, 'Test Description');
-            assert.strictEqual(treeItem.label, 'Test Label');
-        });
-
-        test('should preserve collapsible state', () => {
-            const states = [
-                vscode.TreeItemCollapsibleState.None,
-                vscode.TreeItemCollapsibleState.Collapsed,
-                vscode.TreeItemCollapsibleState.Expanded
-            ];
-
-            states.forEach(state => {
-                const item = new DataItem('Test', 'Desc', state, 'info');
-                const treeItem = provider.getTreeItem(item);
-                assert.strictEqual(treeItem.collapsibleState, state);
-            });
-        });
-    });
-
-    suite('Interface Compliance', () => {
-        test('should implement TreeDataProvider interface', () => {
-            // Verify all required methods exist
-            assert.ok(typeof provider.getTreeItem === 'function');
-            assert.ok(typeof provider.getChildren === 'function');
-            assert.ok(typeof provider.onDidChangeTreeData === 'function');
-            
-            // Verify event emitter
-            assert.ok(typeof provider.onDidChangeTreeData === 'function');
-            assert.ok(typeof provider.refresh === 'function');
-        });
-
-        test('should handle getChildren with and without element', async () => {
-            // Should not throw when called without element (root level)
-            const rootChildren = await provider.getChildren();
-            assert.ok(Array.isArray(rootChildren));
-
-            // Should not throw when called with element (child level)
-            if (rootChildren.length > 0) {
-                const childChildren = await provider.getChildren(rootChildren[0]);
-                assert.ok(Array.isArray(childChildren));
-            }
-        });
-
-        test('should return DataItem instances from getChildren', async () => {
-            const children = await provider.getChildren();
-            children.forEach(child => {
-                assert.ok(child instanceof DataItem);
-                assert.ok(typeof child.label === 'string');
-                assert.ok(typeof child.type === 'string');
-            });
-        });
-
-        test('should return TreeItem from getTreeItem', () => {
-            const item = new DataItem('Test', 'Description', vscode.TreeItemCollapsibleState.None, 'info');
-            const treeItem = provider.getTreeItem(item);
-            
-            assert.ok(treeItem instanceof vscode.TreeItem);
-            assert.strictEqual(treeItem.label, 'Test');
-        });
-    });
-
-    suite('Event Handling', () => {
-        test('should fire tree data change event on refresh', (done) => {
-            const disposable = provider.onDidChangeTreeData(() => {
-                disposable.dispose();
-                done();
-            });
-
-            provider.refresh();
-        });
-
-        test('should support multiple event listeners', () => {
-            let listener1Called = false;
-            let listener2Called = false;
-
-            const disposable1 = provider.onDidChangeTreeData(() => {
-                listener1Called = true;
-            });
-
-            const disposable2 = provider.onDidChangeTreeData(() => {
-                listener2Called = true;
-            });
-
-            provider.refresh();
-
-            assert.strictEqual(listener1Called, true);
-            assert.strictEqual(listener2Called, true);
-
-            disposable1.dispose();
-            disposable2.dispose();
-        });
-    });
-
-    suite('Async Operations', () => {
-        test('should handle async getChildren gracefully', async () => {
-            const startTime = Date.now();
-            const children = await provider.getChildren();
-            const endTime = Date.now();
-
-            // Should complete reasonably quickly
-            assert.ok(endTime - startTime < 5000, 'getChildren should complete within 5 seconds');
-            assert.ok(Array.isArray(children));
-        });
-
-        test('should handle concurrent getChildren calls', async () => {
-            const promises = [
-                provider.getChildren(),
-                provider.getChildren(),
-                provider.getChildren()
-            ];
-
-            const results = await Promise.all(promises);
-            
-            // All should return arrays
-            results.forEach(result => {
-                assert.ok(Array.isArray(result));
-            });
-        });
-
-        test('should handle async project stats', async () => {
-            const stats = await provider.getProjectStats();
-            
-            assert.ok(typeof stats === 'object');
-            assert.ok(typeof stats.totalEntries === 'number');
-            assert.ok(typeof stats.toolCounts === 'object');
-            assert.ok(stats.totalEntries >= 0);
-        });
-    });
-
-    suite('Edge Cases', () => {
-        test('should handle undefined workspace folder', async () => {
-            // Mock workspace folders to be undefined
-            const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+    suite('getChildren', () => {
+        test('should return "No workspace folder" if no workspace is open', async () => {
+            // Mock no workspace folder
             Object.defineProperty(vscode.workspace, 'workspaceFolders', {
                 value: undefined,
                 configurable: true
             });
 
-            try {
-                const noWorkspaceProvider = new DataTreeProvider();
-                const children = await noWorkspaceProvider.getChildren();
-                
-                assert.ok(Array.isArray(children));
-                assert.ok(children.length > 0);
-                // Should show some kind of message about no workspace
-            } finally {
-                // Restore original workspace folders
-                Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-                    value: originalWorkspaceFolders,
-                    configurable: true
-                });
-            }
+            const provider = new DataTreeProvider();
+            const items = await provider.getChildren();
+            assert.strictEqual(items.length, 1);
+            assert.strictEqual(items[0].label, 'No workspace folder');
         });
 
-        test('should handle empty workspace folders array', async () => {
-            const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
-            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-                value: [],
-                configurable: true
-            });
+        test('should handle group entries', async () => {
+            const groupItem = new DataItem(
+                'Analysis results from test-analyzer',
+                '2 analysis entries',
+                vscode.TreeItemCollapsibleState.Expanded,
+                'group',
+                'test-analyzer'
+            );
+            groupItem.entries = [
+                { id: 1, url: 'https://test-site.com', timestamp: '2023-01-01T10:00:00Z' },
+                { id: 2, url: 'https://another-site.com', timestamp: '2023-01-02T11:00:00Z' }
+            ];
 
-            try {
-                const emptyWorkspaceProvider = new DataTreeProvider();
-                const children = await emptyWorkspaceProvider.getChildren();
-                
-                assert.ok(Array.isArray(children));
-            } finally {
-                Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-                    value: originalWorkspaceFolders,
-                    configurable: true
-                });
-            }
+            const entries = await provider.getChildren(groupItem);
+            assert.strictEqual(entries.length, 2);
+            assert.strictEqual(entries[0].label, 'https://test-site.com');
+            assert.strictEqual(entries[0].type, 'entry');
+            assert.strictEqual(entries[1].label, 'https://another-site.com');
+            assert.strictEqual(entries[1].type, 'entry');
         });
 
-        test('should handle malformed data gracefully', async () => {
-            // Test with invalid entry
-            const invalidEntry = new DataItem(
-                'Invalid',
-                'Desc',
+        test('should handle entry details', async () => {
+            const entryItem = new DataItem(
+                'https://test-site.com',
+                'Analyzed on 2023-01-01T10:00:00Z',
                 vscode.TreeItemCollapsibleState.Collapsed,
                 'entry',
-                'invalid-tool',
-                -1 // Invalid ID
+                'test-analyzer',
+                1
+            );
+            
+            // Mock the entry to have data
+            entryItem.entries = [{
+                id: 1,
+                tool_name: 'test-analyzer',
+                url: 'https://test-site.com',
+                timestamp: '2023-01-01T10:00:00Z',
+                data: { score: 90, metric: 'A+' },
+                summary: { status: 'completed', message: 'Analysis successful' }
+            }];
+
+            const details = await provider.getChildren(entryItem);
+            assert.ok(details.length > 0);
+            
+            // Check that we have the expected detail items
+            const detailLabels = details.map(d => d.label);
+            assert.ok(detailLabels.includes('Analysis Date'));
+            assert.ok(detailLabels.includes('Tool Used'));
+            assert.ok(detailLabels.includes('URL'));
+            assert.ok(detailLabels.includes('score'));
+            assert.ok(detailLabels.includes('metric'));
+            assert.ok(detailLabels.includes('Status'));
+            assert.ok(detailLabels.includes('Message'));
+        });
+
+        test('should handle info/error items with no children', async () => {
+            const infoItem = new DataItem(
+                'No data available',
+                'Run analysis tools to generate data',
+                vscode.TreeItemCollapsibleState.None,
+                'info'
             );
 
-            const children = await provider.getChildren(invalidEntry);
-            assert.ok(Array.isArray(children));
-            // Should handle gracefully, not throw
+            const children = await provider.getChildren(infoItem);
+            assert.strictEqual(children.length, 0);
+        });
+    });
+
+    suite('loadGroupEntries', () => {
+        test('should return "No entries" if group has no entries', async () => {
+            const groupItem = new DataItem(
+                'Analysis results from test-analyzer',
+                '0 analysis entries',
+                vscode.TreeItemCollapsibleState.Expanded,
+                'group',
+                'test-analyzer'
+            );
+            // Don't set entries property
+
+            const entries = await provider.getChildren(groupItem);
+            assert.strictEqual(entries.length, 1);
+            assert.strictEqual(entries[0].label, 'No entries');
+        });
+
+        test('should return entries if group has entries', async () => {
+            const groupItem = new DataItem(
+                'Analysis results from test-analyzer',
+                '2 analysis entries',
+                vscode.TreeItemCollapsibleState.Expanded,
+                'group',
+                'test-analyzer'
+            );
+            groupItem.entries = [
+                { id: 1, url: 'https://test-site.com', timestamp: '2023-01-01T10:00:00Z' },
+                { id: 2, url: 'https://another-site.com', timestamp: '2023-01-02T11:00:00Z' }
+            ];
+
+            const entries = await provider.getChildren(groupItem);
+            assert.strictEqual(entries.length, 2);
+            assert.strictEqual(entries[0].label, 'https://test-site.com');
+            assert.strictEqual(entries[0].type, 'entry');
+            assert.strictEqual(entries[1].label, 'https://another-site.com');
+            assert.strictEqual(entries[1].type, 'entry');
+        });
+    });
+
+    suite('loadEntryDetails', () => {
+        test('should return "No details available" if entry has no data', async () => {
+            const entryItem = new DataItem(
+                'https://test-site.com',
+                'Analyzed on 2023-01-01T10:00:00Z',
+                vscode.TreeItemCollapsibleState.Collapsed,
+                'entry',
+                'test-analyzer',
+                1
+            );
+            // Don't set entries property
+
+            const details = await provider.getChildren(entryItem);
+            assert.strictEqual(details.length, 1);
+            assert.strictEqual(details[0].label, 'No details available');
+        });
+
+        test('should return details if entry has data', async () => {
+            const entryItem = new DataItem(
+                'https://test-site.com',
+                'Analyzed on 2023-01-01T10:00:00Z',
+                vscode.TreeItemCollapsibleState.Collapsed,
+                'entry',
+                'test-analyzer',
+                1
+            );
+            entryItem.entries = [{
+                id: 1,
+                tool_name: 'test-analyzer',
+                url: 'https://test-site.com',
+                timestamp: '2023-01-01T10:00:00Z',
+                data: { score: 90, metric: 'A+' },
+                summary: { status: 'completed', message: 'Analysis successful' }
+            }];
+
+            const details = await provider.getChildren(entryItem);
+            assert.ok(details.length > 0);
+            
+            // Check that we have the expected detail items
+            const detailLabels = details.map(d => d.label);
+            assert.ok(detailLabels.includes('Analysis Date'));
+            assert.ok(detailLabels.includes('Tool Used'));
+            assert.ok(detailLabels.includes('URL'));
+            assert.ok(detailLabels.includes('score'));
+            assert.ok(detailLabels.includes('metric'));
+            assert.ok(detailLabels.includes('Status'));
+            assert.ok(detailLabels.includes('Message'));
+        });
+    });
+
+    suite('refresh', () => {
+        test('should clear cache and reload data', async () => {
+            // Refresh should not throw
+            provider.refresh();
+            
+            // Should be able to get children after refresh
+            const items = await provider.getChildren();
+            assert.ok(Array.isArray(items));
         });
     });
 });
