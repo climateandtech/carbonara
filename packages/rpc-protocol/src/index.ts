@@ -1,8 +1,3 @@
-/*
- * SPDX-License-Identifier: AGPL-3.0-or-later
- * Copyright (C) 2024 Carbonara team
- */
-
 // JSON-RPC 2.0 Base Types
 export interface JsonRpcRequest {
   jsonrpc: '2.0';

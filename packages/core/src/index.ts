@@ -1,8 +1,3 @@
-/*
- * SPDX-License-Identifier: AGPL-3.0-or-later
- * Copyright (C) 2024 Carbonara team
- */
-
 // Core services for Carbonara
 import { DataService } from './data-service.js';
 import { SchemaService } from './schema-service.js';
