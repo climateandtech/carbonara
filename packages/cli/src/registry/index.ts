@@ -32,6 +32,8 @@ export interface AnalysisTool {
     type: 'boolean' | 'string' | 'number';
     default?: any;
   }>;
+  manifestTemplate?: any; // For Impact Framework tools
+  display?: any; // For display configuration
 }
 
 export interface ToolRegistry {

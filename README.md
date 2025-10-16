@@ -121,7 +121,8 @@ carbonara tools --refresh                # Refresh tool installation status
 carbonara analyze <tool-id> <url>        # Run analysis with specified tool
   --save                                  # Save results to project database
   --output <json|table>                  # Output format (default: table)
-  --scroll-to-bottom                     # Scroll page during analysis
+  --scroll-to-bottom                     # Scroll page during analysis (IF tools)
+  --first-visit-percentage <0-1>         # First visit percentage (IF tools)
 ```
 
 #### Data Management
@@ -144,7 +145,9 @@ carbonara import --database <path>       # Import from another Carbonara databas
 
 #### External Tools
 - **greenframe**: Website carbon footprint (`@marmelab/greenframe-cli`)
-- **impact-framework**: GSF measurement framework (`@grnsft/if @tngtech/if-webpage-plugins`)
+- **if-webpage-scan**: Impact Framework webpage analysis with CO2 estimation
+- **if-green-hosting**: Check if website is hosted on green energy
+- **if-cpu-metrics**: Monitor CPU utilization and energy metrics
 
 #### Tool Management
 ```bash
@@ -208,6 +211,50 @@ npm run package             # Create .vsix
 ```bash
 npm test                     # All tests
 npm run test:cli            # CLI tests only
+```
+
+### Adding External Tools
+
+External tools are automatically tested by generic test suites. To add a new tool:
+
+1. **Add to registry**: Update `packages/cli/src/registry/tools.json`
+2. **Configure options**: Define tool options for VSCode integration
+3. **Run tests**: Your tool is automatically included in test coverage
+
+**Impact Framework tools** use manifest templates with placeholder replacement:
+```json
+{
+  "id": "if-webpage-scan",
+  "manifestTemplate": {
+    "initialize": {
+      "plugins": {
+        "webpage-impact": {
+          "method": "WebpageImpact",
+          "config": { "url": "{url}", "scrollToBottom": "{scrollToBottom}" }
+        }
+      }
+    }
+  },
+  "display": {
+    "fields": [
+      { "key": "carbon", "path": "data.tree.children.child.outputs[0]['operational-carbon']" }
+    ]
+  }
+}
+```
+
+**Generic tools** work with any CLI tool:
+```json
+{
+  "id": "my-tool",
+  "command": {
+    "executable": "my-tool",
+    "args": ["--url", "{url}", "--option", "{option}"]
+  },
+  "options": [
+    { "flag": "--option", "type": "string", "description": "Tool option" }
+  ]
+}
 ```
 
 ## 📦 Versioning

@@ -282,9 +282,9 @@
       ]
     },
     {
-      "id": "impact-framework",
-      "name": "Impact Framework",
-      "description": "Green Software Foundation's impact measurement framework",
+      "id": "if-webpage-scan",
+      "name": "IF Webpage Scan",
+      "description": "Impact Framework webpage analysis with carbon estimation using WebpageImpact and Co2js plugins",
       "command": {
         "executable": "if-run",
         "args": ["--manifest", "{manifest}", "--output", "{output}"],
@@ -298,14 +298,55 @@
       },
       "detection": {
         "method": "command",
-        "target": "if-run --help"
+        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+      },
+      "manifestTemplate": {
+        "name": "webpage-carbon-scan",
+        "description": "Webpage carbon impact analysis",
+        "initialize": {
+          "outputs": ["yaml"],
+          "plugins": {
+            "webpage-impact": {
+              "method": "WebpageImpact",
+              "path": "@tngtech/if-webpage-plugins",
+              "config": {
+                "scrollToBottom": "{scrollToBottom}",
+                "url": "{url}"
+              }
+            },
+            "co2js": {
+              "method": "Co2js",
+              "path": "@tngtech/if-webpage-plugins",
+              "config": {
+                "type": "swd",
+                "version": 4
+              }
+            }
+          }
+        },
+        "tree": {
+          "children": {
+            "child": {
+              "pipeline": {
+                "observe": ["webpage-impact"],
+                "compute": ["co2js"]
+              },
+              "inputs": [{
+                "options": {
+                  "firstVisitPercentage": "{firstVisitPercentage}",
+                  "returnVisitPercentage": "{returnVisitPercentage}"
+                }
+              }]
+            }
+          }
+        }
       },
       "display": {
         "category": "Impact Analysis",
-        "icon": "⚡",
-        "groupName": "Impact Framework Analysis",
-        "entryTemplate": "🔍 {url} - {date}",
-        "descriptionTemplate": "Impact analysis",
+        "icon": "🌐",
+        "groupName": "IF Webpage Analysis",
+        "entryTemplate": "🌐 {url} - {date}",
+        "descriptionTemplate": "{carbon}g CO2, {energy} kWh",
         "fields": [
           {
             "key": "url",
@@ -314,18 +355,25 @@
             "type": "url"
           },
           {
+            "key": "carbon",
+            "label": "🌱 CO2 Emissions",
+            "path": "data.tree.children.child.outputs[0]['operational-carbon']",
+            "type": "carbon",
+            "format": "{value}g"
+          },
+          {
             "key": "energy",
             "label": "⚡ Energy",
-            "path": "data.results.energy",
+            "path": "data.tree.children.child.outputs[0]['energy']",
             "type": "energy",
             "format": "{value} kWh"
           },
           {
-            "key": "carbon",
-            "label": "🌱 Carbon",
-            "path": "data.results.carbon",
-            "type": "carbon",
-            "format": "{value}g CO2"
+            "key": "networkBytes",
+            "label": "📊 Data Transfer",
+            "path": "data.tree.children.child.outputs[0]['network-bytes']",
+            "type": "bytes",
+            "format": "{value} KB"
           }
         ]
       },
@@ -344,7 +392,183 @@
         {
           "flag": "--scroll-to-bottom",
           "description": "Scroll to bottom of page during analysis",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "flag": "--first-visit-percentage",
+          "description": "First visit percentage (0-1)",
+          "type": "number",
+          "default": 0.9
+        }
+      ]
+    },
+    {
+      "id": "if-green-hosting",
+      "name": "IF Green Hosting",
+      "description": "Check if a website is hosted on green energy using Impact Framework GreenHosting plugin",
+      "command": {
+        "executable": "if-run",
+        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "outputFormat": "yaml"
+      },
+      "installation": {
+        "type": "npm",
+        "package": "@grnsft/if @tngtech/if-webpage-plugins",
+        "global": true,
+        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+      },
+      "detection": {
+        "method": "command",
+        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+      },
+      "manifestTemplate": {
+        "name": "green-hosting-check",
+        "description": "Check if website is hosted on green energy",
+        "initialize": {
+          "outputs": ["yaml"],
+          "plugins": {
+            "green-hosting": {
+              "method": "GreenHosting",
+              "path": "@tngtech/if-webpage-plugins",
+              "config": {
+                "url": "{url}"
+              }
+            }
+          }
+        },
+        "tree": {
+          "children": {
+            "child": {
+              "pipeline": {
+                "observe": ["green-hosting"]
+              },
+              "inputs": [{}]
+            }
+          }
+        }
+      },
+      "display": {
+        "category": "Impact Analysis",
+        "icon": "🌱",
+        "groupName": "IF Green Hosting",
+        "entryTemplate": "🌱 {url} - {date}",
+        "descriptionTemplate": "Green hosting: {isGreen}",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 URL",
+            "path": "data.url",
+            "type": "url"
+          },
+          {
+            "key": "isGreen",
+            "label": "🌱 Green Hosting",
+            "path": "data.tree.children.child.outputs[0]['green-web-host']",
+            "type": "boolean",
+            "format": "{value}"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-s, --save",
+          "description": "Save results to data lake",
           "type": "boolean"
+        },
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table)",
+          "type": "string",
+          "default": "table"
+        }
+      ]
+    },
+    {
+      "id": "if-cpu-metrics",
+      "name": "IF CPU Metrics",
+      "description": "Monitor CPU utilization metrics using Impact Framework MeasureCpu plugin",
+      "command": {
+        "executable": "if-run",
+        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "outputFormat": "yaml"
+      },
+      "installation": {
+        "type": "npm",
+        "package": "@grnsft/if @tngtech/if-webpage-plugins",
+        "global": true,
+        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+      },
+      "detection": {
+        "method": "command",
+        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+      },
+      "manifestTemplate": {
+        "name": "cpu-metrics-monitoring",
+        "description": "CPU utilization and energy metrics",
+        "initialize": {
+          "outputs": ["yaml"],
+          "plugins": {
+            "cpu-metrics": {
+              "method": "MeasureCpu",
+              "path": "@tngtech/if-webpage-plugins",
+              "config": {
+                "url": "{url}"
+              }
+            }
+          }
+        },
+        "tree": {
+          "children": {
+            "child": {
+              "pipeline": {
+                "observe": ["cpu-metrics"]
+              },
+              "inputs": [{}]
+            }
+          }
+        }
+      },
+      "display": {
+        "category": "Impact Analysis",
+        "icon": "💻",
+        "groupName": "IF CPU Analysis",
+        "entryTemplate": "💻 {url} - {date}",
+        "descriptionTemplate": "CPU: {cpuUtilization}%",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 URL",
+            "path": "data.url",
+            "type": "url"
+          },
+          {
+            "key": "cpuUtilization",
+            "label": "💻 CPU Utilization",
+            "path": "data.tree.children.child.outputs[0]['cpu-utilization']",
+            "type": "number",
+            "format": "{value}%"
+          },
+          {
+            "key": "energy",
+            "label": "⚡ Energy",
+            "path": "data.tree.children.child.outputs[0]['energy']",
+            "type": "energy",
+            "format": "{value} kWh"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-s, --save",
+          "description": "Save results to data lake",
+          "type": "boolean"
+        },
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table)",
+          "type": "string",
+          "default": "table"
         }
       ]
     },

@@ -90,7 +90,7 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
       results = await runTestAnalyzer(url, options, tool);
     } else if (toolId === 'carbonara-swd') {
       results = await runCarbonaraSWD(url, options, tool);
-    } else if (toolId === 'impact-framework') {
+    } else if (toolId.startsWith('if-')) {
       results = await runImpactFramework(url, options, tool);
     } else {
       results = await runGenericTool(url, options, tool);
@@ -169,63 +169,46 @@ async function runTestAnalyzer(url: string, options: AnalyzeOptions, tool: Analy
 }
 
 async function runImpactFramework(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+  // Check if tool has manifest template
+  if (!tool.manifestTemplate) {
+    throw new Error(`Tool ${tool.id} does not have a manifest template configured`);
+  }
+
   // Create temporary directory for analysis
   const tempDir = path.join(process.cwd(), '.carbonara-temp');
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
 
-  // Create manifest.yml
-  const manifest = {
-    name: 'website-carbon',
-    description: 'estimate carbon for a webpage visit',
-    initialize: {
-      outputs: ['yaml'],
-      plugins: {
-        'green-hosting': {
-          method: 'GreenHosting',
-          path: '@tngtech/if-webpage-plugins'
-        },
-        'webpage-impact': {
-          method: 'WebpageImpact',
-          path: '@tngtech/if-webpage-plugins',
-          config: {
-            scrollToBottom: options.scrollToBottom || false,
-            url: url
-          }
-        },
-        co2js: {
-          method: 'Co2js',
-          path: '@tngtech/if-webpage-plugins',
-          config: {
-            type: 'swd',
-            version: 4
-          }
-        }
+  // Create manifest from template with placeholder replacement
+  const manifest = JSON.parse(JSON.stringify(tool.manifestTemplate)); // Deep clone
+  
+  // Replace placeholders in manifest
+  const replacePlaceholders = (obj: any): any => {
+    if (typeof obj === 'string') {
+      return obj
+        .replace('{url}', url)
+        .replace('{scrollToBottom}', (options.scrollToBottom || false).toString())
+        .replace('{firstVisitPercentage}', (options.firstVisitPercentage || 0.9).toString())
+        .replace('{returnVisitPercentage}', (1 - (options.firstVisitPercentage || 0.9)).toString());
+    } else if (Array.isArray(obj)) {
+      return obj.map(replacePlaceholders);
+    } else if (obj && typeof obj === 'object') {
+      const result: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[key] = replacePlaceholders(value);
       }
-    },
-    tree: {
-      children: {
-        child: {
-          pipeline: {
-            observe: ['webpage-impact', 'green-hosting'],
-            compute: ['co2js']
-          },
-          inputs: [{
-            options: {
-              firstVisitPercentage: 0.9,
-              returnVisitPercentage: 0.1
-            }
-          }]
-        }
-      }
+      return result;
     }
+    return obj;
   };
+
+  const processedManifest = replacePlaceholders(manifest);
 
   const manifestPath = path.join(tempDir, 'manifest.yml');
   const outputPath = path.join(tempDir, 'output.yml');
   
-  fs.writeFileSync(manifestPath, yaml.dump(manifest));
+  fs.writeFileSync(manifestPath, yaml.dump(processedManifest));
 
   // Run Impact Framework analysis
   await execa('if-run', [
@@ -240,9 +223,17 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     throw new Error(`Output file not created at ${outputPath}`);
   }
 
-  // Parse results
+  // Parse results and convert to JSON
   const outputContent = fs.readFileSync(outputPath, 'utf8');
-  const results = yaml.load(outputContent) as any;
+  const yamlResults = yaml.load(outputContent) as any;
+  
+  // Add URL to results for database storage
+  const results = {
+    url: url,
+    timestamp: new Date().toISOString(),
+    tool: tool.id,
+    ...yamlResults
+  };
   
   // Cleanup
   fs.rmSync(tempDir, { recursive: true, force: true });
@@ -263,8 +254,8 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
   if (tool.id === 'carbonara-swd') {
     const analyzer = new CarbonaraSWDAnalyzer();
     console.log(analyzer.formatResults(results));
-  } else if (tool.id === 'impact-framework') {
-    displayImpactFrameworkResults(results);
+  } else if (tool.id.startsWith('if-')) {
+    displayImpactFrameworkResults(results, tool);
   } else if (tool.id === 'greenframe') {
     displayGreenframeResults(results);
   } else {
@@ -273,37 +264,138 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
   }
 }
 
-function displayImpactFrameworkResults(results: any) {
+function displayImpactFrameworkResults(results: any, tool: AnalysisTool) {
   try {
-    const childData = results?.tree?.children?.child;
-    
-    if (childData && childData.outputs && childData.outputs.length > 0) {
-      const output = childData.outputs[0];
+    // Use tool's display configuration if available
+    if (tool.display && tool.display.fields) {
+      console.log(chalk.green('\n📊 Analysis Results:'));
       
-      console.log(chalk.green('\n📊 Carbon Impact:'));
-      if (output['operational-carbon']) {
-        console.log(`  CO2 Emissions: ${chalk.white(output['operational-carbon'].toFixed(4))} g CO2e`);
-      }
-      
-      if (output['energy']) {
-        console.log(`  Energy Usage: ${chalk.white(output['energy'].toFixed(6))} kWh`);
-      }
-      
-      if (output['network-bytes']) {
-        console.log(`  Data Transfer: ${chalk.white(Math.round(output['network-bytes']))} bytes`);
-      }
-      
-      if (output['green-web-host']) {
-        const isGreen = output['green-web-host'];
-        console.log(`  Green Hosting: ${isGreen ? chalk.green('✓ Yes') : chalk.red('✗ No')}`);
+      for (const field of tool.display.fields) {
+        const value = extractValueFromPath(results, field.path);
+        if (value !== null && value !== undefined) {
+          const formattedValue = formatFieldValue(value, field.type, field.format);
+          console.log(`  ${field.label}: ${chalk.white(formattedValue)}`);
+        }
       }
     } else {
-      console.log(chalk.yellow('\n⚠️  No detailed results found'));
+      // Fallback to generic display
+      const childData = results?.tree?.children?.child;
+      
+      if (childData && childData.outputs && childData.outputs.length > 0) {
+        const output = childData.outputs[0];
+        
+        console.log(chalk.green('\n📊 Impact Framework Results:'));
+        if (output['operational-carbon']) {
+          console.log(`  CO2 Emissions: ${chalk.white(output['operational-carbon'].toFixed(4))} g CO2e`);
+        }
+        
+        if (output['energy']) {
+          console.log(`  Energy Usage: ${chalk.white(output['energy'].toFixed(6))} kWh`);
+        }
+        
+        if (output['network-bytes']) {
+          console.log(`  Data Transfer: ${chalk.white(Math.round(output['network-bytes']))} bytes`);
+        }
+        
+        if (output['green-web-host']) {
+          const isGreen = output['green-web-host'];
+          console.log(`  Green Hosting: ${isGreen ? chalk.green('✓ Yes') : chalk.red('✗ No')}`);
+        }
+      } else {
+        console.log(chalk.yellow('\n⚠️  No detailed results found'));
+      }
     }
   } catch (error) {
     console.log(chalk.yellow('\n⚠️  Could not parse results'));
     console.log(JSON.stringify(results, null, 2));
   }
+}
+
+// Helper function to extract values from nested object paths
+function extractValueFromPath(obj: any, path: string): any {
+  const parts = path.split('.');
+  let current = obj;
+  
+  for (const part of parts) {
+    if (part.includes('[') && part.includes(']')) {
+      // Handle array access like "outputs[0]"
+      const [key, indexStr] = part.split('[');
+      const index = parseInt(indexStr.replace(']', ''));
+      current = current?.[key]?.[index];
+    } else {
+      current = current?.[part];
+    }
+    
+    if (current === null || current === undefined) {
+      return null;
+    }
+  }
+  
+  return current;
+}
+
+// Helper function to format field values
+function formatFieldValue(value: any, type: string, format?: string): string {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
+
+  switch (type) {
+    case 'bytes':
+      if (typeof value === 'number') {
+        const kb = Math.round(value / 1024);
+        const mb = (value / (1024 * 1024)).toFixed(2);
+        if (format) {
+          return format.replace('{value}', kb.toString()).replace('{valueMB}', mb);
+        }
+        return `${kb} KB`;
+      }
+      break;
+    
+    case 'time':
+      if (format) {
+        return format.replace('{value}', value.toString());
+      }
+      return `${value}ms`;
+    
+    case 'carbon':
+      if (format) {
+        return format.replace('{value}', value.toString());
+      }
+      return `${value}g`;
+    
+    case 'energy':
+      if (format) {
+        return format.replace('{value}', value.toString());
+      }
+      return `${value} kWh`;
+    
+    case 'boolean':
+      return value ? 'Yes' : 'No';
+    
+    case 'number':
+      if (format) {
+        return format.replace('{value}', value.toString());
+      }
+      return value.toString();
+    
+    case 'url':
+      if (format === 'domain-only') {
+        try {
+          const url = new URL(value);
+          return url.hostname + url.pathname;
+        } catch {
+          const cleaned = String(value).replace(/^https?:\/\//, '');
+          return cleaned;
+        }
+      }
+      if (format) {
+        return format.replace('{value}', value.toString());
+      }
+      return String(value);
+  }
+
+  return String(value);
 }
 
 function displayGreenframeResults(results: any) {
