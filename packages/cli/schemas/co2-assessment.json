@@ -3,7 +3,7 @@
   "title": "CO2 Assessment Schema",
   "description": "Schema for CO2 impact assessment questionnaire data",
   "type": "object",
-  "required": ["projectInfo", "infrastructure", "development", "features", "sustainabilityGoals"],
+  "required": ["projectInfo", "infrastructure", "development", "features", "sustainabilityGoals", "hardwareConfig", "monitoringConfig"],
   "properties": {
     "projectInfo": {
       "type": "object",
@@ -143,6 +143,74 @@
           "type": "string",
           "enum": ["none", "low", "medium", "high"],
           "description": "Budget allocation for green technology"
+        }
+      }
+    },
+    "hardwareConfig": {
+      "type": "object",
+      "description": "Hardware configuration for CPU monitoring and Impact Framework tools",
+      "required": ["cpuTdp", "totalVcpus", "allocatedVcpus", "gridCarbonIntensity"],
+      "properties": {
+        "cpuTdp": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "description": "CPU Thermal Design Power (TDP) in watts",
+          "default": 100
+        },
+        "totalVcpus": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 128,
+          "description": "Total vCPUs available on your system",
+          "default": 8
+        },
+        "allocatedVcpus": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "vCPUs allocated to your application",
+          "default": 2
+        },
+        "gridCarbonIntensity": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2000,
+          "description": "Grid carbon intensity for your location (gCO2e/kWh)",
+          "default": 750
+        }
+      }
+    },
+    "monitoringConfig": {
+      "type": "object",
+      "description": "Monitoring and analysis preferences for Impact Framework tools",
+      "required": ["enableCpuMonitoring", "enableE2eMonitoring", "scrollToBottom", "firstVisitPercentage"],
+      "properties": {
+        "enableCpuMonitoring": {
+          "type": "boolean",
+          "description": "Enable CPU utilization monitoring during web analysis",
+          "default": true
+        },
+        "enableE2eMonitoring": {
+          "type": "boolean",
+          "description": "Enable CPU monitoring during E2E test execution",
+          "default": false
+        },
+        "e2eTestCommand": {
+          "type": "string",
+          "description": "Command to run your E2E tests (e.g., 'npx cypress run', 'npm run test:e2e')"
+        },
+        "scrollToBottom": {
+          "type": "boolean",
+          "description": "Scroll to bottom of pages during web analysis (for more accurate measurements)",
+          "default": false
+        },
+        "firstVisitPercentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Percentage of first-time visitors (0.0 to 1.0)",
+          "default": 0.9
         }
       }
     }

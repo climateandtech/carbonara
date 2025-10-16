@@ -45,6 +45,19 @@ const CO2AssessmentSchema = z.object({
     optimizationPriority: z.enum(["performance", "sustainability", "balanced"]),
     budgetForGreenTech: z.enum(["none", "low", "medium", "high"]),
   }),
+  hardwareConfig: z.object({
+    cpuTdp: z.number().min(1).max(500),
+    totalVcpus: z.number().min(1).max(128),
+    allocatedVcpus: z.number().min(1).max(64),
+    gridCarbonIntensity: z.number().min(1).max(2000),
+  }),
+  monitoringConfig: z.object({
+    enableCpuMonitoring: z.boolean(),
+    enableE2eMonitoring: z.boolean(),
+    e2eTestCommand: z.string().optional(),
+    scrollToBottom: z.boolean(),
+    firstVisitPercentage: z.number().min(0).max(1),
+  }),
 });
 
 interface AssessOptions {
@@ -341,12 +354,101 @@ async function runInteractiveAssessment() {
     budgetForGreenTech,
   };
 
+  console.log(chalk.green("\n💻 Hardware Configuration"));
+
+  const cpuTdp = await input({
+    message: "CPU Thermal Design Power (TDP) in watts:",
+    default: "100",
+    validate: (value) => {
+      const num = parseInt(value);
+      return num >= 1 && num <= 500 ? true : "Please enter a value between 1 and 500";
+    },
+  });
+
+  const totalVcpus = await input({
+    message: "Total vCPUs available on your system:",
+    default: "8",
+    validate: (value) => {
+      const num = parseInt(value);
+      return num >= 1 && num <= 128 ? true : "Please enter a value between 1 and 128";
+    },
+  });
+
+  const allocatedVcpus = await input({
+    message: "vCPUs allocated to your application:",
+    default: "2",
+    validate: (value) => {
+      const num = parseInt(value);
+      return num >= 1 && num <= 64 ? true : "Please enter a value between 1 and 64";
+    },
+  });
+
+  const gridCarbonIntensity = await input({
+    message: "Grid carbon intensity for your location (gCO2e/kWh):",
+    default: "750",
+    validate: (value) => {
+      const num = parseInt(value);
+      return num >= 1 && num <= 2000 ? true : "Please enter a value between 1 and 2000";
+    },
+  });
+
+  const hardwareConfig = {
+    cpuTdp: parseInt(cpuTdp),
+    totalVcpus: parseInt(totalVcpus),
+    allocatedVcpus: parseInt(allocatedVcpus),
+    gridCarbonIntensity: parseInt(gridCarbonIntensity),
+  };
+
+  console.log(chalk.green("\n📊 Monitoring Configuration"));
+
+  const enableCpuMonitoring = await confirm({
+    message: "Enable CPU utilization monitoring during web analysis?",
+    default: true,
+  });
+
+  const enableE2eMonitoring = await confirm({
+    message: "Enable CPU monitoring during E2E test execution?",
+    default: false,
+  });
+
+  let e2eTestCommand: string | undefined;
+  if (enableE2eMonitoring) {
+    e2eTestCommand = await input({
+      message: "Command to run your E2E tests (e.g., 'npx cypress run'):",
+      default: "npx cypress run",
+    });
+  }
+
+  const scrollToBottom = await confirm({
+    message: "Scroll to bottom of pages during web analysis?",
+    default: false,
+  });
+
+  const firstVisitPercentage = await input({
+    message: "Percentage of first-time visitors (0.0 to 1.0):",
+    default: "0.9",
+    validate: (value) => {
+      const num = parseFloat(value);
+      return num >= 0 && num <= 1 ? true : "Please enter a value between 0.0 and 1.0";
+    },
+  });
+
+  const monitoringConfig = {
+    enableCpuMonitoring,
+    enableE2eMonitoring,
+    e2eTestCommand,
+    scrollToBottom,
+    firstVisitPercentage: parseFloat(firstVisitPercentage),
+  };
+
   return {
     projectInfo,
     infrastructure,
     development,
     features,
     sustainabilityGoals,
+    hardwareConfig,
+    monitoringConfig,
   };
 }
 

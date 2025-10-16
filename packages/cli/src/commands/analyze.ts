@@ -174,6 +174,22 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     throw new Error(`Tool ${tool.id} does not have a manifest template configured`);
   }
 
+  // Load project and get CO2 variables for intelligent defaults
+  let co2Variables: any = {};
+  try {
+    const config = await loadProjectConfig();
+    if (config?.projectId) {
+      const dataLake = createDataLake();
+      await dataLake.initialize();
+      const project = await dataLake.getProject(process.cwd());
+      co2Variables = project?.co2_variables || {};
+      await dataLake.close();
+    }
+  } catch (error) {
+    // If we can't load assessment data, continue with defaults
+    console.log(chalk.yellow('⚠️  Could not load assessment data, using defaults'));
+  }
+
   // Create temporary directory for analysis
   const tempDir = path.join(process.cwd(), '.carbonara-temp');
   if (!fs.existsSync(tempDir)) {
@@ -183,15 +199,15 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   // Create manifest from template with placeholder replacement
   const manifest = JSON.parse(JSON.stringify(tool.manifestTemplate)); // Deep clone
   
-  // Replace placeholders in manifest
+  // Replace placeholders in manifest with intelligent defaults from assessment data
   const replacePlaceholders = (obj: any): any => {
     if (typeof obj === 'string') {
       return obj
         .replace('{url}', url)
-        .replace('{scrollToBottom}', (options.scrollToBottom || false).toString())
-        .replace('{firstVisitPercentage}', (options.firstVisitPercentage || 0.9).toString())
-        .replace('{returnVisitPercentage}', (1 - (options.firstVisitPercentage || 0.9)).toString())
-        .replace('{testCommand}', (options.testCommand || 'npm test').toString());
+        .replace('{scrollToBottom}', (options.scrollToBottom ?? co2Variables.monitoringConfig?.scrollToBottom ?? false).toString())
+        .replace('{firstVisitPercentage}', (options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9).toString())
+        .replace('{returnVisitPercentage}', (1 - (options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9)).toString())
+        .replace('{testCommand}', (options.testCommand ?? co2Variables.monitoringConfig?.e2eTestCommand ?? 'npm test').toString());
     } else if (Array.isArray(obj)) {
       return obj.map(replacePlaceholders);
     } else if (obj && typeof obj === 'object') {
@@ -205,6 +221,28 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   };
 
   const processedManifest = replacePlaceholders(manifest);
+
+  // Update hardware defaults with assessment data if available
+  if (processedManifest.tree?.children?.child?.defaults) {
+    const defaults = processedManifest.tree.children.child.defaults;
+    const originalDefaults = { ...defaults };
+    
+    defaults['thermal-design-power'] = co2Variables.hardwareConfig?.cpuTdp ?? defaults['thermal-design-power'] ?? 100;
+    defaults['vcpus-total'] = co2Variables.hardwareConfig?.totalVcpus ?? defaults['vcpus-total'] ?? 8;
+    defaults['vcpus-allocated'] = co2Variables.hardwareConfig?.allocatedVcpus ?? defaults['vcpus-allocated'] ?? 2;
+    defaults['grid-carbon-intensity'] = co2Variables.hardwareConfig?.gridCarbonIntensity ?? defaults['grid-carbon-intensity'] ?? 750;
+    
+    // Log when assessment data is being used
+    if (co2Variables.hardwareConfig && Object.keys(co2Variables.hardwareConfig).length > 0) {
+      console.log(chalk.blue('🔧 Using hardware configuration from assessment data'));
+      if (co2Variables.hardwareConfig.cpuTdp !== originalDefaults['thermal-design-power']) {
+        console.log(chalk.gray(`  CPU TDP: ${co2Variables.hardwareConfig.cpuTdp}W (from assessment)`));
+      }
+      if (co2Variables.hardwareConfig.gridCarbonIntensity !== originalDefaults['grid-carbon-intensity']) {
+        console.log(chalk.gray(`  Grid carbon intensity: ${co2Variables.hardwareConfig.gridCarbonIntensity} gCO2e/kWh (from assessment)`));
+      }
+    }
+  }
 
   const manifestPath = path.join(tempDir, 'manifest.yml');
   const outputPath = path.join(tempDir, 'output.yml');

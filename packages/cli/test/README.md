@@ -40,7 +40,7 @@ Generic integration tests for external tools:
 1. **Synchronous Testing**: Uses `execSync` instead of complex async process management
 2. **Error Tolerance**: Tests expect and handle common errors gracefully
 3. **Isolated Tests**: Each test uses its own temporary directory
-4. **Fast Execution**: All tests complete in under 2 seconds
+4. **Fast Execution**: All tests complete quickly (external tool tests may take longer due to CLI execution)
 5. **No User Input**: Avoids interactive prompts that can cause hangs
 
 ## Running Tests
@@ -91,7 +91,7 @@ When adding new CLI tests:
 1. Use `execSync` for reliability
 2. Create isolated test directories
 3. Handle expected errors with try/catch
-4. Keep tests fast (< 1 second each)
+4. Keep tests reasonably fast (external tool tests may take longer)
 5. Clean up temporary files
 
 Example:
