@@ -150,11 +150,6 @@ export function deactivate() {
   if (carbonaraStatusBar) {
     carbonaraStatusBar.dispose();
   }
-
-  // Clean up data tree provider and core server
-  if (dataTreeProvider) {
-    dataTreeProvider.dispose();
-  }
 }
 
 async function showCarbonaraMenu() {
