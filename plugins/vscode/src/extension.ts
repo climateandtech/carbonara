@@ -6,6 +6,8 @@ import { spawn } from "child_process";
 import { AssessmentTreeProvider } from "./assessment-tree-provider";
 import { DataTreeProvider } from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
+import { DashboardProvider } from "./dashboard-provider";
+import { DashboardSvelteProvider } from "./dashboard-svelte-provider";
 import {
   initializeSemgrep,
   runSemgrepOnFile,
@@ -16,6 +18,8 @@ let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
+let dashboardProvider: DashboardProvider;
+let dashboardSvelteProvider: DashboardSvelteProvider;
 
 let currentProjectPath: string | null = null;
 
@@ -44,6 +48,10 @@ export function activate(context: vscode.ExtensionContext) {
   dataTreeProvider = new DataTreeProvider();
   console.log("🔧 Creating ToolsTreeProvider...");
   toolsTreeProvider = new ToolsTreeProvider();
+  console.log("🔧 Creating DashboardProvider...");
+  dashboardProvider = new DashboardProvider(context);
+  console.log("🔧 Creating DashboardSvelteProvider...");
+  dashboardSvelteProvider = new DashboardSvelteProvider(context);
   console.log("🔧 Registering tree data providers...");
   vscode.window.registerTreeDataProvider(
     "carbonara.assessmentTree",
@@ -68,6 +76,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("carbonara.viewData", viewData),
     vscode.commands.registerCommand("carbonara.showStatus", showStatus),
     vscode.commands.registerCommand("carbonara.openConfig", openConfig),
+    vscode.commands.registerCommand("carbonara.showDashboard", () =>
+      dashboardProvider.showDashboard()
+    ),
+    vscode.commands.registerCommand("carbonara.showDashboardSvelte", () =>
+      dashboardSvelteProvider.showDashboard()
+    ),
     vscode.commands.registerCommand("carbonara.editSection", (sectionId) =>
       assessmentTreeProvider.editSection(sectionId)
     ),
@@ -165,6 +179,16 @@ async function showCarbonaraMenu() {
       label: UI_TEXT.MENU.ITEMS.ANALYZE_WEBSITE.LABEL,
       description: UI_TEXT.MENU.ITEMS.ANALYZE_WEBSITE.DESCRIPTION,
       command: "carbonara.analyzeWebsite",
+    },
+    {
+      label: "📊 Show Dashboard (Vanilla)",
+      description: "Open the Carbonara dashboard (vanilla implementation)",
+      command: "carbonara.showDashboard",
+    },
+    {
+      label: "📊 Show Dashboard (Svelte)",
+      description: "Open the Carbonara dashboard (Svelte implementation)",
+      command: "carbonara.showDashboardSvelte",
     },
     {
       label: UI_TEXT.MENU.ITEMS.VIEW_DATA.LABEL,

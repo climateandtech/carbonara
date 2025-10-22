@@ -46,6 +46,16 @@
         "title": "Analyze Website (Demo)"
       },
       {
+        "command": "carbonara.showDashboard",
+        "title": "Show Dashboard (Vanilla)",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "carbonara.showDashboardSvelte",
+        "title": "Show Dashboard (Svelte)",
+        "icon": "$(dashboard)"
+      },
+      {
         "command": "carbonara.viewData",
         "title": "View Data Lake"
       },
@@ -267,7 +277,9 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "npm run clean && tsc -p ./ && npm run copy-deps",
+    "build": "npm run clean && npm run build:svelte && tsc -p ./ && npm run copy-deps",
+    "build:svelte": "rollup -c",
+    "watch:svelte": "rollup -c -w",
     "copy-deps": "mkdir -p dist/node_modules/@carbonara/core dist/node_modules/sql.js dist/registry && cp -r ../../packages/core/dist dist/node_modules/@carbonara/core/ && cp ../../packages/core/package.json dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/python dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/semgrep-rules dist/node_modules/@carbonara/core/ && cp -r ../../node_modules/sql.js/dist dist/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json dist/node_modules/sql.js/ && cp ../../packages/cli/dist/registry/tools.json dist/registry/tools.json",
     "watch": "tsc -watch -p ./",
     "package": "npm run build && vsce package --no-dependencies && vsce ls",
@@ -293,6 +305,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
+    "@rollup/plugin-commonjs": "^28.0.8",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.4",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "22.9.0",
@@ -302,6 +318,10 @@
     "glob": "^11.0.3",
     "mocha": "^10.2.0",
     "playwright": "^1.40.0",
+    "rollup": "^4.52.4",
+    "rollup-plugin-svelte": "^7.2.3",
+    "svelte": "^4.2.20",
+    "svelte-preprocess": "^5.1.4",
     "typescript": "^5.9.2"
   }
 }
