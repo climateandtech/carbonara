@@ -2,11 +2,15 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+import { promisify } from "util";
+import { exec } from "child_process";
 import {
   createSemgrepService,
   type SemgrepMatch,
   type SemgrepResult,
 } from "@carbonara/core";
+
+const execAsync = promisify(exec);
 
 // File size threshold for interactive linting (1MB)
 // Files larger than this will only be linted on save
@@ -97,6 +101,61 @@ let semgrepAnalysisTimer: NodeJS.Timeout | undefined;
 
 // Track files with diagnostics and their line numbers for incremental analysis
 const filesWithDiagnostics = new Map<string, Set<number>>();
+
+// Cache for CLI availability check
+let cliAvailable: boolean | null = null;
+
+/**
+ * Check if the carbonara CLI is available
+ */
+async function checkCarbonaraCLI(): Promise<boolean> {
+  // Return cached result if available
+  if (cliAvailable !== null) {
+    return cliAvailable;
+  }
+
+  try {
+    const { stdout } = await execAsync("carbonara --version", {
+      timeout: 5000,
+    });
+    cliAvailable = stdout.trim().length > 0;
+    console.log(`Carbonara CLI detected: ${stdout.trim()}`);
+    return cliAvailable;
+  } catch (error) {
+    console.log("Carbonara CLI not found, will use core library");
+    cliAvailable = false;
+    return false;
+  }
+}
+
+/**
+ * Run semgrep using the carbonara CLI
+ */
+async function runSemgrepViaCLI(
+  filePath: string
+): Promise<SemgrepResult | null> {
+  try {
+    const { stdout, stderr } = await execAsync(
+      `carbonara semgrep "${filePath}" --output json`,
+      {
+        timeout: 60000,
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+      }
+    );
+
+    if (stderr && stderr.trim().length > 0) {
+      console.log("Semgrep CLI:", stderr);
+    }
+
+    // Parse JSON output
+    const result = JSON.parse(stdout);
+    return result as SemgrepResult;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Failed to run semgrep via CLI:", errorMessage);
+    return null;
+  }
+}
 
 /**
  * Initialize the Semgrep integration
@@ -243,47 +302,72 @@ async function runSemgrepAnalysis(
       );
     }
 
-    // Create Semgrep service instance
-    const semgrep = createSemgrepService({
-      useBundledPython: false,
-      timeout: 60000,
-    });
+    // Check if carbonara CLI is available
+    const useCLI = await checkCarbonaraCLI();
+    let result: SemgrepResult | null = null;
+    let usedCLI = false;
 
-    // Check setup before running
-    if (outputChannel) {
-      outputChannel.appendLine("Checking Semgrep setup...");
-    }
-    const setup = await semgrep.checkSetup();
-
-    if (!setup.isValid) {
-      if (showUI && outputChannel) {
-        outputChannel.appendLine("Semgrep setup issues detected:");
-        setup.errors.forEach((error) => {
-          outputChannel.appendLine(`  • ${error}`);
-        });
-        outputChannel.show();
-        vscode.window
-          .showErrorMessage(
-            "Semgrep is not properly configured. Check Output for details.",
-            "View Output"
-          )
-          .then((selection) => {
-            if (selection === "View Output") {
-              outputChannel.show();
-            }
-          });
-      } else {
-        console.log("Semgrep setup is not valid, skipping analysis");
+    if (useCLI) {
+      // Try using the CLI first
+      if (outputChannel) {
+        outputChannel.appendLine("Using carbonara CLI for analysis...");
       }
-      return null;
+      result = await runSemgrepViaCLI(fileToAnalyze);
+      if (result) {
+        usedCLI = true;
+      }
     }
 
-    if (outputChannel) {
-      outputChannel.appendLine("Running analysis...");
-    }
+    // Fall back to core library if CLI is not available or failed to execute
+    if (!result) {
+      if (useCLI && outputChannel) {
+        outputChannel.appendLine("CLI failed, falling back to core library...");
+      } else if (outputChannel) {
+        outputChannel.appendLine("Using core library for analysis...");
+      }
 
-    // Run analysis on the file
-    const result = await semgrep.analyzeFile(fileToAnalyze);
+      // Create Semgrep service instance
+      const semgrep = createSemgrepService({
+        useBundledPython: false,
+        timeout: 60000,
+      });
+
+      // Check setup before running
+      if (outputChannel) {
+        outputChannel.appendLine("Checking Semgrep setup...");
+      }
+      const setup = await semgrep.checkSetup();
+
+      if (!setup.isValid) {
+        if (showUI && outputChannel) {
+          outputChannel.appendLine("Semgrep setup issues detected:");
+          setup.errors.forEach((error) => {
+            outputChannel.appendLine(`  • ${error}`);
+          });
+          outputChannel.show();
+          vscode.window
+            .showErrorMessage(
+              "Semgrep is not properly configured. Check Output for details.",
+              "View Output"
+            )
+            .then((selection) => {
+              if (selection === "View Output") {
+                outputChannel.show();
+              }
+            });
+        } else {
+          console.log("Semgrep setup is not valid, skipping analysis");
+        }
+        return null;
+      }
+
+      if (outputChannel) {
+        outputChannel.appendLine("Running analysis...");
+      }
+
+      // Run analysis on the file
+      result = await semgrep.analyzeFile(fileToAnalyze);
+    }
 
     if (!result.success) {
       if (showUI && outputChannel) {
@@ -306,7 +390,9 @@ async function runSemgrepAnalysis(
 
     // Display results
     if (outputChannel) {
-      outputChannel.appendLine(`\nAnalysis complete!`);
+      outputChannel.appendLine(
+        `\nAnalysis complete! (via ${usedCLI ? "CLI" : "core library"})`
+      );
       outputChannel.appendLine(`Files scanned: ${result.stats.files_scanned}`);
       outputChannel.appendLine(`Total findings: ${result.stats.total_matches}`);
       outputChannel.appendLine(`  Errors: ${result.stats.error_count}`);
@@ -346,7 +432,7 @@ async function runSemgrepAnalysis(
       }
     } else {
       console.log(
-        `Semgrep analysis complete: ${result.stats.total_matches} issue(s) found`
+        `Semgrep analysis complete (via ${usedCLI ? "CLI" : "core library"}): ${result.stats.total_matches} issue(s) found`
       );
     }
 

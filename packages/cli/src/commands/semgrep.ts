@@ -120,7 +120,10 @@ export async function semgrepCommand(
     }
 
     // Exit with appropriate code
-    process.exit(result.matches.length > 0 ? 1 : 0);
+    // The command should exit with 0 if the analysis completes successfully,
+    // regardless of whether it finds any matches. A non-zero exit code
+    // should only be used for actual failures in the execution of the command itself.
+    process.exit(0);
   } catch (error: any) {
     spinner.fail("Semgrep analysis failed");
     console.error(chalk.red("Error:"), error.message);
