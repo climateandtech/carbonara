@@ -46,7 +46,7 @@ export async function run(): Promise<void> {
 }
 
 async function runMochaTests() {
-  console.log("\n=== Running Mocha Tests (regular/ and suite/) ===\n");
+  console.log("\n=== Running Mocha Tests (unit/ and integration/) ===\n");
 
   const extensionDevelopmentPath = path.resolve(__dirname, "../../");
   const extensionTestsPath = path.resolve(__dirname, "./runTest");
