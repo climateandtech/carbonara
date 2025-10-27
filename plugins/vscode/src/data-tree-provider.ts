@@ -319,6 +319,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         await this.coreServices!.vscodeProvider.createGroupedItems(projectPath);
 
       const items: DataItem[] = [];
+
       groups.forEach((group, groupIndex) => {
         // Add group header
         items.push(

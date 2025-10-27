@@ -209,7 +209,7 @@ carbonara.config.json
 carbonara.db
 .carbonara-progress.json
 carbonara-assessment.json
-carbonara-export-*.json
+carbonara-export-*
 .carbonara-temp/
 
 # Carbonara - Keep test fixtures

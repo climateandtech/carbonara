@@ -47,12 +47,7 @@
       },
       {
         "command": "carbonara.showDashboard",
-        "title": "Show Dashboard (Vanilla)",
-        "icon": "$(dashboard)"
-      },
-      {
-        "command": "carbonara.showDashboardSvelte",
-        "title": "Show Dashboard (Svelte)",
+        "title": "Show Dashboard",
         "icon": "$(dashboard)"
       },
       {
@@ -151,6 +146,11 @@
           "id": "carbonara.assessmentTree",
           "name": "CO2 Assessment",
           "icon": "$(checklist)"
+        },
+        {
+          "id": "carbonara.dashboardView",
+          "name": "Dashboard",
+          "icon": "$(dashboard)"
         },
         {
           "id": "carbonara.dataTree",
@@ -319,6 +319,7 @@
     "mocha": "^10.2.0",
     "playwright": "^1.40.0",
     "rollup": "^4.52.4",
+    "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-svelte": "^7.2.3",
     "svelte": "^4.2.20",
     "svelte-preprocess": "^5.1.4",
