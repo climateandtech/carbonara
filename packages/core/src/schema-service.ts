@@ -69,9 +69,6 @@ export class SchemaService {
     
     return this.toolSchemas;
   }
-
-
-
   getToolSchema(toolId: string): AnalysisToolSchema | null {
     return this.toolSchemas.get(toolId) || null;
   }
