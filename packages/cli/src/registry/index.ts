@@ -65,7 +65,8 @@ export class AnalysisToolRegistry {
     }
     
     this.registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-
+    // Don't call refreshInstalledTools() in constructor - it's async and can hang
+    // Call it lazily when needed
   }
 
   async refreshInstalledTools(): Promise<void> {

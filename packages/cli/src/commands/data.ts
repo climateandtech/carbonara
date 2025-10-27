@@ -16,10 +16,6 @@ export async function dataCommand(options: DataOptions) {
   try {
     const config = await loadProjectConfig();
     if (!config) {
-      if (options.json) {
-        console.log('[]');
-        return;
-      }
       console.log(chalk.yellow('⚠️  No project found. Run "carbonara init" first.'));
       return;
     }
