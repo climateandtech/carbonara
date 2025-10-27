@@ -3,6 +3,9 @@ src/
 *.ts
 *.map
 
+# Build config
+rollup.config.js
+
 # Build artifacts
 node_modules/**
 !node_modules/@carbonara/**
@@ -60,3 +63,4 @@ Thumbs.db
 *.temp
 
 **/.claude/*
+carbonara-export*
