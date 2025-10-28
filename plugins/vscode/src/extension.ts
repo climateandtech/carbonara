@@ -120,6 +120,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("carbonara.analyzeTool", (toolId) =>
       toolsTreeProvider.analyzeTool(toolId)
     ),
+    vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
+    vscode.commands.registerCommand(
+      "carbonara.clearSemgrepResults",
+      clearSemgrepResults
+    ),
   ];
 
   context.subscriptions.push(carbonaraStatusBar, ...commands);
