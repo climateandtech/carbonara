@@ -1,0 +1,12 @@
+rules:
+  - id: gci529-java-sobriety-thrifty-notification
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid unnecessary vibrations and sounds in notifications. Use default notification settings for better battery life."
+    patterns:
+      - pattern-either:
+          - pattern: $NOTIFICATION_BUILDER.setVibrate(...);
+          - pattern: $NOTIFICATION_BUILDER.setSound(...);
+          - pattern: $NOTIFICATION_CHANNEL.setVibrationPattern(...);
+          - pattern: $NOTIFICATION_CHANNEL.setSound(...);

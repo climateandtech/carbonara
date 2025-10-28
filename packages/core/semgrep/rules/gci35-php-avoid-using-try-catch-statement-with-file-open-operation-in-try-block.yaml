@@ -1,0 +1,17 @@
+rules:
+  - id: gci35-php-avoid-using-try-catch-statement-with-file-open-operation-in-try-block
+    languages:
+      - php
+    severity: INFO
+    message: "Avoid using try-catch for file open operations. Use conditional checks like file_exists() instead."
+    patterns:
+      - pattern-inside: |
+          try {
+              ...
+          } catch ($TYPE $VAR) {
+              ...
+          }
+      - pattern-either:
+          - pattern: PDF_open_image_file(...)
+          - pattern: fopen(...)
+          - pattern: file_get_contents(...)

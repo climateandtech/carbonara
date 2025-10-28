@@ -1,0 +1,14 @@
+rules:
+  - id: gci102-python-ai-use-pinned-memory-on-dataloader-when-using-gpu
+    languages:
+      - python
+    severity: INFO
+    message: "Use pinned memory on DataLoader when using GPU. Set pin_memory=True in torch.utils.data.DataLoader for faster data transfer and better performance."
+    patterns:
+      - pattern: |
+          torch.utils.data.DataLoader(
+              $DATASET,
+              batch_size=$BATCH_SIZE,
+              shuffle=$SHUFFLE,
+              pin_memory=False
+          )

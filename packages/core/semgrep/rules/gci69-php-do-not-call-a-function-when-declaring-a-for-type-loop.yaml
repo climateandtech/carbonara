@@ -1,0 +1,8 @@
+rules:
+  - id: gci69-php-do-not-call-a-function-when-declaring-a-for-type-loop
+    languages:
+      - php
+    severity: INFO
+    message: "Avoid calling loop-invariant functions in loop conditions. Cache the result before the loop."
+    patterns:
+      - pattern: for ($INIT; $VAR <= $CALL(...); $INCR) { ... }

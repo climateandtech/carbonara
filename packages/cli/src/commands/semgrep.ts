@@ -8,7 +8,7 @@ import type {
   SemgrepMatch,
   SemgrepServiceConfig,
 } from "@carbonara/core";
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
 
 // ESM-compliant __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -187,7 +187,7 @@ async function listAvailableRules(options: SemgrepOptions): Promise<void> {
       try {
         const packageRoot = path.resolve(__dirname, "..", "..", "..", "..");
         const ruleContent = fs.readFileSync(
-          path.join(packageRoot, "packages", "core", "semgrep-rules", rule),
+          path.join(packageRoot, "packages", "core", "semgrep", rule),
           "utf8"
         );
 
@@ -205,8 +205,6 @@ async function listAvailableRules(options: SemgrepOptions): Promise<void> {
         // Ignore errors reading rule details
       }
     }
-
-    
   } catch (error: any) {
     console.error(chalk.red("Error listing rules:"), error.message);
     process.exit(1);

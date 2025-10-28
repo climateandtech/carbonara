@@ -1,0 +1,8 @@
+rules:
+  - id: gci104-python-data-ai-pytorch-create-tensors-directly-from-torch
+    languages:
+      - python
+    severity: INFO
+    message: "Create tensors directly from Torch. Avoid converting from NumPy arrays for better performance and reduced environmental impact."
+    patterns:
+      - pattern: torch.tensor(np.random.rand(...))

@@ -1,0 +1,15 @@
+rules:
+  - id: gci2-php-avoid-multiple-if-else-statement
+    languages:
+      - php
+    severity: INFO
+    message: "Avoid multiple if-else statement. Consider using a switch statement or refactoring to reduce cyclomatic complexity."
+    patterns:
+      - pattern: |
+          if ($COND1) {
+            ...
+          } elseif ($COND2) {
+            ...
+          } elseif ($COND3) {
+            ...
+          }

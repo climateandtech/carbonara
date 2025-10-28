@@ -1,0 +1,12 @@
+rules:
+  - id: gci507-java-idleness-keep-cpu-on
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid keeping the CPU on unnecessarily. This drains battery. Release wake locks when not absolutely needed."
+    patterns:
+      - pattern: $POWER_MANAGER.newWakeLock($LEVEL, $TAG);
+      - pattern-not-inside: |
+          $POWER_MANAGER.newWakeLock($LEVEL, $TAG);
+          ...
+          $MANAGER.release();

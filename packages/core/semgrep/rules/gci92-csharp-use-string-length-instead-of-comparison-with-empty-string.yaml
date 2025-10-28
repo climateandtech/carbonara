@@ -1,0 +1,19 @@
+rules:
+  - id: gci92-csharp-use-string-length-instead-of-comparison-with-empty-string
+    languages:
+      - csharp
+    severity: INFO
+    message: "Use string.Length == 0 instead of comparison with empty string for better performance and readability."
+    pattern-either:
+      - pattern: $VAR == ""
+      - pattern: $VAR != ""
+      - pattern: $VAR == string.Empty
+      - pattern: $VAR != string.Empty
+      - pattern: |
+          "" == $VAR
+      - pattern: |
+          "" != $VAR
+      - pattern: |
+          string.Empty == $VAR
+      - pattern: |
+          string.Empty != $VAR

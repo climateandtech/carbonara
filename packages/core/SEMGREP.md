@@ -11,7 +11,7 @@ packages/core/
 │   ├── requirements.txt   # Python dependencies
 │   └── setup.py           # Setup/bundling script
 ├── python-dist/           # Bundled Python environment (generated)
-├── semgrep-rules/         # Custom Semgrep rules
+├── semgrep/         # Custom Semgrep rules
 │   ├── no-console-log.yaml
 │   └── example-code.js
 └── src/services/
@@ -46,25 +46,25 @@ python python/setup.py --verify
 ### 3. Using in TypeScript/JavaScript
 
 ```typescript
-import { createSemgrepService } from '@carbonara/core';
+import { createSemgrepService } from "@carbonara/core";
 
 // Create service instance
 const semgrep = createSemgrepService({
-  useBundledPython: true  // Use bundled Python for distribution
+  useBundledPython: true, // Use bundled Python for distribution
 });
 
 // Check setup
 const setup = await semgrep.checkSetup();
 if (!setup.isValid) {
-  console.error('Setup issues:', setup.errors);
+  console.error("Setup issues:", setup.errors);
 }
 
 // Analyze a file
-const result = await semgrep.analyzeFile('/path/to/file.js');
+const result = await semgrep.analyzeFile("/path/to/file.js");
 console.log(semgrep.formatResults(result));
 
 // Analyze a directory
-const dirResult = await semgrep.analyzeDirectory('/path/to/src');
+const dirResult = await semgrep.analyzeDirectory("/path/to/src");
 ```
 
 ## Command Line Usage
@@ -87,21 +87,23 @@ python python/semgrep_runner.py path/to/file.js --rule-file no-console-log.yaml
 
 ## Custom Rules
 
-The `semgrep-rules/` directory contains custom rules:
+The `semgrep/` directory contains custom rules:
 
 ### 1. `no-console-log-in-production`
+
 - **Purpose**: Detects console.log, console.debug, and console.info statements
 - **Severity**: WARNING
 - **Languages**: JavaScript, TypeScript
 
 ### 2. `hardcoded-api-key`
+
 - **Purpose**: Detects potential hardcoded API keys
 - **Severity**: ERROR
 - **Languages**: JavaScript, TypeScript
 
 ### Adding New Rules
 
-1. Create a new `.yaml` file in `semgrep-rules/`
+1. Create a new `.yaml` file in `semgrep/`
 2. Follow Semgrep rule syntax: https://semgrep.dev/docs/writing-rules/
 3. Test your rule:
    ```bash
@@ -113,20 +115,24 @@ The `semgrep-rules/` directory contains custom rules:
 The VSCode extension can use this service by:
 
 1. Importing from the core package:
+
    ```typescript
-   import { createSemgrepService } from '@carbonara/core';
+   import { createSemgrepService } from "@carbonara/core";
    ```
 
 2. Creating commands that trigger analysis:
    ```typescript
-   const runSemgrep = vscode.commands.registerCommand('carbonara.runSemgrep', async () => {
-     const semgrep = createSemgrepService({ useBundledPython: true });
-     const editor = vscode.window.activeTextEditor;
-     if (editor) {
-       const result = await semgrep.analyzeFile(editor.document.fileName);
-       // Display results in VSCode UI
+   const runSemgrep = vscode.commands.registerCommand(
+     "carbonara.runSemgrep",
+     async () => {
+       const semgrep = createSemgrepService({ useBundledPython: true });
+       const editor = vscode.window.activeTextEditor;
+       if (editor) {
+         const result = await semgrep.analyzeFile(editor.document.fileName);
+         // Display results in VSCode UI
+       }
      }
-   });
+   );
    ```
 
 ## Integration with CLI
@@ -134,7 +140,7 @@ The VSCode extension can use this service by:
 The CLI can use this service similarly:
 
 ```typescript
-import { createSemgrepService } from '@carbonara/core';
+import { createSemgrepService } from "@carbonara/core";
 
 export async function analyzeCommand(filepath: string) {
   const semgrep = createSemgrepService();
@@ -148,6 +154,7 @@ export async function analyzeCommand(filepath: string) {
 For distributing the VSCode extension or CLI with bundled Semgrep:
 
 1. **Create the bundle:**
+
    ```bash
    cd packages/core
    python python/setup.py --bundle
@@ -159,7 +166,7 @@ For distributing the VSCode extension or CLI with bundled Semgrep:
 3. **Use bundled Python:**
    ```typescript
    const semgrep = createSemgrepService({
-     useBundledPython: true
+     useBundledPython: true,
    });
    ```
 
@@ -178,10 +185,12 @@ node dist/test/test-semgrep.js
 ## Troubleshooting
 
 ### Python Not Found
+
 - Ensure Python 3.7+ is installed
 - Check `pythonPath` in service configuration
 
 ### Semgrep Not Installed
+
 ```bash
 pip install semgrep
 # or
@@ -189,14 +198,16 @@ python python/setup.py --install
 ```
 
 ### Rules Not Found
-- Verify `semgrep-rules/` directory exists
+
+- Verify `semgrep/` directory exists
 - Check `rulesDir` in service configuration
 
 ### Timeout Issues
+
 - Increase timeout in service configuration:
   ```typescript
   const semgrep = createSemgrepService({
-    timeout: 120000  // 2 minutes
+    timeout: 120000, // 2 minutes
   });
   ```
 

@@ -1,0 +1,12 @@
+rules:
+  - id: gci514-swift-leakage-sensormanager-leak
+    languages:
+      - swift
+    severity: INFO
+    message: "Release CMMotionManager resources to avoid battery drain. Ensure every startAccelerometerUpdates() call has a corresponding stopAccelerometerUpdates()."
+    patterns:
+      - pattern: $MOTION_MANAGER.startAccelerometerUpdates(...)
+      - pattern-not-inside: |
+          $MOTION_MANAGER.startAccelerometerUpdates(...)
+          ...
+          $MOTION_MANAGER.stopAccelerometerUpdates()

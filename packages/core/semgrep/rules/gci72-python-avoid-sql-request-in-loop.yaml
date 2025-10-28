@@ -1,0 +1,11 @@
+rules:
+  - id: gci72-python-avoid-sql-request-in-loop
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid executing SQL queries in loops. Use a single bulk query or batch updates instead."
+    patterns:
+      - pattern-inside: |
+          for $VAR in $ITERABLE:
+              ...
+      - pattern: $CURSOR.execute(...)

@@ -1,0 +1,9 @@
+rules:
+  - id: gci508-java-idleness-durable-wake-lock
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid durable wake locks. Use PowerManager.acquire(long timeout) to ensure wake locks are released after a timeout."
+    patterns:
+      - pattern: $MANAGER.acquire();
+      - pattern-not: $MANAGER.acquire($TIMEOUT);

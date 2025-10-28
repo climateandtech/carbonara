@@ -1,0 +1,20 @@
+rules:
+  - id: gci519-java-power-charge-awareness
+    languages:
+      - java
+    severity: INFO
+    message: Consider implementing charge awareness for background jobs. Use setRequiresCharging(true) to optimize battery usage by running tasks only when charging.
+    patterns:
+      - pattern-either:
+          - pattern: new JobInfo.Builder(...). ... .build()
+          - patterns:
+              - pattern-inside: |
+                  $BUILDER = new JobInfo.Builder(...);
+                  ...
+              - pattern: $BUILDER.build()
+      - pattern-not: new JobInfo.Builder(...). ... .setRequiresCharging(...). ... .build()
+      - pattern-not-inside: |
+          $BUILDER = new JobInfo.Builder(...);
+          ...
+          $BUILDER.setRequiresCharging(...);
+          ...

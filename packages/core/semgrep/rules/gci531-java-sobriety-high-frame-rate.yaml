@@ -1,0 +1,8 @@
+rules:
+  - id: gci531-java-sobriety-high-frame-rate
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid high frame rates. Use 60f for setFrameRate to conserve battery life."
+    patterns:
+      - pattern: $SURFACE.setFrameRate(120f, $COMPATIBILITY);

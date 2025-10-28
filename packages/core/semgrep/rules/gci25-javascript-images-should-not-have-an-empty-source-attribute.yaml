@@ -1,0 +1,11 @@
+rules:
+  - id: gci25-javascript-images-should-not-have-an-empty-source-attribute
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Images should not have an empty source attribute. Provide a valid source for images."
+    patterns:
+      - pattern-either:
+          - pattern-regex: "<img src=\"\""
+          - pattern-regex: "<img(?!.*src=)"

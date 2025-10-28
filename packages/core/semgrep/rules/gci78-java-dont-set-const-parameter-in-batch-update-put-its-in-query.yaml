@@ -1,0 +1,23 @@
+rules:
+  - id: gci78-java-dont-set-const-parameter-in-batch-update-put-its-in-query
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid setting constant parameters in batch updates. Embed constants directly into the query string for better performance."
+    patterns:
+      - pattern-inside: |
+          for (...) {
+              ...
+              $STMT.addBatch();
+              ...
+          }
+      - pattern-either:
+          - pattern: $STMT.setInt($INDEX, $CONSTANT);
+          - pattern: $STMT.setString($INDEX, $CONSTANT);
+          - pattern: $STMT.setDouble($INDEX, $CONSTANT);
+          - pattern: $STMT.setLong($INDEX, $CONSTANT);
+          - pattern: $STMT.setFloat($INDEX, $CONSTANT);
+          - pattern: $STMT.setBoolean($INDEX, $CONSTANT);
+      - metavariable-regex:
+          metavariable: $CONSTANT
+          regex: "(^\\d+$|^\\d+\\.\\d+$|^true$|^false$|\".*\")"

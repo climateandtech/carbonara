@@ -3,11 +3,11 @@
  * Provides TypeScript interface to the Python Semgrep runner
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
-import { promisify } from 'util';
-import { fileURLToPath } from 'url';
+import { spawn, ChildProcess } from "child_process";
+import * as path from "path";
+import * as fs from "fs";
+import { promisify } from "util";
+import { fileURLToPath } from "url";
 
 const fsAccess = promisify(fs.access);
 
@@ -19,9 +19,9 @@ const __dirname = path.dirname(__filename);
  * Represents severity levels for Semgrep findings
  */
 export enum SemgrepSeverity {
-  ERROR = 'ERROR',
-  WARNING = 'WARNING',
-  INFO = 'INFO'
+  ERROR = "ERROR",
+  WARNING = "WARNING",
+  INFO = "INFO",
 }
 
 /**
@@ -78,22 +78,35 @@ export class SemgrepService {
   private timeout: number;
 
   constructor(config: SemgrepServiceConfig = {}) {
-    this.pythonPath = config.pythonPath || 'python3';
+    this.pythonPath = config.pythonPath || "python3";
     this.useBundledPython = config.useBundledPython ?? false;
     this.timeout = config.timeout || 60000; // Default 60 seconds
-    
+
     // Resolve paths relative to the core package root
-    const packageRoot = path.resolve(__dirname, '..', '..');
-    this.runnerPath = path.join(packageRoot, 'python', 'semgrep_runner.py');
-    this.rulesDir = config.rulesDir || path.join(packageRoot, 'semgrep-rules');
-    
+    const packageRoot = path.resolve(__dirname, "..", "..");
+    this.runnerPath = path.join(packageRoot, "python", "semgrep_runner.py");
+    this.rulesDir =
+      config.rulesDir || path.join(packageRoot, "semgrep", "rules");
+
     // If using bundled Python, update the path
     if (this.useBundledPython) {
       const platform = process.platform;
-      if (platform === 'win32') {
-        this.pythonPath = path.join(packageRoot, 'python-dist', 'venv', 'Scripts', 'python.exe');
+      if (platform === "win32") {
+        this.pythonPath = path.join(
+          packageRoot,
+          "python-dist",
+          "venv",
+          "Scripts",
+          "python.exe"
+        );
       } else {
-        this.pythonPath = path.join(packageRoot, 'python-dist', 'venv', 'bin', 'python');
+        this.pythonPath = path.join(
+          packageRoot,
+          "python-dist",
+          "venv",
+          "bin",
+          "python"
+        );
       }
     }
   }
@@ -119,7 +132,7 @@ export class SemgrepService {
     }
 
     // Check if Python is available
-    const pythonCheck = await this.runCommand([this.pythonPath, '--version']);
+    const pythonCheck = await this.runCommand([this.pythonPath, "--version"]);
     if (!pythonCheck.success) {
       errors.push(`Python not available at: ${this.pythonPath}`);
     }
@@ -128,15 +141,15 @@ export class SemgrepService {
     const semgrepCheck = await this.runCommand([
       this.pythonPath,
       this.runnerPath,
-      '--help'
+      "--help",
     ]);
     if (!semgrepCheck.success) {
-      errors.push('Semgrep runner not working properly');
+      errors.push("Semgrep runner not working properly");
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -146,10 +159,10 @@ export class SemgrepService {
   async installSemgrep(): Promise<boolean> {
     const result = await this.runCommand([
       this.pythonPath,
-      '-m',
-      'pip',
-      'install',
-      'semgrep'
+      "-m",
+      "pip",
+      "install",
+      "semgrep",
     ]);
     return result.success;
   }
@@ -158,12 +171,12 @@ export class SemgrepService {
    * Run Semgrep analysis on a single file
    */
   async analyzeFile(filePath: string): Promise<SemgrepResult> {
-    const args = [this.runnerPath, filePath, '--json'];
-    
-    args.push('--rules-dir', this.rulesDir);
-    
+    const args = [this.runnerPath, filePath, "--json"];
+
+    args.push("--rules-dir", this.rulesDir);
+
     const result = await this.runCommand([this.pythonPath, ...args]);
-    
+
     if (result.success && result.stdout) {
       try {
         return JSON.parse(result.stdout) as SemgrepResult;
@@ -177,23 +190,23 @@ export class SemgrepService {
             error_count: 0,
             warning_count: 0,
             info_count: 0,
-            files_scanned: 0
-          }
+            files_scanned: 0,
+          },
         };
       }
     }
-    
+
     return {
       success: false,
       matches: [],
-      errors: [result.stderr || 'Unknown error running Semgrep'],
+      errors: [result.stderr || "Unknown error running Semgrep"],
       stats: {
         total_matches: 0,
         error_count: 0,
         warning_count: 0,
         info_count: 0,
-        files_scanned: 0
-      }
+        files_scanned: 0,
+      },
     };
   }
 
@@ -201,12 +214,12 @@ export class SemgrepService {
    * Run Semgrep analysis on a directory
    */
   async analyzeDirectory(dirPath: string): Promise<SemgrepResult> {
-    const args = [this.runnerPath, dirPath, '--json'];
-    
-    args.push('--rules-dir', this.rulesDir);
-    
+    const args = [this.runnerPath, dirPath, "--json"];
+
+    args.push("--rules-dir", this.rulesDir);
+
     const result = await this.runCommand([this.pythonPath, ...args]);
-    
+
     if (result.success && result.stdout) {
       try {
         return JSON.parse(result.stdout) as SemgrepResult;
@@ -220,23 +233,23 @@ export class SemgrepService {
             error_count: 0,
             warning_count: 0,
             info_count: 0,
-            files_scanned: 0
-          }
+            files_scanned: 0,
+          },
         };
       }
     }
-    
+
     return {
       success: false,
       matches: [],
-      errors: [result.stderr || 'Unknown error running Semgrep'],
+      errors: [result.stderr || "Unknown error running Semgrep"],
       stats: {
         total_matches: 0,
         error_count: 0,
         warning_count: 0,
         info_count: 0,
-        files_scanned: 0
-      }
+        files_scanned: 0,
+      },
     };
   }
 
@@ -244,12 +257,12 @@ export class SemgrepService {
    * Run Semgrep analysis on multiple targets
    */
   async analyze(targets: string[]): Promise<SemgrepResult> {
-    const args = [this.runnerPath, ...targets, '--json'];
-    
-    args.push('--rules-dir', this.rulesDir);
-    
+    const args = [this.runnerPath, ...targets, "--json"];
+
+    args.push("--rules-dir", this.rulesDir);
+
     const result = await this.runCommand([this.pythonPath, ...args]);
-    
+
     if (result.success && result.stdout) {
       try {
         return JSON.parse(result.stdout) as SemgrepResult;
@@ -263,23 +276,23 @@ export class SemgrepService {
             error_count: 0,
             warning_count: 0,
             info_count: 0,
-            files_scanned: 0
-          }
+            files_scanned: 0,
+          },
         };
       }
     }
-    
+
     return {
       success: false,
       matches: [],
-      errors: [result.stderr || 'Unknown error running Semgrep'],
+      errors: [result.stderr || "Unknown error running Semgrep"],
       stats: {
         total_matches: 0,
         error_count: 0,
         warning_count: 0,
         info_count: 0,
-        files_scanned: 0
-      }
+        files_scanned: 0,
+      },
     };
   }
 
@@ -289,7 +302,7 @@ export class SemgrepService {
   async getAvailableRules(): Promise<string[]> {
     try {
       const files = await promisify(fs.readdir)(this.rulesDir);
-      return files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+      return files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
     } catch {
       return [];
     }
@@ -300,77 +313,83 @@ export class SemgrepService {
    */
   formatResults(result: SemgrepResult): string {
     if (!result.success) {
-      return `Analysis failed:\n${result.errors.join('\n')}`;
+      return `Analysis failed:\n${result.errors.join("\n")}`;
     }
 
     const lines: string[] = [];
-    
+
     // Summary
-    lines.push('=== Semgrep Analysis Results ===');
+    lines.push("=== Semgrep Analysis Results ===");
     lines.push(`Total findings: ${result.stats.total_matches}`);
     lines.push(`  Errors: ${result.stats.error_count}`);
     lines.push(`  Warnings: ${result.stats.warning_count}`);
     lines.push(`  Info: ${result.stats.info_count}`);
     lines.push(`Files scanned: ${result.stats.files_scanned}`);
-    lines.push('');
+    lines.push("");
 
     // Detailed findings
     if (result.matches.length > 0) {
-      lines.push('=== Findings ===');
+      lines.push("=== Findings ===");
       for (const match of result.matches) {
         lines.push(`\n[${match.severity}] ${match.rule_id}`);
-        lines.push(`  File: ${match.path}:${match.start_line}-${match.end_line}`);
+        lines.push(
+          `  File: ${match.path}:${match.start_line}-${match.end_line}`
+        );
         lines.push(`  Message: ${match.message}`);
         if (match.code_snippet) {
           const snippet = match.code_snippet.substring(0, 200);
-          lines.push(`  Code: ${snippet}${match.code_snippet.length > 200 ? '...' : ''}`);
+          lines.push(
+            `  Code: ${snippet}${match.code_snippet.length > 200 ? "..." : ""}`
+          );
         }
         if (match.fix) {
           lines.push(`  Fix available: ${match.fix}`);
         }
       }
     } else {
-      lines.push('No issues found! ✓');
+      lines.push("No issues found! ✓");
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**
    * Helper method to run a command with timeout
    */
-  private runCommand(args: string[]): Promise<{ success: boolean; stdout: string; stderr: string }> {
+  private runCommand(
+    args: string[]
+  ): Promise<{ success: boolean; stdout: string; stderr: string }> {
     return new Promise((resolve) => {
       const child = spawn(args[0], args.slice(1), {
         timeout: this.timeout,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+        env: { ...process.env, PYTHONUNBUFFERED: "1" },
       });
 
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
 
-      child.stdout?.on('data', (data) => {
+      child.stdout?.on("data", (data) => {
         stdout += data.toString();
       });
 
-      child.stderr?.on('data', (data) => {
+      child.stderr?.on("data", (data) => {
         stderr += data.toString();
       });
 
-      child.on('error', (error) => {
+      child.on("error", (error) => {
         resolve({
           success: false,
           stdout,
-          stderr: stderr || error.message
+          stderr: stderr || error.message,
         });
       });
 
-      child.on('close', (code) => {
+      child.on("close", (code) => {
         // Exit code 0 = success, 1 = findings exist (still success), other = error
         resolve({
           success: code === 0 || code === 1,
           stdout,
-          stderr
+          stderr,
         });
       });
     });
@@ -380,7 +399,9 @@ export class SemgrepService {
 /**
  * Factory function to create a Semgrep service instance
  */
-export function createSemgrepService(config?: SemgrepServiceConfig): SemgrepService {
+export function createSemgrepService(
+  config?: SemgrepServiceConfig
+): SemgrepService {
   return new SemgrepService(config);
 }
 
@@ -389,16 +410,16 @@ export function createSemgrepService(config?: SemgrepServiceConfig): SemgrepServ
  * This should be called during installation or first run
  */
 export async function setupBundledEnvironment(): Promise<boolean> {
-  const packageRoot = path.resolve(__dirname, '..', '..');
-  const setupScript = path.join(packageRoot, 'python', 'setup.py');
-  
+  const packageRoot = path.resolve(__dirname, "..", "..");
+  const setupScript = path.join(packageRoot, "python", "setup.py");
+
   return new Promise((resolve) => {
-    const child = spawn('python3', [setupScript, '--all'], {
+    const child = spawn("python3", [setupScript, "--all"], {
       cwd: packageRoot,
-      stdio: 'inherit'
+      stdio: "inherit",
     });
 
-    child.on('error', () => resolve(false));
-    child.on('close', (code) => resolve(code === 0));
+    child.on("error", () => resolve(false));
+    child.on("close", (code) => resolve(code === 0));
   });
 }

@@ -1,0 +1,13 @@
+rules:
+  - id: gci82-csharp-variable-can-be-made-constant
+    languages:
+      - csharp
+    severity: INFO
+    message: "Variable can be made constant. Declare variables as const when their value is known at compile time and never reassigned."
+    patterns:
+      - pattern: $TYPE $VAR = $LITERAL;
+      - pattern-not-inside: |
+          $VAR = ...;
+      - metavariable-regex:
+          metavariable: $LITERAL
+          regex: "(^\\d+$|^\\d+\\.\\d+$|^true$|^false$|\".*\")"

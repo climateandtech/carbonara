@@ -1,0 +1,9 @@
+rules:
+  - id: gci32-java-initialize-builder-buffer-with-the-appropriate-size
+    languages:
+      - java
+    severity: INFO
+    message: "Initialize StringBuilder/StringBuffer with an appropriate size to avoid resizing overhead."
+    patterns:
+      - pattern: new StringBuilder()
+      - pattern-not: new StringBuilder($CAPACITY)

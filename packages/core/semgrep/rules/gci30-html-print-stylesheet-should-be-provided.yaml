@@ -1,0 +1,10 @@
+rules:
+  - id: gci30-javascript-print-stylesheet-should-be-provided
+    languages:
+      - html
+    severity: INFO
+    message: "Provide a print stylesheet for better user experience and resource saving."
+    patterns:
+      - pattern: <link rel="stylesheet" ... />
+      - pattern-not: <link rel="stylesheet" media="print" ... />
+      - pattern-not: <style> @media print { ... } </style>

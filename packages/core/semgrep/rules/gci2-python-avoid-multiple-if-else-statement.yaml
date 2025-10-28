@@ -1,0 +1,14 @@
+rules:
+  - id: gci2-python-avoid-multiple-if-else-statement
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid multiple if-elif-else statement. Consider using a match-case statement or refactoring to reduce cyclomatic complexity."
+    patterns:
+      - pattern: |
+          if $COND1:
+            ...
+          elif $COND2:
+            ...
+          elif $COND3:
+            ...

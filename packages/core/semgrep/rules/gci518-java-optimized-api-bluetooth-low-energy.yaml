@@ -1,0 +1,9 @@
+rules:
+  - id: gci518-java-optimized-api-bluetooth-low-energy
+    languages:
+      - java
+    severity: INFO
+    message: "Use Bluetooth Low Energy API for optimized Bluetooth services. Import from android.bluetooth.le instead of android.bluetooth."
+    patterns:
+      - pattern: import android.bluetooth.*;
+      - pattern-not: import android.bluetooth.le.*;

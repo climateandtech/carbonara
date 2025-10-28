@@ -1,0 +1,8 @@
+rules:
+  - id: gci105-python-python-string-concatenation-use-join-instead-or-f-strings-instead-of-plus-equals
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid string concatenation with += in loops. Use str.join() or f-strings for better performance and lower environmental impact."
+    patterns:
+      - pattern: $VAR += $EXPR + ...
