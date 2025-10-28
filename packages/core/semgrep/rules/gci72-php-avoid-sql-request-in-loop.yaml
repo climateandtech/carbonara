@@ -5,8 +5,31 @@ rules:
     severity: INFO
     message: "Avoid executing SQL queries in loops. Use a single bulk query or batch updates instead."
     patterns:
-      - pattern-inside: |
-          for (...) {
-              ...
-          }
-      - pattern: mysql_query(...);
+      - pattern-either:
+          - pattern-inside: |
+              for ($INIT; $COND; $UPDATE) {
+                  ...
+              }
+          - pattern-inside: |
+              foreach ($VAR as $ITEM) {
+                  ...
+              }
+          - pattern-inside: |
+              foreach ($VAR as $KEY => $VALUE) {
+                  ...
+              }
+          - pattern-inside: |
+              while ($COND) {
+                  ...
+              }
+          - pattern-inside: |
+              do {
+                  ...
+              } while ($COND);
+      - pattern-either:
+          - pattern: mysql_query(...);
+          - pattern: mysqli_query(...);
+          - pattern: $OBJ->query(...);
+          - pattern: $OBJ->prepare(...);
+          - pattern: $OBJ->exec(...);
+          - pattern: $OBJ->execute(...);

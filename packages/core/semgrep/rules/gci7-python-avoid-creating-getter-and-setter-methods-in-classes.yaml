@@ -9,9 +9,13 @@ rules:
           class $CLASS:
               ...
       - pattern-either:
-          - pattern: |
-              def get_$ATTR(...):
-                  ...
-          - pattern: |
-              def set_$ATTR(...):
-                  ...
+          - patterns:
+              - pattern-regex: 'def\s+get_\w+'
+              - pattern: |
+                  def $FUNC(self):
+                      ...
+          - patterns:
+              - pattern-regex: 'def\s+set_\w+'
+              - pattern: |
+                  def $FUNC(self, $ARG):
+                      ...

@@ -1,13 +1,13 @@
 using System;
 
 class GCHandler {
-    // ruleid: gci86-csharp-gc-collect-should-not-be-called
     public void nonCompliantMethod1() {
+    // ruleid: gci86-csharp-gc-collect-should-not-be-called
         GC.Collect(); // Noncompliant, same as GC.Collect(generation: GC.MaxGeneration)
     }
 
-    // ruleid: gci86-csharp-gc-collect-should-not-be-called
     public void nonCompliantMethod2() {
+    // ruleid: gci86-csharp-gc-collect-should-not-be-called
         GC.Collect(generation: 2); // Noncompliant
     }
 

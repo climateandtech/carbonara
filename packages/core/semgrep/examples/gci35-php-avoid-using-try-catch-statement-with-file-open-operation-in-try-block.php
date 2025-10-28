@@ -1,9 +1,9 @@
 <?php
 // == Non compliant Code Example
 
-// ruleid: gci35-php-avoid-using-try-catch-statement-with-file-open-operation-in-try-block
 try
 {
+// ruleid: gci35-php-avoid-using-try-catch-statement-with-file-open-operation-in-try-block
   $picture = PDF_open_image_file($PDF, "jpeg", $imgFile, "", 0);
 }
 catch(Exception $ex)
@@ -12,8 +12,8 @@ catch(Exception $ex)
   throw new Exception($msg);
 }
 
-// ruleid: gci35-php-avoid-using-try-catch-statement-with-file-open-operation-in-try-block
 try {
+// ruleid: gci35-php-avoid-using-try-catch-statement-with-file-open-operation-in-try-block
     $handle = fopen("file.txt", "r");
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();

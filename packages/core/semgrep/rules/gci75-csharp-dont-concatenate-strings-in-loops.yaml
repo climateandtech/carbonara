@@ -5,11 +5,18 @@ rules:
     severity: INFO
     message: "Avoid concatenating strings in loops. Use StringBuilder for better performance and memory efficiency."
     patterns:
-      - pattern-inside: |
-          for (...) {
-              ...
-          }
-      - pattern: $VAR += $EXPR;
-      - metavariable-pattern:
-          metavariable: $VAR
-          pattern: string $VAR = ...;
+      - pattern-either:
+          - pattern-inside: |
+              for (...; ...; ...)
+                ...
+          - pattern-inside: |
+              foreach (... in ...)
+                ...
+          - pattern-inside: |
+              while (...)
+                ...
+          - pattern-inside: |
+              do
+                ...
+              while (...);
+      - pattern: $VAR += ...;

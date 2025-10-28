@@ -7,11 +7,11 @@ function foo() {
     $dbname = "test";
     $this_Query = "SELECT * FROM users";
 
-    // ruleid: gci72-php-avoid-sql-request-in-loop
     for ($i = 0; $i < 20; ++$i) {
         $query = "SELECT name FROM users where id = " . $i;
         $connection = mysql_connect($dbhost, $dbuser, $dbpass) or die("Unable to Connect to '$dbhost'");
             mysql_select_db($dbname) or die("Could not open the db '$dbname'");
+    // ruleid: gci72-php-avoid-sql-request-in-loop
         $result = mysql_query($this_Query); // Noncompliant
 
         // iterate through the result

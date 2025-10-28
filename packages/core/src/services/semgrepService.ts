@@ -11,8 +11,6 @@ import { fileURLToPath } from "url";
 
 const fsAccess = promisify(fs.access);
 
-const fsAccess = promisify(fs.access);
-
 // ESM-compliant __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,7 +85,8 @@ export class SemgrepService {
     // Resolve paths relative to the core package root
     const packageRoot = path.resolve(__dirname, "..", "..");
     this.runnerPath = path.join(packageRoot, "python", "semgrep_runner.py");
-    this.rulesDir = config.rulesDir || path.join(packageRoot, "semgrep");
+    this.rulesDir =
+      config.rulesDir || path.join(packageRoot, "semgrep", "rules");
 
     // If using bundled Python, update the path
     if (this.useBundledPython) {

@@ -8,7 +8,7 @@ rules:
       - pattern-inside: |
           try {
               ...
-          } catch (...) {
+          } catch ($TYPE $VAR) {
               ...
           }
       - pattern-either:
