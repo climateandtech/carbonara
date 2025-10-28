@@ -25,8 +25,8 @@ carbonara.db
 ../../../**
 
 # Semgrep examples
-dist/node_modules/@carbonara/core/semgrep-rules/examples/*
-dist/node_modules/@carbonara/core/semgrep-rules/README.md
+dist/node_modules/@carbonara/core/semgrep/examples
+dist/node_modules/@carbonara/core/semgrep/README.md
 
 # Test files
 test/
@@ -58,3 +58,5 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+**/.claude/*
