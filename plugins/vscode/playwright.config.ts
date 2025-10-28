@@ -14,7 +14,7 @@ export default defineConfig({
   workers: 1, // Only one worker to avoid VSCode instance conflicts
   reporter: [
     ['list'],
-    ['html', { outputFolder: './src/test/e2e/playwright-report' }]
+    ['html', { outputFolder: './src/test/e2e/playwright-report', open: 'never' }]
   ],
   use: {
     actionTimeout: 20 * 1000,

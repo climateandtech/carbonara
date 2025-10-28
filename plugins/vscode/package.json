@@ -26,7 +26,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -115,6 +115,15 @@
         "command": "carbonara.analyzeTool",
         "title": "Analyze with Tool",
         "icon": "$(play)"
+      },
+      {
+        "command": "carbonara.runSemgrep",
+        "title": "Run Semgrep on Current File",
+        "icon": "$(search)"
+      },
+      {
+        "command": "carbonara.clearSemgrepResults",
+        "title": "Clear Semgrep Results"
       }
     ],
     "viewsContainers": {
@@ -130,15 +139,18 @@
       "carbonara": [
         {
           "id": "carbonara.assessmentTree",
-          "name": "CO2 Assessment"
+          "name": "CO2 Assessment",
+          "icon": "$(checklist)"
         },
         {
           "id": "carbonara.dataTree",
-          "name": "Data & Results"
+          "name": "Data & Results",
+          "icon": "$(database)"
         },
         {
           "id": "carbonara.toolsTree",
           "name": "Analysis Tools",
+          "icon": "$(tools)",
           "visibility": "visible"
         }
       ]
@@ -192,6 +204,19 @@
           "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
           "group": "inline"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "carbonara.runSemgrep",
+          "group": "carbonara",
+          "when": "editorTextFocus"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "carbonara.runSemgrep",
+          "when": "editorIsOpen"
+        }
       ]
     },
     "configuration": {
@@ -241,14 +266,15 @@
     ]
   },
   "scripts": {
-    "build": "tsc -p ./ && npm run copy-deps",
-    "copy-deps": "mkdir -p out/node_modules/@carbonara/core out/node_modules/sql.js && cp -r ../../packages/core/dist out/node_modules/@carbonara/core/ && cp ../../packages/core/package.json out/node_modules/@carbonara/core/ && cp -r ../../node_modules/sql.js/dist out/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json out/node_modules/sql.js/",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p ./ && npm run copy-deps",
+    "copy-deps": "mkdir -p dist/node_modules/@carbonara/core dist/node_modules/sql.js dist/registry && cp -r ../../packages/core/dist dist/node_modules/@carbonara/core/ && cp ../../packages/core/package.json dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/python dist/node_modules/@carbonara/core/ && cp -r ../../packages/core/semgrep-rules dist/node_modules/@carbonara/core/ && cp -r ../../node_modules/sql.js/dist dist/node_modules/sql.js/ && cp ../../node_modules/sql.js/package.json dist/node_modules/sql.js/ && cp ../../packages/cli/dist/registry/tools.json dist/registry/tools.json",
     "watch": "tsc -watch -p ./",
-    "package": "npm run build && vsce package --no-dependencies",
+    "package": "npm run build && vsce package --no-dependencies && vsce ls",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",
-    "test:local": "node ./out/test/runTest.js",
+    "test:local": "node ./dist/test/runTest.js",
     "test:ci-check": "if [ \"$CI\" = \"true\" ]; then echo 'Skipping VSCode tests in CI environment'; exit 0; else npm run test:local; fi",
     "test:ui": "playwright test e2e --workers=1",
     "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
@@ -257,10 +283,12 @@
     "test:ui:empty-workspace": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Empty workspace\" --workers=1",
     "test:ui:existing-project": "playwright test e2e/workspace-scenarios.spec.ts --grep \"existing project\" --workers=1",
     "test:ui:multiple-projects": "playwright test e2e/workspace-scenarios.spec.ts --grep \"Multiple projects\" --workers=1",
+    "test:ui:semgrep": "playwright test e2e/semgrep.test.ts --workers=1",
     "test:ui:headed": "playwright test e2e --headed --workers=1",
     "playwright:install": "playwright install"
   },
   "dependencies": {
+    "@carbonara/cli": "file:../../packages/cli",
     "@carbonara/core": "file:../../packages/core"
   },
   "devDependencies": {
@@ -269,11 +297,11 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "22.9.0",
     "@types/vscode": "^1.104.0",
-    "@vscode/test-electron": "^2.4.1",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
     "glob": "^11.0.3",
     "mocha": "^10.2.0",
     "playwright": "^1.40.0",
-    "typescript": "^4.9.4"
+    "typescript": "^5.9.2"
   }
 }
