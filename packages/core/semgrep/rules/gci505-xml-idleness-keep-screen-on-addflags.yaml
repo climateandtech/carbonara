@@ -1,0 +1,8 @@
+rules:
+  - id: gci505-xml-idleness-keep-screen-on-addflags
+    languages:
+      - xml
+    severity: INFO
+    message: "Avoid keeping the screen on unnecessarily. This drains battery. Set android:keepScreenOn to 'false' or remove it if not absolutely needed."
+    patterns:
+      - pattern: <$TAG ... android:keepScreenOn="true" .../>

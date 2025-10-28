@@ -1,0 +1,8 @@
+rules:
+  - id: gci522-java-sobriety-brightness-override
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid overriding screen brightness. Let the system manage brightness for better battery life."
+    patterns:
+      - pattern: $WINDOW.getAttributes().screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL;

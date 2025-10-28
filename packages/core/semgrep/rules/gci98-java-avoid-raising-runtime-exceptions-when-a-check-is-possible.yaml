@@ -1,0 +1,12 @@
+rules:
+  - id: gci98-java-avoid-raising-runtime-exceptions-when-a-check-is-possible
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid raising Runtime Exceptions when a check is possible. Use conditional checks to prevent common runtime exceptions."
+    patterns:
+      - pattern-either:
+          - pattern: $OBJ.toString();
+          - pattern: $STR.substring($INDEX);
+          - pattern: $LIST.get($INDEX);
+          - pattern: $NUM / $DIVISOR;

@@ -168,7 +168,7 @@ fi
             
             # Test running our runner script
             runner_path = self.base_dir / "python" / "semgrep_runner.py"
-            test_file = self.base_dir / "semgrep-rules" / "example-code.js"
+            test_file = self.base_dir / "semgrep" / "example-code.js"
             
             if test_file.exists():
                 result = subprocess.run([

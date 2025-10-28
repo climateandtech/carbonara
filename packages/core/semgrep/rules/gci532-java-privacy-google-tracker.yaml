@@ -1,0 +1,10 @@
+rules:
+  - id: gci532-java-privacy-google-tracker
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid using Google Analytics or Firebase Analytics. Consider privacy implications and alternative tracking solutions."
+    patterns:
+      - pattern-either:
+          - pattern: import com.google.android.gms.analytics.Tracker;
+          - pattern: import com.google.firebase.analytics;

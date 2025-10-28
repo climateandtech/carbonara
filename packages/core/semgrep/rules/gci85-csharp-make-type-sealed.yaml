@@ -1,0 +1,11 @@
+rules:
+  - id: gci85-csharp-make-type-sealed
+    languages:
+      - csharp
+    severity: INFO
+    message: "Make type sealed. Non-sealed types prevent JIT compiler optimizations. Seal types explicitly if not intended for inheritance."
+    patterns:
+      - pattern: public class $CLASS_NAME { ... }
+      - pattern-not: public sealed class $CLASS_NAME { ... }
+      - pattern-not: public class $CLASS_NAME : $BASE_CLASS { ... } # Exclude if inherited
+      - pattern-not: public class $CLASS_NAME { public virtual $METHOD(...); ... } # Exclude if has virtual method

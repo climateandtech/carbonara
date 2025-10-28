@@ -1,0 +1,11 @@
+rules:
+  - id: gci81-csharp-specify-struct-layout
+    languages:
+      - csharp
+    severity: INFO
+    message: "Specify struct layout explicitly. Use [StructLayout(LayoutKind.Auto)] for better memory optimization and performance."
+    patterns:
+      - pattern: public struct $STRUCT_NAME { ... }
+      - pattern-not-inside: |
+          [StructLayout(...)]
+          public struct $STRUCT_NAME { ... }

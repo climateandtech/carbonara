@@ -1,0 +1,12 @@
+rules:
+  - id: gci79-java-free-resources
+    languages:
+      - java
+    severity: INFO
+    message: "Use try-with-resources for AutoCloseable objects to ensure resources are properly freed."
+    patterns:
+      - pattern: new FileInputStream(...);
+      - pattern-not-inside: |
+          try (FileInputStream $INPUT = new FileInputStream(...)) {
+              ...
+          }

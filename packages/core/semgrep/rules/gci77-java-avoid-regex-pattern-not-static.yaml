@@ -1,0 +1,22 @@
+rules:
+  - id: gci77-java-avoid-regex-pattern-not-static
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid using Pattern.compile() in a non-static context. Compile patterns once as static final fields."
+    patterns:
+      - pattern-inside: |
+          class $CLASS {
+              public $RETURN_TYPE $METHOD(...) {
+                  ...
+              }
+          }
+      - pattern: Pattern.compile(...);
+      - pattern-not-inside: |
+          private static final Pattern $PATTERN = Pattern.compile(...);
+      - pattern-not-inside: |
+          private final Pattern $PATTERN = Pattern.compile(...);
+      - pattern-not-inside: |
+          public $CLASS() {
+              $PATTERN = Pattern.compile(...);
+          }

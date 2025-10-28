@@ -1,0 +1,15 @@
+rules:
+  - id: gci28-java-optimize-read-file-exceptions
+    languages:
+      - java
+    severity: INFO
+    message: "Optimize read file exceptions. Handle FileNotFoundException properly or propagate it."
+    patterns:
+      - pattern: |
+          $STREAM_TYPE $ANY_VAR = null;
+          try {
+              $ANY_VAR = new FileInputStream($FILENAME);
+          } catch (FileNotFoundException $E) {
+              $LOGGER.log(...);
+          }
+          $ANY_VAR.read(...);

@@ -1,0 +1,12 @@
+rules:
+  - id: gci72-php-avoid-sql-request-in-loop
+    languages:
+      - php
+    severity: INFO
+    message: "Avoid executing SQL queries in loops. Use a single bulk query or batch updates instead."
+    patterns:
+      - pattern-inside: |
+          for (...) {
+              ...
+          }
+      - pattern: mysql_query(...);

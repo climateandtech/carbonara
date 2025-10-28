@@ -1,0 +1,9 @@
+rules:
+  - id: gci96-python-data-ai-pandas-avoid-reading-unnecessary-columns-in-csv-files
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid reading unnecessary columns in CSV files. Use the 'usecols' parameter in pandas.read_csv() to select only required columns."
+    patterns:
+      - pattern: pd.read_csv($FILE_PATH)
+      - pattern-not: pd.read_csv($FILE_PATH, usecols=$COLUMNS)

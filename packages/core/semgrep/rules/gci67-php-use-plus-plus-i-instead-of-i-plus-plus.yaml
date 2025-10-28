@@ -1,0 +1,8 @@
+rules:
+  - id: gci67-php-use-plus-plus-i-instead-of-i-plus-plus
+    languages:
+      - php
+    severity: INFO
+    message: "Use prefix increment (++$VAR) instead of postfix increment ($VAR++) for better performance."
+    patterns:
+      - pattern: $VAR++;

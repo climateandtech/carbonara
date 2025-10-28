@@ -1,0 +1,8 @@
+rules:
+  - id: gci69-java-do-not-call-a-function-when-declaring-a-for-type-loop
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid calling loop-invariant functions in loop conditions. Cache the result before the loop."
+    patterns:
+      - pattern: $CALL(...);

@@ -1,0 +1,14 @@
+rules:
+  - id: gci3-java-avoid-getting-the-size-of-the-collection-in-the-loop
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid getting the size of the collection in the loop. Store the size in a variable before the loop."
+    patterns:
+      - pattern: |
+          for (...; ... < $COLL.$SIZE_METHOD(); ...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $SIZE_METHOD
+          regex: "(size|length)"

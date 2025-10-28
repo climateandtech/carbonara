@@ -56,12 +56,12 @@ class SemgrepRunner:
         
         Args:
             rules_dir: Path to directory containing Semgrep rules.
-                      Defaults to ../semgrep-rules relative to this script.
+                      Defaults to ../semgrep relative to this script.
         """
         if rules_dir is None:
-            # Default to semgrep-rules directory in core package
+            # Default to semgrep directory in core package
             script_dir = Path(__file__).parent
-            self.rules_dir = script_dir.parent / "semgrep-rules"
+            self.rules_dir = script_dir.parent / "semgrep"
         else:
             self.rules_dir = Path(rules_dir)
             

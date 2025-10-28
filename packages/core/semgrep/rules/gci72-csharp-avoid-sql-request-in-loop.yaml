@@ -1,0 +1,12 @@
+rules:
+  - id: gci72-csharp-avoid-sql-request-in-loop
+    languages:
+      - csharp
+    severity: INFO
+    message: "Avoid executing SQL queries in loops. Use a single bulk query instead."
+    patterns:
+      - pattern-inside: |
+          for (...; ...; ...) {
+              ...
+          }
+      - pattern: $CMD.ExecuteReader();

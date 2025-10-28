@@ -1,0 +1,8 @@
+rules:
+  - id: gci99-python-data-avoid-csv-format-and-prefer-a-compressed-format-like-parquet
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid CSV format for data storage. Prefer compressed formats like Parquet for better performance and reduced environmental impact."
+    patterns:
+      - pattern: pd.read_csv(...)

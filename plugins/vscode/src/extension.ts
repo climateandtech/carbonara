@@ -19,6 +19,9 @@ let toolsTreeProvider: ToolsTreeProvider;
 
 let currentProjectPath: string | null = null;
 
+// Diagnostics collection for Semgrep results
+let semgrepDiagnostics: vscode.DiagnosticCollection;
+
 export function activate(context: vscode.ExtensionContext) {
   console.log("Carbonara extension is now active!");
 

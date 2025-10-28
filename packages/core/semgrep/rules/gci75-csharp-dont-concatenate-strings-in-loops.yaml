@@ -1,0 +1,15 @@
+rules:
+  - id: gci75-csharp-dont-concatenate-strings-in-loops
+    languages:
+      - csharp
+    severity: INFO
+    message: "Avoid concatenating strings in loops. Use StringBuilder for better performance and memory efficiency."
+    patterns:
+      - pattern-inside: |
+          for (...) {
+              ...
+          }
+      - pattern: $VAR += $EXPR;
+      - metavariable-pattern:
+          metavariable: $VAR
+          pattern: string $VAR = ...;
