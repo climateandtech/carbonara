@@ -10,6 +10,7 @@ import {
   initializeSemgrep,
   runSemgrepOnFile,
   clearSemgrepResults,
+  setOnDatabaseUpdateCallback,
 } from "./semgrep-integration";
 
 let carbonaraStatusBar: vscode.StatusBarItem;
@@ -61,6 +62,11 @@ export async function activate(context: vscode.ExtensionContext) {
     toolsTreeProvider
   );
   console.log("✅ All tree providers registered");
+
+  // Set up Semgrep to refresh Data & Results when database updates
+  setOnDatabaseUpdateCallback(() => {
+    dataTreeProvider.refresh();
+  });
 
   // Register commands
   const commands = [

@@ -10,6 +10,7 @@ import {
   type DataDetail,
 } from "@carbonara/core";
 import { UI_TEXT } from "./constants/ui-text";
+import { getSemgrepDataService } from "./semgrep-integration";
 
 export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<
@@ -301,9 +302,14 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       const items: DataItem[] = [];
 
-      // Load Semgrep results
+      // Load Semgrep results using the shared Semgrep DataService
       try {
-        const semgrepResults = await this.coreServices!.dataService.getAllSemgrepResults();
+        const semgrepDataService = getSemgrepDataService();
+        if (!semgrepDataService) {
+          console.log("Semgrep DataService not initialized yet");
+          // Continue without Semgrep results
+        } else {
+          const semgrepResults = await semgrepDataService.getAllSemgrepResults();
 
         if (semgrepResults.length > 0) {
           // Group by file
@@ -354,6 +360,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
               )
             );
           });
+        }
         }
       } catch (error) {
         console.error("Error loading Semgrep results:", error);

@@ -16,6 +16,23 @@ const execAsync = promisify(exec);
 // Database service instance for persisting Semgrep results
 let dataService: DataService | null = null;
 
+// Callback to refresh the Data & Results tree when Semgrep database updates
+let onDatabaseUpdateCallback: (() => void) | null = null;
+
+/**
+ * Get the shared DataService instance used by Semgrep
+ */
+export function getSemgrepDataService(): DataService | null {
+  return dataService;
+}
+
+/**
+ * Set a callback to be invoked when Semgrep database is updated
+ */
+export function setOnDatabaseUpdateCallback(callback: () => void): void {
+  onDatabaseUpdateCallback = callback;
+}
+
 // File size threshold for interactive linting (1MB)
 // Files larger than this will only be linted on save
 const MAX_FILE_SIZE_FOR_INTERACTIVE_LINT = 1024 * 1024; // 1MB in bytes
@@ -456,6 +473,11 @@ async function runSemgrepAnalysis(
           console.log(
             `Updated database: No Semgrep findings for ${relativeFilePath} (all fixed!)`
           );
+        }
+
+        // Trigger Data & Results tree refresh
+        if (onDatabaseUpdateCallback) {
+          onDatabaseUpdateCallback();
         }
       } catch (error) {
         console.error("Failed to update Semgrep results in database:", error);
