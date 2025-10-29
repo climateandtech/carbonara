@@ -143,6 +143,11 @@
     "views": {
       "carbonara": [
         {
+          "id": "carbonara.codeScanTree",
+          "name": "Code Scan",
+          "icon": "$(search)"
+        },
+        {
           "id": "carbonara.assessmentTree",
           "name": "CO2 Assessment",
           "icon": "$(checklist)"
@@ -162,6 +167,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "carbonara.refreshData",
+          "when": "view == carbonara.codeScanTree",
+          "group": "navigation"
+        },
         {
           "command": "carbonara.completeAssessment",
           "when": "view == carbonara.assessmentTree",
@@ -212,6 +222,11 @@
         {
           "command": "carbonara.deleteSemgrepResultsForFile",
           "when": "view == carbonara.dataTree && viewItem == carbonara-semgrep-file",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.deleteSemgrepResultsForFile",
+          "when": "view == carbonara.codeScanTree && viewItem == carbonara-semgrep-file",
           "group": "inline"
         }
       ],

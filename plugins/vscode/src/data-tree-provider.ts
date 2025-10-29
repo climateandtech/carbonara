@@ -10,7 +10,6 @@ import {
   type DataDetail,
 } from "@carbonara/core";
 import { UI_TEXT } from "./constants/ui-text";
-import { getSemgrepDataService } from "./semgrep-integration";
 
 export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<
@@ -302,71 +301,6 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       const items: DataItem[] = [];
 
-      // Load Semgrep results using the shared Semgrep DataService
-      try {
-        const semgrepDataService = getSemgrepDataService();
-        if (!semgrepDataService) {
-          console.log("Semgrep DataService not initialized yet");
-          // Continue without Semgrep results
-        } else {
-          const semgrepResults = await semgrepDataService.getAllSemgrepResults();
-
-        if (semgrepResults.length > 0) {
-          // Group by file
-          const resultsByFile = new Map<string, typeof semgrepResults>();
-          semgrepResults.forEach(result => {
-            if (!resultsByFile.has(result.file_path)) {
-              resultsByFile.set(result.file_path, []);
-            }
-            resultsByFile.get(result.file_path)!.push(result);
-          });
-
-          // Add Semgrep group
-          items.push(
-            new DataItem(
-              `🔍 Semgrep Results (${semgrepResults.length})`,
-              `Found in ${resultsByFile.size} files`,
-              vscode.TreeItemCollapsibleState.Expanded,
-              "group",
-              "semgrep"
-            )
-          );
-
-          // Add file entries
-          resultsByFile.forEach((results, filePath) => {
-            const errorCount = results.filter(r => r.severity === 'ERROR').length;
-            const warningCount = results.filter(r => r.severity === 'WARNING').length;
-            const infoCount = results.filter(r => r.severity === 'INFO').length;
-
-            let severityBadge = '';
-            if (errorCount > 0) severityBadge = `🚨 ${errorCount} errors`;
-            else if (warningCount > 0) severityBadge = `⚠️ ${warningCount} warnings`;
-            else severityBadge = `ℹ️ ${infoCount} info`;
-
-            // Create absolute file path
-            const absolutePath = path.isAbsolute(filePath)
-              ? filePath
-              : path.join(projectPath, filePath);
-
-            const item = new DataItem(
-              filePath,
-              `${results.length} findings: ${severityBadge}`,
-              vscode.TreeItemCollapsibleState.None,
-              "entry",
-              "semgrep",
-              undefined,
-              absolutePath
-            );
-            // Override context value for Semgrep files to show delete option
-            item.contextValue = "carbonara-semgrep-file";
-            items.push(item);
-          });
-        }
-        }
-      } catch (error) {
-        console.error("Error loading Semgrep results:", error);
-      }
-
       // Load assessment data
       const assessmentData =
         await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
@@ -605,50 +539,6 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     }
   }
 
-  async deleteSemgrepResultsForFiles(items: DataItem[]): Promise<void> {
-    const semgrepDataService = getSemgrepDataService();
-    if (!semgrepDataService) {
-      vscode.window.showErrorMessage("Semgrep database service not available");
-      return;
-    }
-
-    // Extract file paths from selected items
-    const filePaths = items
-      .filter(item => item.toolName === "semgrep" && item.label)
-      .map(item => item.label);
-
-    if (filePaths.length === 0) {
-      vscode.window.showWarningMessage("No Semgrep file results selected");
-      return;
-    }
-
-    const fileList = filePaths.length === 1
-      ? filePaths[0]
-      : `${filePaths.length} files`;
-
-    const answer = await vscode.window.showWarningMessage(
-      `Delete Semgrep results for ${fileList}? This action cannot be undone.`,
-      "Delete",
-      "Cancel"
-    );
-
-    if (answer === "Delete") {
-      try {
-        for (const filePath of filePaths) {
-          await semgrepDataService.deleteSemgrepResultsByFile(filePath);
-        }
-        vscode.window.showInformationMessage(
-          `Deleted Semgrep results for ${fileList}`
-        );
-        // Refresh the tree
-        this.refresh();
-      } catch (error) {
-        vscode.window.showErrorMessage(
-          `Failed to delete Semgrep results: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    }
-  }
 }
 
 export class DataItem extends vscode.TreeItem {

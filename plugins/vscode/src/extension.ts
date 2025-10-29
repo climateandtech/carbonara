@@ -6,6 +6,7 @@ import { spawn } from "child_process";
 import { AssessmentTreeProvider } from "./assessment-tree-provider";
 import { DataTreeProvider } from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
+import { CodeScanTreeProvider } from "./code-scan-tree-provider";
 import {
   initializeSemgrep,
   runSemgrepOnFile,
@@ -17,6 +18,7 @@ let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
+let codeScanTreeProvider: CodeScanTreeProvider;
 
 let currentProjectPath: string | null = null;
 
@@ -44,11 +46,16 @@ export async function activate(context: vscode.ExtensionContext) {
   carbonaraStatusBar.show();
 
   // Create and register tree views
+  codeScanTreeProvider = new CodeScanTreeProvider();
   assessmentTreeProvider = new AssessmentTreeProvider();
   dataTreeProvider = new DataTreeProvider();
   console.log("🔧 Creating ToolsTreeProvider...");
   toolsTreeProvider = new ToolsTreeProvider();
   console.log("🔧 Registering tree data providers...");
+  vscode.window.registerTreeDataProvider(
+    "carbonara.codeScanTree",
+    codeScanTreeProvider
+  );
   vscode.window.registerTreeDataProvider(
     "carbonara.assessmentTree",
     assessmentTreeProvider
@@ -63,9 +70,9 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   console.log("✅ All tree providers registered");
 
-  // Set up Semgrep to refresh Data & Results when database updates
+  // Set up Semgrep to refresh Code Scan when database updates
   setOnDatabaseUpdateCallback(() => {
-    dataTreeProvider.refresh();
+    codeScanTreeProvider.refresh();
   });
 
   // Register commands
@@ -128,7 +135,8 @@ export async function activate(context: vscode.ExtensionContext) {
         // If multiple items selected, items will be an array
         // Otherwise, single item selection
         const selectedItems = items && items.length > 0 ? items : [item];
-        dataTreeProvider.deleteSemgrepResultsForFiles(selectedItems);
+        // Use Code Scan tree provider for deletion
+        codeScanTreeProvider.deleteSemgrepResultsForFiles(selectedItems);
       }
     ),
   ];
