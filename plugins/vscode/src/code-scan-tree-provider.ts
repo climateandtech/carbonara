@@ -52,13 +52,9 @@ export class CodeScanTreeProvider implements vscode.TreeDataProvider<CodeScanIte
       // If it's a file, return its individual findings
       if (element.type === "file" && element.results) {
         return element.results.map((result: any, index: number) => {
-          const severityIcon =
-            result.severity === 'ERROR' ? '🚨' :
-            result.severity === 'WARNING' ? '⚠️' : 'ℹ️';
-
           return new CodeScanItem(
-            `${severityIcon} ${result.rule_id}`,
-            `Line ${result.start_line}: ${result.severity}`,
+            result.rule_id,
+            `Line ${result.start_line}`,
             vscode.TreeItemCollapsibleState.None,
             "finding",
             element.filePath,
