@@ -348,17 +348,18 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
               ? filePath
               : path.join(projectPath, filePath);
 
-            items.push(
-              new DataItem(
-                filePath,
-                `${results.length} findings: ${severityBadge}`,
-                vscode.TreeItemCollapsibleState.None,
-                "entry",
-                "semgrep",
-                undefined,
-                absolutePath
-              )
+            const item = new DataItem(
+              filePath,
+              `${results.length} findings: ${severityBadge}`,
+              vscode.TreeItemCollapsibleState.None,
+              "entry",
+              "semgrep",
+              undefined,
+              absolutePath
             );
+            // Override context value for Semgrep files to show delete option
+            item.contextValue = "carbonara-semgrep-file";
+            items.push(item);
           });
         }
         }
@@ -601,6 +602,51 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     } catch (error) {
       console.error("Error getting project stats:", error);
       return { totalEntries: 0, toolCounts: {} };
+    }
+  }
+
+  async deleteSemgrepResultsForFiles(items: DataItem[]): Promise<void> {
+    const semgrepDataService = getSemgrepDataService();
+    if (!semgrepDataService) {
+      vscode.window.showErrorMessage("Semgrep database service not available");
+      return;
+    }
+
+    // Extract file paths from selected items
+    const filePaths = items
+      .filter(item => item.toolName === "semgrep" && item.label)
+      .map(item => item.label);
+
+    if (filePaths.length === 0) {
+      vscode.window.showWarningMessage("No Semgrep file results selected");
+      return;
+    }
+
+    const fileList = filePaths.length === 1
+      ? filePaths[0]
+      : `${filePaths.length} files`;
+
+    const answer = await vscode.window.showWarningMessage(
+      `Delete Semgrep results for ${fileList}? This action cannot be undone.`,
+      "Delete",
+      "Cancel"
+    );
+
+    if (answer === "Delete") {
+      try {
+        for (const filePath of filePaths) {
+          await semgrepDataService.deleteSemgrepResultsByFile(filePath);
+        }
+        vscode.window.showInformationMessage(
+          `Deleted Semgrep results for ${fileList}`
+        );
+        // Refresh the tree
+        this.refresh();
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to delete Semgrep results: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
   }
 }

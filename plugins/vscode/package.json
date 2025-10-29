@@ -124,6 +124,11 @@
       {
         "command": "carbonara.clearSemgrepResults",
         "title": "Clear Semgrep Results"
+      },
+      {
+        "command": "carbonara.deleteSemgrepResultsForFile",
+        "title": "Delete Semgrep Results for File",
+        "icon": "$(trash)"
       }
     ],
     "viewsContainers": {
@@ -202,6 +207,11 @@
         {
           "command": "carbonara.analyzeTool",
           "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.deleteSemgrepResultsForFile",
+          "when": "view == carbonara.dataTree && viewItem == carbonara-semgrep-file",
           "group": "inline"
         }
       ],
