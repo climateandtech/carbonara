@@ -122,6 +122,15 @@ export async function activate(context: vscode.ExtensionContext) {
       "carbonara.openSemgrepFile",
       openSemgrepFile
     ),
+    vscode.commands.registerCommand(
+      "carbonara.deleteSemgrepResultsForFile",
+      (item: any, items: any[]) => {
+        // If multiple items selected, items will be an array
+        // Otherwise, single item selection
+        const selectedItems = items && items.length > 0 ? items : [item];
+        dataTreeProvider.deleteSemgrepResultsForFiles(selectedItems);
+      }
+    ),
   ];
 
   context.subscriptions.push(carbonaraStatusBar, ...commands);
