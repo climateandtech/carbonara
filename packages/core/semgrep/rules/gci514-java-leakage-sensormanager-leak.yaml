@@ -2,8 +2,9 @@ rules:
   - id: gci514-java-leakage-sensormanager-leak
     languages:
       - java
-    severity: INFO
-    message: "Release SensorManager resources to avoid battery drain. Ensure every registerListener() call has a corresponding unregisterListener()."
+    severity: WARNING
+    message: Release SensorManager resources to avoid battery drain. Ensure every
+      registerListener() call has a corresponding unregisterListener().
     patterns:
       - pattern: $SENSOR_MANAGER.registerListener($LISTENER, $SENSOR, $DELAY);
       - pattern-not-inside: |

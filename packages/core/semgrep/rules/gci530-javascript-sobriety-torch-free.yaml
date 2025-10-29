@@ -3,7 +3,8 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Avoid using react-native-torch. The flashlight is energy-intensive and should be used sparingly."
+    severity: WARNING
+    message: Avoid using react-native-torch. The flashlight is energy-intensive and
+      should be used sparingly.
     patterns:
       - pattern: import Torch from 'react-native-torch';

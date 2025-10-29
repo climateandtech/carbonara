@@ -2,8 +2,9 @@ rules:
   - id: gci509-swift-idleness-rigid-alarm
     languages:
       - swift
-    severity: INFO
-    message: "Avoid rigid alarms. Set Timer.tolerance to allow the system to optimize power savings."
+    severity: WARNING
+    message: Avoid rigid alarms. Set Timer.tolerance to allow the system to optimize
+      power savings.
     patterns:
       - pattern: Timer.scheduledTimer(...)
       - pattern-not-inside: |

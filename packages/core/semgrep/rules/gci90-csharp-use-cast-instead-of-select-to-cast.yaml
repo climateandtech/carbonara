@@ -2,7 +2,8 @@ rules:
   - id: gci90-csharp-use-cast-instead-of-select-to-cast
     languages:
       - csharp
-    severity: INFO
-    message: "Use Cast<T>() instead of Select(x => (T)x) for casting operations for better performance."
+    severity: WARNING
+    message: Use Cast<T>() instead of Select(x => (T)x) for casting operations for
+      better performance.
     patterns:
       - pattern: $COLLECTION.Select($VAR => ($TYPE)$VAR);

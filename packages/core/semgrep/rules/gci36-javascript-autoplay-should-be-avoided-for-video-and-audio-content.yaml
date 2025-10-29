@@ -3,8 +3,9 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Autoplay should be avoided for video and audio content. Use 'preload=\"none\"' instead."
+    severity: WARNING
+    message: Autoplay should be avoided for video and audio content. Use
+      'preload="none"' instead.
     patterns:
       - pattern-either:
           - pattern: <video ... autoplay ... />

@@ -3,8 +3,9 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Avoid importing entire libraries. Import only the specific modules or functions you need."
+    severity: WARNING
+    message: Avoid importing entire libraries. Import only the specific modules or
+      functions you need.
     patterns:
       - pattern-either:
           - pattern: import $VAR from "lodash";

@@ -2,7 +2,9 @@ rules:
   - id: gci523-java-sobriety-thrifty-geolocation-mintime
     languages:
       - java
-    severity: INFO
-    message: "Avoid thrifty geolocation. Set minTime and minDistance to values greater than 0 in requestLocationUpdates to conserve battery life."
+    severity: WARNING
+    message: Avoid thrifty geolocation. Set minTime and minDistance to values
+      greater than 0 in requestLocationUpdates to conserve battery life.
     patterns:
-      - pattern: $LOCATION_MANAGER.requestLocationUpdates($PROVIDER, 0, $MIN_DISTANCE, $LISTENER);
+      - pattern: $LOCATION_MANAGER.requestLocationUpdates($PROVIDER, 0, $MIN_DISTANCE,
+          $LISTENER);

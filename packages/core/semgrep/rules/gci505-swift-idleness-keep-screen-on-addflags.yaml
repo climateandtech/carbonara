@@ -2,7 +2,8 @@ rules:
   - id: gci505-swift-idleness-keep-screen-on-addflags
     languages:
       - swift
-    severity: INFO
-    message: "Avoid keeping the screen on unnecessarily. This drains battery. Disable isIdleTimerDisabled if not absolutely needed."
+    severity: WARNING
+    message: Avoid keeping the screen on unnecessarily. This drains battery. Disable
+      isIdleTimerDisabled if not absolutely needed.
     patterns:
       - pattern: UIApplication.shared.isIdleTimerDisabled = true

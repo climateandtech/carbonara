@@ -2,8 +2,9 @@ rules:
   - id: gci515-swift-leakage-media-leak-mediarecorder
     languages:
       - swift
-    severity: INFO
-    message: "Release AVAudioRecorder resources to avoid battery drain. Ensure every record() call has a corresponding stop()."
+    severity: WARNING
+    message: Release AVAudioRecorder resources to avoid battery drain. Ensure every
+      record() call has a corresponding stop().
     patterns:
       - pattern: $AUDIO_RECORDER.record()
       - pattern-not-inside: |
