@@ -130,6 +130,10 @@ export async function activate(context: vscode.ExtensionContext) {
       openSemgrepFile
     ),
     vscode.commands.registerCommand(
+      "carbonara.openSemgrepFinding",
+      openSemgrepFinding
+    ),
+    vscode.commands.registerCommand(
       "carbonara.deleteSemgrepResultsForFile",
       (item: any, items: any[]) => {
         // If multiple items selected, items will be an array
@@ -751,6 +755,26 @@ async function openSemgrepFile(filePath: string) {
     const uri = vscode.Uri.file(filePath);
     const document = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(document);
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to open file: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+async function openSemgrepFinding(filePath: string, line: number, column: number) {
+  try {
+    const uri = vscode.Uri.file(filePath);
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document);
+
+    // Jump to the specific line and column
+    const position = new vscode.Position(line - 1, Math.max(0, column - 1));
+    editor.selection = new vscode.Selection(position, position);
+    editor.revealRange(
+      new vscode.Range(position, position),
+      vscode.TextEditorRevealType.InCenter
+    );
   } catch (error) {
     vscode.window.showErrorMessage(
       `Failed to open file: ${error instanceof Error ? error.message : String(error)}`

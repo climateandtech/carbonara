@@ -49,7 +49,26 @@ export class CodeScanTreeProvider implements vscode.TreeDataProvider<CodeScanIte
     }
 
     if (element) {
-      // Return children of a folder
+      // If it's a file, return its individual findings
+      if (element.type === "file" && element.results) {
+        return element.results.map((result: any, index: number) => {
+          const severityIcon =
+            result.severity === 'ERROR' ? '🚨' :
+            result.severity === 'WARNING' ? '⚠️' : 'ℹ️';
+
+          return new CodeScanItem(
+            `${severityIcon} ${result.rule_id}`,
+            `Line ${result.start_line}: ${result.severity}`,
+            vscode.TreeItemCollapsibleState.None,
+            "finding",
+            element.filePath,
+            undefined,
+            undefined,
+            result
+          );
+        });
+      }
+      // Otherwise return folder children
       return element.children || [];
     }
 
@@ -169,25 +188,18 @@ export class CodeScanTreeProvider implements vscode.TreeDataProvider<CodeScanIte
 
       if (node.results) {
         // This is a file
-        const errorCount = node.results.filter(r => r.severity === 'ERROR').length;
-        const warningCount = node.results.filter(r => r.severity === 'WARNING').length;
-        const infoCount = node.results.filter(r => r.severity === 'INFO').length;
-
-        let severityBadge = '';
-        if (errorCount > 0) severityBadge = `🚨 ${errorCount} errors`;
-        else if (warningCount > 0) severityBadge = `⚠️ ${warningCount} warnings`;
-        else severityBadge = `ℹ️ ${infoCount} info`;
-
         const absolutePath = path.isAbsolute(node.fullPath)
           ? node.fullPath
           : path.join(projectPath, node.fullPath);
 
         return new CodeScanItem(
           node.name,
-          `${node.results.length} findings: ${severityBadge}`,
-          vscode.TreeItemCollapsibleState.None,
+          `${node.results.length} findings`,
+          vscode.TreeItemCollapsibleState.Collapsed,
           "file",
-          absolutePath
+          absolutePath,
+          undefined,
+          node.results
         );
       } else {
         // This is a folder
@@ -289,9 +301,11 @@ export class CodeScanItem extends vscode.TreeItem {
     public readonly label: string,
     public readonly description: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly type: "folder" | "file" | "info" | "error",
+    public readonly type: "folder" | "file" | "finding" | "info" | "error",
     public readonly filePath?: string,
-    public readonly children?: CodeScanItem[]
+    public readonly children?: CodeScanItem[],
+    public readonly results?: any,
+    public readonly finding?: any
   ) {
     super(label, collapsibleState);
     this.tooltip = description;
@@ -305,6 +319,9 @@ export class CodeScanItem extends vscode.TreeItem {
       case "file":
         this.contextValue = "carbonara-semgrep-file";
         break;
+      case "finding":
+        this.contextValue = "carbonara-semgrep-finding";
+        break;
       default:
         this.contextValue = "carbonara-scan-item";
     }
@@ -316,6 +333,18 @@ export class CodeScanItem extends vscode.TreeItem {
         break;
       case "file":
         this.iconPath = new vscode.ThemeIcon("file");
+        break;
+      case "finding":
+        // Use different icons based on severity
+        if (finding) {
+          if (finding.severity === 'ERROR') {
+            this.iconPath = new vscode.ThemeIcon("error", new vscode.ThemeColor("errorForeground"));
+          } else if (finding.severity === 'WARNING') {
+            this.iconPath = new vscode.ThemeIcon("warning", new vscode.ThemeColor("editorWarning.foreground"));
+          } else {
+            this.iconPath = new vscode.ThemeIcon("info", new vscode.ThemeColor("editorInfo.foreground"));
+          }
+        }
         break;
       case "error":
         this.iconPath = new vscode.ThemeIcon("error");
@@ -331,6 +360,13 @@ export class CodeScanItem extends vscode.TreeItem {
         command: "carbonara.openSemgrepFile",
         title: "Open File",
         arguments: [this.filePath]
+      };
+    } else if (this.type === "finding" && this.filePath && this.finding) {
+      // Open file at specific line when clicking on a finding
+      this.command = {
+        command: "carbonara.openSemgrepFinding",
+        title: "Open Finding",
+        arguments: [this.filePath, this.finding.start_line, this.finding.start_column]
       };
     }
   }
