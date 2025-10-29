@@ -337,13 +337,20 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             else if (warningCount > 0) severityBadge = `⚠️ ${warningCount} warnings`;
             else severityBadge = `ℹ️ ${infoCount} info`;
 
+            // Create absolute file path
+            const absolutePath = path.isAbsolute(filePath)
+              ? filePath
+              : path.join(projectPath, filePath);
+
             items.push(
               new DataItem(
                 filePath,
                 `${results.length} findings: ${severityBadge}`,
                 vscode.TreeItemCollapsibleState.None,
                 "entry",
-                "semgrep"
+                "semgrep",
+                undefined,
+                absolutePath
               )
             );
           });
@@ -598,7 +605,8 @@ export class DataItem extends vscode.TreeItem {
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly type: "group" | "entry" | "detail" | "info" | "error",
     public readonly toolName?: string,
-    public readonly entryId?: number
+    public readonly entryId?: number,
+    public readonly filePath?: string
   ) {
     super(label, collapsibleState);
     this.tooltip = description;
@@ -636,6 +644,15 @@ export class DataItem extends vscode.TreeItem {
       case "info":
         this.iconPath = new vscode.ThemeIcon("info");
         break;
+    }
+
+    // Add command to open file when clicked (for Semgrep results)
+    if (this.toolName === "semgrep" && this.filePath && this.type === "entry") {
+      this.command = {
+        command: "carbonara.openSemgrepFile",
+        title: "Open File",
+        arguments: [this.filePath]
+      };
     }
   }
 }
