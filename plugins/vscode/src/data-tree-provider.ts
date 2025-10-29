@@ -299,11 +299,97 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         ];
       }
 
+      const items: DataItem[] = [];
+
+      // Load Semgrep results
+      try {
+        const semgrepResults = await this.coreServices!.dataService.getAllSemgrepResults();
+
+        if (semgrepResults.length > 0) {
+          // Group by file
+          const resultsByFile = new Map<string, typeof semgrepResults>();
+          semgrepResults.forEach(result => {
+            if (!resultsByFile.has(result.file_path)) {
+              resultsByFile.set(result.file_path, []);
+            }
+            resultsByFile.get(result.file_path)!.push(result);
+          });
+
+          // Add Semgrep group
+          items.push(
+            new DataItem(
+              `🔍 Semgrep Results (${semgrepResults.length})`,
+              `Found in ${resultsByFile.size} files`,
+              vscode.TreeItemCollapsibleState.Expanded,
+              "group",
+              "semgrep"
+            )
+          );
+
+          // Add file entries
+          resultsByFile.forEach((results, filePath) => {
+            const errorCount = results.filter(r => r.severity === 'ERROR').length;
+            const warningCount = results.filter(r => r.severity === 'WARNING').length;
+            const infoCount = results.filter(r => r.severity === 'INFO').length;
+
+            let severityBadge = '';
+            if (errorCount > 0) severityBadge = `🚨 ${errorCount} errors`;
+            else if (warningCount > 0) severityBadge = `⚠️ ${warningCount} warnings`;
+            else severityBadge = `ℹ️ ${infoCount} info`;
+
+            items.push(
+              new DataItem(
+                filePath,
+                `${results.length} findings: ${severityBadge}`,
+                vscode.TreeItemCollapsibleState.None,
+                "entry",
+                "semgrep"
+              )
+            );
+          });
+        }
+      } catch (error) {
+        console.error("Error loading Semgrep results:", error);
+      }
+
       // Load assessment data
       const assessmentData =
         await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
 
-      if (assessmentData.length === 0) {
+      if (assessmentData.length > 0) {
+        // Create grouped items for assessment data
+        const groups =
+          await this.coreServices!.vscodeProvider.createGroupedItems(projectPath);
+
+        groups.forEach((group, groupIndex) => {
+          // Add group header
+          items.push(
+            new DataItem(
+              group.displayName,
+              group.toolName,
+              vscode.TreeItemCollapsibleState.Expanded,
+              "group",
+              group.toolName
+            )
+          );
+
+          // Add entries
+          group.entries.forEach((entry) => {
+            items.push(
+              new DataItem(
+                entry.label,
+                entry.description,
+                vscode.TreeItemCollapsibleState.Collapsed,
+                "entry",
+                entry.toolName,
+                entry.id
+              )
+            );
+          });
+        });
+      }
+
+      if (items.length === 0) {
         return [
           new DataItem(
             UI_TEXT.DATA_TREE.NO_DATA,
@@ -313,38 +399,6 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
           ),
         ];
       }
-
-      // Create grouped items
-      const groups =
-        await this.coreServices!.vscodeProvider.createGroupedItems(projectPath);
-
-      const items: DataItem[] = [];
-      groups.forEach((group, groupIndex) => {
-        // Add group header
-        items.push(
-          new DataItem(
-            group.displayName,
-            group.toolName,
-            vscode.TreeItemCollapsibleState.Expanded,
-            "group",
-            group.toolName
-          )
-        );
-
-        // Add entries
-        group.entries.forEach((entry) => {
-          items.push(
-            new DataItem(
-              entry.label,
-              entry.description,
-              vscode.TreeItemCollapsibleState.Collapsed,
-              "entry",
-              entry.toolName,
-              entry.id
-            )
-          );
-        });
-      });
 
       return items;
     } catch (error) {
