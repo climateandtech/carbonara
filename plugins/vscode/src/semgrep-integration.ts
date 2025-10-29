@@ -433,8 +433,8 @@ async function runSemgrepAnalysis(
     // Apply diagnostics to the document
     applySemgrepDiagnostics(filePath, result.matches);
 
-    // Save results to database (automatically enabled in VSCode extension)
-    if (dataService && result.matches.length > 0) {
+    // Update database if this is a saved file analysis (not temp file)
+    if (dataService && !useTempFile) {
       try {
         // Convert file path to be relative to workspace if possible
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -443,12 +443,22 @@ async function runSemgrepAnalysis(
           relativeFilePath = vscode.workspace.asRelativePath(filePath, false);
         }
 
-        await dataService.storeSemgrepResults(result.matches, relativeFilePath);
-        console.log(
-          `Saved ${result.matches.length} Semgrep findings to database for ${relativeFilePath}`
-        );
+        // Delete old results for this file
+        await dataService.deleteSemgrepResultsByFile(relativeFilePath);
+
+        // Save new results
+        if (result.matches.length > 0) {
+          await dataService.storeSemgrepResults(result.matches, relativeFilePath);
+          console.log(
+            `Updated database: ${result.matches.length} Semgrep findings for ${relativeFilePath}`
+          );
+        } else {
+          console.log(
+            `Updated database: No Semgrep findings for ${relativeFilePath} (all fixed!)`
+          );
+        }
       } catch (error) {
-        console.error("Failed to save Semgrep results to database:", error);
+        console.error("Failed to update Semgrep results in database:", error);
       }
     }
 
@@ -576,19 +586,6 @@ async function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
     return;
   }
 
-  // Delete old Semgrep results for this file from the database
-  // since the code has changed and results are now stale
-  if (dataService) {
-    try {
-      await dataService.deleteSemgrepResultsByFile(filePath);
-      console.log(
-        `Deleted stale Semgrep results for ${path.basename(filePath)}`
-      );
-    } catch (error) {
-      console.error("Failed to delete stale Semgrep results:", error);
-    }
-  }
-
   // Find the editor for this document
   const editor = vscode.window.visibleTextEditors.find(
     (e) => e.document.uri.fsPath === filePath
@@ -598,6 +595,7 @@ async function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
     console.log(
       `Code changed in ${path.basename(filePath)}, triggering Semgrep re-analysis`
     );
+    // Re-run analysis with temp file (won't update database)
     runSemgrepOnFileChange(editor);
   }
 }
@@ -638,9 +636,12 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
     console.log(
       `Running automatic Semgrep analysis on ${path.basename(filePath)}`
     );
+    // Check if file has unsaved changes
+    const hasUnsavedChanges = editor.document.isDirty;
+
     await runSemgrepAnalysis(editor, {
       showUI: false,
-      useTempFile: true,
+      useTempFile: hasUnsavedChanges, // Use temp file only if there are unsaved changes
     });
   }, 500);
 }
@@ -658,26 +659,10 @@ async function runSemgrepOnFileSave(editor: vscode.TextEditor) {
     return;
   }
 
-  // Check file size - only analyze large files on save
-  try {
-    const stats = fs.statSync(filePath);
-    if (stats.size <= MAX_FILE_SIZE_FOR_INTERACTIVE_LINT) {
-      // Small files are handled by interactive linting
-      return;
-    }
-
-    console.log(
-      `File ${path.basename(filePath)} is large (${stats.size} bytes), running Semgrep on save`
-    );
-  } catch (error) {
-    console.error("Failed to check file size:", error);
-    return;
-  }
-
-  // Run analysis (file is already saved, so we can analyze it directly)
+  // Always run analysis on save to update database
   console.log(`Running Semgrep on save for ${path.basename(filePath)}`);
   await runSemgrepAnalysis(editor, {
     showUI: false,
-    useTempFile: false,
+    useTempFile: false, // Analyze saved file and update database
   });
 }
