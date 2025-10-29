@@ -239,14 +239,17 @@ function applySemgrepDiagnostics(
       Math.max(0, match.end_column - 1)
     );
 
-    // Map severity
+    // Map Semgrep severity to VSCode diagnostic severity
+    // ERROR (Critical) -> Warning (orange in most themes)
+    // WARNING (Major) -> Information (blue/green in most themes)
+    // INFO (Minor) -> Hint (subtle green in most themes)
     let severity: vscode.DiagnosticSeverity;
     if (match.severity === "ERROR") {
-      severity = vscode.DiagnosticSeverity.Error;
-    } else if (match.severity === "WARNING") {
       severity = vscode.DiagnosticSeverity.Warning;
-    } else {
+    } else if (match.severity === "WARNING") {
       severity = vscode.DiagnosticSeverity.Information;
+    } else {
+      severity = vscode.DiagnosticSeverity.Hint;
     }
 
     const diagnostic = new vscode.Diagnostic(range, match.message, severity);
