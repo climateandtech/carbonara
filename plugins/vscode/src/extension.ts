@@ -22,11 +22,11 @@ let currentProjectPath: string | null = null;
 // Diagnostics collection for Semgrep results
 let semgrepDiagnostics: vscode.DiagnosticCollection;
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   console.log("Carbonara extension is now active!");
 
-  // Initialize Semgrep integration
-  initializeSemgrep(context);
+  // Initialize Semgrep integration (now async)
+  await initializeSemgrep(context);
 
   // Create status bar item
   carbonaraStatusBar = vscode.window.createStatusBarItem(

@@ -6,11 +6,15 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import {
   createSemgrepService,
+  DataService,
   type SemgrepMatch,
   type SemgrepResult,
 } from "@carbonara/core";
 
 const execAsync = promisify(exec);
+
+// Database service instance for persisting Semgrep results
+let dataService: DataService | null = null;
 
 // File size threshold for interactive linting (1MB)
 // Files larger than this will only be linted on save
@@ -160,9 +164,37 @@ async function runSemgrepViaCLI(
 /**
  * Initialize the Semgrep integration
  */
-export function initializeSemgrep(
+export async function initializeSemgrep(
   context: vscode.ExtensionContext
-): vscode.DiagnosticCollection {
+): Promise<vscode.DiagnosticCollection> {
+  // Initialize database service for saving Semgrep results
+  try {
+    // Use workspace folder if available, otherwise use extension's global storage
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    let dbPath: string;
+
+    if (workspaceFolder) {
+      // Store in workspace root
+      dbPath = path.join(workspaceFolder.uri.fsPath, "carbonara.db");
+    } else {
+      // No workspace open, use extension's global storage
+      dbPath = path.join(context.globalStorageUri.fsPath, "carbonara.db");
+      // Ensure directory exists
+      if (!fs.existsSync(context.globalStorageUri.fsPath)) {
+        fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
+      }
+    }
+
+    dataService = new DataService({ dbPath });
+    await dataService.initialize();
+    console.log(`Database service initialized for Semgrep results at: ${dbPath}`);
+  } catch (error) {
+    console.error("Failed to initialize database service:", error);
+    vscode.window.showWarningMessage(
+      "Failed to initialize Semgrep database. Results will not be persisted."
+    );
+  }
+
   // Create diagnostics collection for Semgrep
   semgrepDiagnostics = vscode.languages.createDiagnosticCollection("semgrep");
   context.subscriptions.push(semgrepDiagnostics);
@@ -201,6 +233,16 @@ export function initializeSemgrep(
   if (vscode.window.activeTextEditor) {
     runSemgrepOnFileChange(vscode.window.activeTextEditor);
   }
+
+  // Clean up database connection when extension deactivates
+  context.subscriptions.push({
+    dispose: async () => {
+      if (dataService) {
+        await dataService.close();
+        console.log("Database service closed");
+      }
+    },
+  });
 
   return semgrepDiagnostics;
 }
@@ -391,6 +433,25 @@ async function runSemgrepAnalysis(
     // Apply diagnostics to the document
     applySemgrepDiagnostics(filePath, result.matches);
 
+    // Save results to database (automatically enabled in VSCode extension)
+    if (dataService && result.matches.length > 0) {
+      try {
+        // Convert file path to be relative to workspace if possible
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        let relativeFilePath = filePath;
+        if (workspaceFolder) {
+          relativeFilePath = vscode.workspace.asRelativePath(filePath, false);
+        }
+
+        await dataService.storeSemgrepResults(result.matches, relativeFilePath);
+        console.log(
+          `Saved ${result.matches.length} Semgrep findings to database for ${relativeFilePath}`
+        );
+      } catch (error) {
+        console.error("Failed to save Semgrep results to database:", error);
+      }
+    }
+
     // Display results
     if (outputChannel) {
       outputChannel.appendLine(
@@ -505,7 +566,7 @@ export function clearSemgrepResults() {
 /**
  * Handle document change events for incremental analysis
  */
-function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
+async function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
   const filePath = event.document.uri.fsPath;
 
   // Only analyze files with supported extensions
@@ -513,6 +574,19 @@ function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
 
   if (!SUPPORTED_SEMGREP_EXTENSIONS.includes(fileExtension)) {
     return;
+  }
+
+  // Delete old Semgrep results for this file from the database
+  // since the code has changed and results are now stale
+  if (dataService) {
+    try {
+      await dataService.deleteSemgrepResultsByFile(filePath);
+      console.log(
+        `Deleted stale Semgrep results for ${path.basename(filePath)}`
+      );
+    } catch (error) {
+      console.error("Failed to delete stale Semgrep results:", error);
+    }
   }
 
   // Find the editor for this document
