@@ -2,8 +2,9 @@ rules:
   - id: gci603-swift-animation-free
     languages:
       - swift
-    severity: INFO
-    message: "Avoid unnecessary animations. Animations consume power and should be used sparingly."
+    severity: WARNING
+    message: Avoid unnecessary animations. Animations consume power and should be
+      used sparingly.
     patterns:
       - pattern-either:
           - pattern: UIView.animate(...)

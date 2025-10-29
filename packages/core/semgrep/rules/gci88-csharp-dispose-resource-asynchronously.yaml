@@ -2,8 +2,9 @@ rules:
   - id: gci88-csharp-dispose-resource-asynchronously
     languages:
       - csharp
-    severity: INFO
-    message: "Dispose resources asynchronously. Use 'await using' for IAsyncDisposable resources in async methods."
+    severity: WARNING
+    message: Dispose resources asynchronously. Use 'await using' for
+      IAsyncDisposable resources in async methods.
     patterns:
       - pattern-inside: |
           public static async Task $METHOD(...) {

@@ -3,8 +3,9 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Avoid using CSS animations and transitions directly. They can impact performance and battery life."
+    severity: WARNING
+    message: Avoid using CSS animations and transitions directly. They can impact
+      performance and battery life.
     pattern-either:
       - pattern: |
           <$TAG style={{ $$$A, transition: $VAL, $$$B }} />

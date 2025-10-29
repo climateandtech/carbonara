@@ -3,8 +3,9 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Avoid thrifty geolocation. Request less accurate geolocation to conserve resources."
+    severity: WARNING
+    message: Avoid thrifty geolocation. Request less accurate geolocation to
+      conserve resources.
     patterns:
       - pattern-either:
           - pattern: |

@@ -2,7 +2,8 @@ rules:
   - id: gci533-swift-location-updates-pause-disabled
     languages:
       - swift
-    severity: INFO
-    message: "Avoid disabling location updates pause. Allow the system to pause location updates automatically to improve battery life."
+    severity: WARNING
+    message: Avoid disabling location updates pause. Allow the system to pause
+      location updates automatically to improve battery life.
     patterns:
       - pattern: $MANAGER.pausesLocationUpdatesAutomatically = false

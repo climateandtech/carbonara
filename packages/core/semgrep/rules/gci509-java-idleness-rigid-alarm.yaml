@@ -2,8 +2,9 @@ rules:
   - id: gci509-java-idleness-rigid-alarm
     languages:
       - java
-    severity: INFO
-    message: "Avoid rigid alarms. Use setInexactRepeating or JobScheduler for better battery efficiency."
+    severity: WARNING
+    message: Avoid rigid alarms. Use setInexactRepeating or JobScheduler for better
+      battery efficiency.
     patterns:
       - pattern-either:
           - pattern: $ALARM_MANAGER.setRepeating(...)

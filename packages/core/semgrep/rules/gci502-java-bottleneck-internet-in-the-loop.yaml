@@ -2,8 +2,9 @@ rules:
   - id: gci502-java-bottleneck-internet-in-the-loop
     languages:
       - java
-    severity: INFO
-    message: "Avoid opening internet connections in a loop. This is battery-inefficient. Open the connection once outside the loop."
+    severity: ERROR
+    message: Avoid opening internet connections in a loop. This is
+      battery-inefficient. Open the connection once outside the loop.
     patterns:
       - pattern-inside: |
           for (...) {

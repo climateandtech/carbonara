@@ -2,8 +2,9 @@ rules:
   - id: gci515-java-leakage-media-leak-mediarecorder
     languages:
       - java
-    severity: INFO
-    message: "Release MediaRecorder resources to avoid battery drain. Ensure every MediaRecorder creation has a corresponding release()."
+    severity: WARNING
+    message: Release MediaRecorder resources to avoid battery drain. Ensure every
+      MediaRecorder creation has a corresponding release().
     patterns:
       - pattern: MediaRecorder $MR = new MediaRecorder();
       - pattern-not-inside: |

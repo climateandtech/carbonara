@@ -3,8 +3,9 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Avoid keeping the screen on unnecessarily. This drains battery. Remove screen-awake calls if not absolutely needed."
+    severity: WARNING
+    message: Avoid keeping the screen on unnecessarily. This drains battery. Remove
+      screen-awake calls if not absolutely needed.
     patterns:
       - pattern-either:
           - pattern: useKeepAwake();

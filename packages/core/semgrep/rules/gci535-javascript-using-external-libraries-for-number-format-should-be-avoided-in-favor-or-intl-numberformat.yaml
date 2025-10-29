@@ -3,8 +3,9 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Avoid using external libraries for number formatting. Use Intl.NumberFormat for better performance and reduced bundle size."
+    severity: WARNING
+    message: Avoid using external libraries for number formatting. Use
+      Intl.NumberFormat for better performance and reduced bundle size.
     patterns:
       - pattern-either:
           - pattern: import numbro from "numbro";
