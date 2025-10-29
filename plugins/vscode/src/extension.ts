@@ -112,6 +112,10 @@ export async function activate(context: vscode.ExtensionContext) {
       "carbonara.clearSemgrepResults",
       clearSemgrepResults
     ),
+    vscode.commands.registerCommand(
+      "carbonara.openSemgrepFile",
+      openSemgrepFile
+    ),
   ];
 
   context.subscriptions.push(carbonaraStatusBar, ...commands);
@@ -716,5 +720,17 @@ function checkProjectStatus() {
     carbonaraStatusBar.tooltip = "Click to initialize Carbonara project";
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+  }
+}
+
+async function openSemgrepFile(filePath: string) {
+  try {
+    const uri = vscode.Uri.file(filePath);
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to open file: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
