@@ -69,7 +69,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     }
 
     if (!element) {
-      // Root level - show main actions and deployment groups
+      // Root level - show main actions and provider groups
       const deployments = await this.dataService!.getAllDeployments({ status: 'active' });
 
       if (deployments.length === 0) {
@@ -90,8 +90,8 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         ];
       }
 
-      // Group by environment
-      const environments = [...new Set(deployments.map(d => d.environment))];
+      // Group by provider
+      const providers = [...new Set(deployments.map(d => d.provider))];
       const items: DeploymentTreeItem[] = [];
 
       // Add scan action at top
@@ -104,17 +104,17 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         )
       );
 
-      // Add environment groups
-      for (const env of environments) {
-        const envDeployments = deployments.filter(d => d.environment === env);
+      // Add provider groups
+      for (const provider of providers) {
+        const providerDeployments = deployments.filter(d => d.provider === provider);
         items.push(
           new DeploymentTreeItem(
-            `${env} (${envDeployments.length})`,
+            `${provider.toUpperCase()} (${providerDeployments.length})`,
             vscode.TreeItemCollapsibleState.Expanded,
-            "environment",
+            "provider",
             undefined,
             undefined,
-            envDeployments
+            providerDeployments
           )
         );
       }
@@ -122,18 +122,34 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       return items;
     }
 
+    if (element.type === "provider" && element.deployments) {
+      // Group by environment within provider
+      const environments = [...new Set(element.deployments.map(d => d.environment))];
+      return environments.map(env => {
+        const envDeployments = element.deployments!.filter(d => d.environment === env);
+        return new DeploymentTreeItem(
+          `${env} (${envDeployments.length})`,
+          vscode.TreeItemCollapsibleState.Expanded,
+          "environment",
+          undefined,
+          undefined,
+          envDeployments
+        );
+      });
+    }
+
     if (element.type === "environment" && element.deployments) {
       // Show deployments in this environment
       return element.deployments.map(deployment => {
         const carbonBadge = this.getCarbonBadge(deployment.carbon_intensity);
-        const label = `${deployment.name} (${deployment.provider})`;
+        const label = deployment.name;
         const description = deployment.region || deployment.country || 'Unknown region';
 
         return new DeploymentTreeItem(
           label,
           vscode.TreeItemCollapsibleState.None,
           "deployment",
-          undefined,
+          "carbonara.openDeploymentConfig",
           undefined,
           undefined,
           deployment,
@@ -236,6 +252,24 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     if (selected) {
       vscode.window.showInformationMessage(
         `Migrate to ${selected.description} to reduce carbon emissions by ${selected.recommendation.potentialSavings}%`
+      );
+    }
+  }
+
+  async openDeploymentConfig(deployment: Deployment) {
+    if (!deployment.config_file_path) {
+      vscode.window.showWarningMessage(
+        `No configuration file path available for ${deployment.name}`
+      );
+      return;
+    }
+
+    try {
+      const doc = await vscode.workspace.openTextDocument(deployment.config_file_path);
+      await vscode.window.showTextDocument(doc);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to open config file: ${(error as Error).message}`
       );
     }
   }
@@ -352,7 +386,7 @@ class DeploymentTreeItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly type: "info" | "action" | "environment" | "deployment",
+    public readonly type: "info" | "action" | "provider" | "environment" | "deployment",
     commandStr?: string,
     contextValue?: string,
     public readonly deployments?: Deployment[],
@@ -375,10 +409,12 @@ class DeploymentTreeItem extends vscode.TreeItem {
     // Set icons based on type
     if (type === "action") {
       this.iconPath = new vscode.ThemeIcon("search");
+    } else if (type === "provider") {
+      this.iconPath = new vscode.ThemeIcon("organization");
     } else if (type === "environment") {
       this.iconPath = new vscode.ThemeIcon("folder");
     } else if (type === "deployment") {
-      this.iconPath = new vscode.ThemeIcon("cloud");
+      this.iconPath = new vscode.ThemeIcon("file-code");
     }
   }
 }

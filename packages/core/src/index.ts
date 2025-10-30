@@ -9,21 +9,38 @@ export {
   createDataLake,
   type DatabaseConfig,
   type AssessmentDataEntry,
-  type Project
+  type Project,
+  type Deployment
 } from './data-service.js';
 export { SchemaService, type ToolDisplayField, type ToolDisplaySchema, type AnalysisToolSchema } from './schema-service.js';
 export { VSCodeDataProvider, type DataGroup, type DataEntry, type DataDetail } from './vscode-data-provider.js';
 
 // Semgrep service exports
-export { 
-  SemgrepService, 
-  createSemgrepService, 
+export {
+  SemgrepService,
+  createSemgrepService,
   setupBundledEnvironment,
   type SemgrepServiceConfig,
   type SemgrepResult,
   type SemgrepMatch,
-  SemgrepSeverity 
+  SemgrepSeverity
 } from './services/semgrepService.js';
+
+// Deployment service exports
+export {
+  DeploymentService,
+  createDeploymentService,
+  type DeploymentDetectionResult,
+  type ConfigParser
+} from './services/deploymentService.js';
+
+// Carbon intensity service exports
+export {
+  CarbonIntensityService,
+  createCarbonIntensityService,
+  type CarbonIntensityData,
+  type CarbonRecommendation
+} from './services/carbonIntensityService.js';
 
 // Factory functions for easy setup
 export const createDataService = (config?: { dbPath?: string }) => new DataService(config);

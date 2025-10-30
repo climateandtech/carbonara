@@ -153,6 +153,10 @@
       {
         "command": "carbonara.showDeploymentDetails",
         "title": "Show Deployment Details"
+      },
+      {
+        "command": "carbonara.openDeploymentConfig",
+        "title": "Open Deployment Configuration File"
       }
     ],
     "viewsContainers": {

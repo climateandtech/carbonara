@@ -1,0 +1,23 @@
+build:
+  docker:
+    web: Dockerfile
+    worker: Dockerfile
+  config:
+    NODE_ENV: production
+
+release:
+  command:
+    - npm run db:migrate
+  image: web
+
+run:
+  web: npm start
+  worker: npm run worker
+
+formation:
+  web:
+    quantity: 2
+    size: standard-1x
+  worker:
+    quantity: 1
+    size: standard-1x

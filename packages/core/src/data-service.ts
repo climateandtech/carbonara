@@ -38,6 +38,26 @@ export interface SemgrepResultRow {
   created_at: string;
 }
 
+export interface Deployment {
+  id: number;
+  name: string;
+  environment: string; // prod, staging, dev, etc.
+  provider: string; // aws, gcp, azure, heroku, vercel, etc.
+  region: string | null; // Cloud provider region code
+  country: string | null; // Country code (ISO 3166-1 alpha-2)
+  ip_address: string | null; // Server IP if available
+  detection_method: string; // config_file, user_input, ip_lookup, api
+  config_file_path: string | null; // Path to the config file where detected
+  config_type: string | null; // terraform, cloudformation, k8s, etc.
+  carbon_intensity: number | null; // gCO2/kWh if known
+  carbon_intensity_source: string | null; // static, electricitymaps, ember
+  carbon_intensity_updated_at: string | null;
+  status: string; // active, inactive, archived
+  metadata: any; // Additional provider-specific data
+  created_at: string;
+  updated_at: string;
+}
+
 export class DataService {
   private db: Database | null = null;
   private dbPath: string;
@@ -175,6 +195,28 @@ export class DataService {
         started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         completed_at DATETIME,
         FOREIGN KEY (project_id) REFERENCES projects (id)
+      )
+    `);
+
+    this.db!.run(`
+      CREATE TABLE IF NOT EXISTS deployments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        environment TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        region TEXT,
+        country TEXT,
+        ip_address TEXT,
+        detection_method TEXT NOT NULL,
+        config_file_path TEXT,
+        config_type TEXT,
+        carbon_intensity REAL,
+        carbon_intensity_source TEXT,
+        carbon_intensity_updated_at DATETIME,
+        status TEXT DEFAULT 'active',
+        metadata JSON,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -425,6 +467,40 @@ export class DataService {
     );
 
     const result = this.db.exec("SELECT last_insert_rowid() as id");
+  }
+
+  // Deployment methods
+  async createDeployment(
+    deployment: Omit<Deployment, "id" | "created_at" | "updated_at">
+  ): Promise<number> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    this.db.run(
+      `INSERT INTO deployments (
+        name, environment, provider, region, country, ip_address,
+        detection_method, config_file_path, config_type,
+        carbon_intensity, carbon_intensity_source, carbon_intensity_updated_at,
+        status, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        deployment.name,
+        deployment.environment,
+        deployment.provider,
+        deployment.region,
+        deployment.country,
+        deployment.ip_address,
+        deployment.detection_method,
+        deployment.config_file_path,
+        deployment.config_type,
+        deployment.carbon_intensity,
+        deployment.carbon_intensity_source,
+        deployment.carbon_intensity_updated_at,
+        deployment.status,
+        JSON.stringify(deployment.metadata || {}),
+      ]
+    );
+
+    const result = this.db.exec("SELECT last_insert_rowid() as id");
     const id = result[0].values[0][0] as number;
 
     this.saveDatabase();
@@ -555,6 +631,165 @@ export class DataService {
        AND json_extract(data, '$.target') = ?`,
       [filePath]
     );
+  }
+
+  async updateDeployment(
+    id: number,
+    updates: Partial<Omit<Deployment, "id" | "created_at">>
+  ): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.name !== undefined) {
+      fields.push("name = ?");
+      values.push(updates.name);
+    }
+    if (updates.environment !== undefined) {
+      fields.push("environment = ?");
+      values.push(updates.environment);
+    }
+    if (updates.provider !== undefined) {
+      fields.push("provider = ?");
+      values.push(updates.provider);
+    }
+    if (updates.region !== undefined) {
+      fields.push("region = ?");
+      values.push(updates.region);
+    }
+    if (updates.country !== undefined) {
+      fields.push("country = ?");
+      values.push(updates.country);
+    }
+    if (updates.ip_address !== undefined) {
+      fields.push("ip_address = ?");
+      values.push(updates.ip_address);
+    }
+    if (updates.detection_method !== undefined) {
+      fields.push("detection_method = ?");
+      values.push(updates.detection_method);
+    }
+    if (updates.config_file_path !== undefined) {
+      fields.push("config_file_path = ?");
+      values.push(updates.config_file_path);
+    }
+    if (updates.config_type !== undefined) {
+      fields.push("config_type = ?");
+      values.push(updates.config_type);
+    }
+    if (updates.carbon_intensity !== undefined) {
+      fields.push("carbon_intensity = ?");
+      values.push(updates.carbon_intensity);
+    }
+    if (updates.carbon_intensity_source !== undefined) {
+      fields.push("carbon_intensity_source = ?");
+      values.push(updates.carbon_intensity_source);
+    }
+    if (updates.carbon_intensity_updated_at !== undefined) {
+      fields.push("carbon_intensity_updated_at = ?");
+      values.push(updates.carbon_intensity_updated_at);
+    }
+    if (updates.status !== undefined) {
+      fields.push("status = ?");
+      values.push(updates.status);
+    }
+    if (updates.metadata !== undefined) {
+      fields.push("metadata = ?");
+      values.push(JSON.stringify(updates.metadata));
+    }
+
+    fields.push("updated_at = CURRENT_TIMESTAMP");
+    values.push(id);
+
+    this.db.run(
+      `UPDATE deployments SET ${fields.join(", ")} WHERE id = ?`,
+      values
+    );
+
+    this.saveDatabase();
+  }
+
+  async getDeployment(id: number): Promise<Deployment | null> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    const result = this.db.exec("SELECT * FROM deployments WHERE id = ?", [id]);
+
+    if (result.length === 0 || result[0].values.length === 0) {
+      return null;
+    }
+
+    const columns = result[0].columns;
+    const values = result[0].values[0];
+    const row: any = {};
+
+    columns.forEach((col: string, idx: number) => {
+      row[col] = values[idx];
+    });
+
+    row.metadata = row.metadata ? JSON.parse(row.metadata) : {};
+
+    return row;
+  }
+
+  async getAllDeployments(filters?: {
+    environment?: string;
+    provider?: string;
+    status?: string;
+  }): Promise<Deployment[]> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    let query = "SELECT * FROM deployments";
+    const params: any[] = [];
+
+    if (filters) {
+      const conditions = [];
+
+      if (filters.environment) {
+        conditions.push("environment = ?");
+        params.push(filters.environment);
+      }
+
+      if (filters.provider) {
+        conditions.push("provider = ?");
+        params.push(filters.provider);
+      }
+
+      if (filters.status) {
+        conditions.push("status = ?");
+        params.push(filters.status);
+      }
+
+      if (conditions.length > 0) {
+        query += " WHERE " + conditions.join(" AND ");
+      }
+    }
+
+    query += " ORDER BY environment, name";
+
+    const result = this.db.exec(query, params);
+
+    if (result.length === 0) {
+      return [];
+    }
+
+    const columns = result[0].columns;
+    const rows = result[0].values;
+
+    return rows.map((values: any) => {
+      const row: any = {};
+      columns.forEach((col: string, idx: number) => {
+        row[col] = values[idx];
+      });
+      row.metadata = row.metadata ? JSON.parse(row.metadata) : {};
+      return row;
+    });
+  }
+
+  async deleteDeployment(id: number): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    this.db.run("DELETE FROM deployments WHERE id = ?", [id]);
 
     this.saveDatabase();
   }
