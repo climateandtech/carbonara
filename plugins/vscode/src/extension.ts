@@ -132,6 +132,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("carbonara.showDeploymentDetails", (deployment) =>
       deploymentsTreeProvider.showDeploymentDetails(deployment)
     ),
+    vscode.commands.registerCommand("carbonara.openDeploymentConfig", (deployment) =>
+      deploymentsTreeProvider.openDeploymentConfig(deployment)
+    ),
   ];
 
   context.subscriptions.push(carbonaraStatusBar, ...commands);
