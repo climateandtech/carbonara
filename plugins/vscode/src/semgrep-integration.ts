@@ -312,8 +312,11 @@ function applySemgrepDiagnostics(
     }
 
     const diagnostic = new vscode.Diagnostic(range, match.message, severity);
-    diagnostic.source = "semgrep";
-    diagnostic.code = match.rule_id;
+    // Extract just the rule_id part (after the last dot) from the full path
+    const ruleIdParts = match.rule_id.split('.');
+    const shortRuleId = ruleIdParts[ruleIdParts.length - 1];
+    diagnostic.source = "Semgrep";
+    diagnostic.code = shortRuleId;
 
     return diagnostic;
   });

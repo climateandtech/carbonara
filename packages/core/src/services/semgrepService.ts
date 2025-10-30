@@ -8,6 +8,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
+import { DataService } from "../data-service.js";
 
 const fsAccess = promisify(fs.access);
 
@@ -65,6 +66,8 @@ export interface SemgrepServiceConfig {
   rulesDir?: string;
   useBundledPython?: boolean;
   timeout?: number;
+  dataService?: DataService;
+  saveToDatabase?: boolean;
 }
 
 /**
@@ -76,11 +79,15 @@ export class SemgrepService {
   private rulesDir: string;
   private useBundledPython: boolean;
   private timeout: number;
+  private dataService?: DataService;
+  private saveToDatabase: boolean;
 
   constructor(config: SemgrepServiceConfig = {}) {
     this.pythonPath = config.pythonPath || "python3";
     this.useBundledPython = config.useBundledPython ?? false;
     this.timeout = config.timeout || 60000; // Default 60 seconds
+    this.dataService = config.dataService;
+    this.saveToDatabase = config.saveToDatabase ?? false;
 
     // Resolve paths relative to the core package root
     const packageRoot = path.resolve(__dirname, "..", "..");
@@ -179,7 +186,14 @@ export class SemgrepService {
 
     if (result.success && result.stdout) {
       try {
-        return JSON.parse(result.stdout) as SemgrepResult;
+        const semgrepResult = JSON.parse(result.stdout) as SemgrepResult;
+
+        // Save to database if enabled
+        if (this.saveToDatabase && this.dataService && semgrepResult.matches.length > 0) {
+          await this.dataService.storeSemgrepResults(semgrepResult.matches);
+        }
+
+        return semgrepResult;
       } catch (e) {
         return {
           success: false,
@@ -222,7 +236,14 @@ export class SemgrepService {
 
     if (result.success && result.stdout) {
       try {
-        return JSON.parse(result.stdout) as SemgrepResult;
+        const semgrepResult = JSON.parse(result.stdout) as SemgrepResult;
+
+        // Save to database if enabled
+        if (this.saveToDatabase && this.dataService && semgrepResult.matches.length > 0) {
+          await this.dataService.storeSemgrepResults(semgrepResult.matches);
+        }
+
+        return semgrepResult;
       } catch (e) {
         return {
           success: false,
@@ -265,7 +286,14 @@ export class SemgrepService {
 
     if (result.success && result.stdout) {
       try {
-        return JSON.parse(result.stdout) as SemgrepResult;
+        const semgrepResult = JSON.parse(result.stdout) as SemgrepResult;
+
+        // Save to database if enabled
+        if (this.saveToDatabase && this.dataService && semgrepResult.matches.length > 0) {
+          await this.dataService.storeSemgrepResults(semgrepResult.matches);
+        }
+
+        return semgrepResult;
       } catch (e) {
         return {
           success: false,

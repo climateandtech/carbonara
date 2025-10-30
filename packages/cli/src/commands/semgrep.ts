@@ -2,7 +2,11 @@ import chalk from "chalk";
 import ora from "ora";
 import fs from "fs";
 import path from "path";
-import { createSemgrepService, setupBundledEnvironment } from "@carbonara/core";
+import {
+  createSemgrepService,
+  setupBundledEnvironment,
+  DataService,
+} from "@carbonara/core";
 import type {
   SemgrepResult,
   SemgrepMatch,
@@ -20,6 +24,7 @@ interface SemgrepOptions {
   listRules?: boolean;
   severity?: string;
   save?: boolean;
+  saveToDb?: boolean;
   fix?: boolean;
   bundled?: boolean;
 }
@@ -47,10 +52,20 @@ export async function semgrepCommand(
   const spinner = ora("Running Semgrep analysis...").start();
 
   try {
+    // Initialize database service if needed
+    let dataService: DataService | undefined;
+    if (options?.saveToDb) {
+      dataService = new DataService();
+      await dataService.initialize();
+      spinner.text = "Database initialized...";
+    }
+
     // Create service instance
     const serviceConfig: SemgrepServiceConfig = {
       useBundledPython: options?.bundled ?? false,
       timeout: 120000, // 2 minutes timeout for large projects
+      dataService,
+      saveToDatabase: options?.saveToDb ?? false,
     };
 
     const semgrep = createSemgrepService(serviceConfig);
@@ -117,6 +132,16 @@ export async function semgrepCommand(
     // Save results if requested
     if (options?.save) {
       await saveResults(target, result);
+    }
+
+    // Show database save confirmation
+    if (options?.saveToDb && result.matches.length > 0) {
+      console.log(chalk.green(`\n💾 Saved ${result.matches.length} findings to database`));
+    }
+
+    // Close database connection
+    if (dataService) {
+      await dataService.close();
     }
 
     // Exit with appropriate code
@@ -473,6 +498,7 @@ function showHelp(): void {
     "  -s, --severity <level>   Filter by severity: error, warning, info"
   );
   console.log("  --save                   Save results to file");
+  console.log("  --save-to-db             Save results to database");
   console.log(
     "  --fix                    Apply available fixes (experimental)"
   );
@@ -491,6 +517,9 @@ function showHelp(): void {
   );
   console.log(
     "  carbonara semgrep ./src --severity error         # Show only errors"
+  );
+  console.log(
+    "  carbonara semgrep ./src --save-to-db             # Save results to database"
   );
   console.log(
     "  carbonara semgrep --setup                        # Setup environment"

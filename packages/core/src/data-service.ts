@@ -26,6 +26,18 @@ export interface Project {
   co2_variables: any;
 }
 
+export interface SemgrepResultRow {
+  id: number;
+  rule_id: string;
+  severity: string;
+  file_path: string;
+  start_line: number;
+  end_line: number;
+  start_column: number;
+  end_column: number;
+  created_at: string;
+}
+
 export class DataService {
   private db: Database | null = null;
   private dbPath: string;
@@ -103,6 +115,26 @@ export class DataService {
         completed_at DATETIME,
         FOREIGN KEY (project_id) REFERENCES projects (id)
       )
+    `);
+
+    this.db!.run(`
+      CREATE TABLE IF NOT EXISTS semgrep_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rule_id TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        start_column INTEGER NOT NULL,
+        end_column INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create index for fast queries on semgrep_results
+    this.db!.run(`
+      CREATE INDEX IF NOT EXISTS idx_semgrep_file_path
+      ON semgrep_results(file_path)
     `);
 
     // Save initial database
@@ -266,6 +298,99 @@ export class DataService {
       row.data = row.data ? JSON.parse(row.data) : {};
       return row;
     });
+  }
+
+  async storeSemgrepResults(matches: any[], actualFilePath?: string): Promise<number[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const ids: number[] = [];
+
+    for (const match of matches) {
+      // Extract just the rule name from the full rule_id path
+      // e.g., "Users.pes.code.carbonara.packages.core.semgrep.rules.gci89-python-avoid-suspect-unlimited-cache-size"
+      // becomes "gci89-python-avoid-suspect-unlimited-cache-size"
+      const ruleNameMatch = match.rule_id.match(/([^.]+)$/);
+      const ruleName = ruleNameMatch ? ruleNameMatch[1] : match.rule_id;
+
+      // Use the actual file path if provided, otherwise use match.path
+      const filePath = actualFilePath || match.path;
+
+      this.db.run(
+        `INSERT INTO semgrep_results (
+          rule_id, severity, file_path,
+          start_line, end_line, start_column, end_column
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          ruleName,
+          match.severity,
+          filePath,
+          match.start_line,
+          match.end_line,
+          match.start_column,
+          match.end_column,
+        ]
+      );
+
+      const result = this.db.exec('SELECT last_insert_rowid() as id');
+      const id = result[0].values[0][0] as number;
+      ids.push(id);
+    }
+
+    this.saveDatabase();
+    return ids;
+  }
+
+  async getSemgrepResultsByFile(filePath: string): Promise<SemgrepResultRow[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const result = this.db.exec(
+      'SELECT * FROM semgrep_results WHERE file_path = ? ORDER BY created_at DESC',
+      [filePath]
+    );
+
+    if (result.length === 0) {
+      return [];
+    }
+
+    const columns = result[0].columns;
+    const rows = result[0].values;
+
+    return rows.map((values: any) => {
+      const row: any = {};
+      columns.forEach((col: string, idx: number) => {
+        row[col] = values[idx];
+      });
+      return row;
+    });
+  }
+
+  async getAllSemgrepResults(): Promise<SemgrepResultRow[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const result = this.db.exec('SELECT * FROM semgrep_results ORDER BY created_at DESC');
+
+    if (result.length === 0) {
+      return [];
+    }
+
+    const columns = result[0].columns;
+    const rows = result[0].values;
+
+    return rows.map((values: any) => {
+      const row: any = {};
+      columns.forEach((col: string, idx: number) => {
+        row[col] = values[idx];
+      });
+      return row;
+    });
+  }
+
+  async deleteSemgrepResultsByFile(filePath: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    this.db.run('DELETE FROM semgrep_results WHERE file_path = ?', [filePath]);
+
+    this.saveDatabase();
   }
 
   async close(): Promise<void> {

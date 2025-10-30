@@ -53,8 +53,8 @@ export class CodeScanTreeProvider implements vscode.TreeDataProvider<CodeScanIte
       if (element.type === "file" && element.results) {
         return element.results.map((result: any, index: number) => {
           return new CodeScanItem(
-            result.rule_id,
-            `Line ${result.start_line}`,
+            `${result.rule_id}:${result.start_line}`,
+            "",
             vscode.TreeItemCollapsibleState.None,
             "finding",
             element.filePath,
