@@ -6,6 +6,7 @@ import { spawn } from "child_process";
 import { AssessmentTreeProvider } from "./assessment-tree-provider";
 import { DataTreeProvider } from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
+import { DeploymentsTreeProvider } from "./deployments-tree-provider";
 import {
   initializeSemgrep,
   runSemgrepOnFile,
@@ -16,6 +17,7 @@ let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
+let deploymentsTreeProvider: DeploymentsTreeProvider;
 
 let currentProjectPath: string | null = null;
 
@@ -47,6 +49,8 @@ export function activate(context: vscode.ExtensionContext) {
   dataTreeProvider = new DataTreeProvider();
   console.log("🔧 Creating ToolsTreeProvider...");
   toolsTreeProvider = new ToolsTreeProvider();
+  console.log("🔧 Creating DeploymentsTreeProvider...");
+  deploymentsTreeProvider = new DeploymentsTreeProvider();
   console.log("🔧 Registering tree data providers...");
   vscode.window.registerTreeDataProvider(
     "carbonara.assessmentTree",
@@ -59,6 +63,10 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider(
     "carbonara.toolsTree",
     toolsTreeProvider
+  );
+  vscode.window.registerTreeDataProvider(
+    "carbonara.deploymentsTree",
+    deploymentsTreeProvider
   );
   console.log("✅ All tree providers registered");
 
@@ -111,6 +119,18 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "carbonara.clearSemgrepResults",
       clearSemgrepResults
+    ),
+    vscode.commands.registerCommand("carbonara.scanDeployments", () =>
+      deploymentsTreeProvider.scanForDeployments()
+    ),
+    vscode.commands.registerCommand("carbonara.refreshDeployments", () =>
+      deploymentsTreeProvider.refresh()
+    ),
+    vscode.commands.registerCommand("carbonara.showCarbonRecommendations", () =>
+      deploymentsTreeProvider.showRecommendations()
+    ),
+    vscode.commands.registerCommand("carbonara.showDeploymentDetails", (deployment) =>
+      deploymentsTreeProvider.showDeploymentDetails(deployment)
     ),
   ];
 
