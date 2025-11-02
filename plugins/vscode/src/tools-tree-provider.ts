@@ -83,26 +83,26 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     ToolItem | undefined | null | void
   > = this._onDidChangeTreeData.event;
 
-private tools: AnalysisTool[] = [];
-private workspaceFolder: vscode.WorkspaceFolder | undefined;
+  private tools: AnalysisTool[] = [];
+  private workspaceFolder: vscode.WorkspaceFolder | undefined;
 private projectInfo: ProjectInfo | null = null;
 private projectDetector: ProjectDetector = new ProjectDetector();
 
-constructor() {
+  constructor() {
     console.log('🔧 ToolsTreeProvider constructor called');
     this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     // Load tools and detect project asynchronously
     this.loadTools().catch(error => {
         console.error('🔧 Failed to load tools in constructor:', error);
-        // Fire change event even if loading failed so UI shows the "no tools" message
-        this._onDidChangeTreeData.fire();
+      // Fire change event even if loading failed so UI shows the "no tools" message
+      this._onDidChangeTreeData.fire();
     });
     this.detectProject().catch(error => {
         console.error('🔧 Failed to detect project in constructor:', error);
     });
-}
+  }
 
-refresh(): void {
+  refresh(): void {
     this.loadTools(); // loadTools() already calls _onDidChangeTreeData.fire()
     this.detectProject(); // Also refresh project detection
 }
@@ -430,6 +430,14 @@ refresh(): void {
   private filterToolsByProject(): AnalysisTool[] {
     if (!this.projectInfo) {
       // No project info available, show all tools
+      return this.tools;
+    }
+
+    // If project type is unknown or no supported languages, show all tools
+    if (
+      this.projectInfo.projectType === "unknown" ||
+      this.projectInfo.supportedLanguages.length === 0
+    ) {
       return this.tools;
     }
 
