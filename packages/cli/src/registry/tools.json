@@ -695,6 +695,7 @@
       "id": "semgrep",
       "name": "Semgrep",
       "description": "Static analysis tool for finding bugs, detecting vulnerabilities, and enforcing code standards",
+      "vscodeCommand": "carbonara.runSemgrep",
       "command": {
         "executable": "built-in",
         "args": [],

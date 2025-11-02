@@ -1,0 +1,11 @@
+rules:
+  - id: gci27-java-use-system-arraycopy-to-copy-arrays
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid manual array copying in loops. Use System.arraycopy for better performance."
+    patterns:
+      - pattern: |
+          for (int $I = 0; $I < $LEN; $I++) {
+              $DEST[$I] = $SRC[$I];
+          }

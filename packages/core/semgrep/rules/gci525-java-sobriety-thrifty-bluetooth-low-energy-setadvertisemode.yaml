@@ -1,0 +1,8 @@
+rules:
+  - id: gci525-java-sobriety-thrifty-bluetooth-low-energy-setadvertisemode
+    languages:
+      - java
+    severity: INFO
+    message: "Use ADVERTISE_MODE_LOW_POWER for Bluetooth Low Energy advertising to conserve battery. Avoid ADVERTISE_MODE_LOW_LATENCY."
+    patterns:
+      - pattern: $BUILDER.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY);

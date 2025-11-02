@@ -1,0 +1,8 @@
+rules:
+  - id: gci501-java-batch-job-coalesce
+    languages:
+      - java
+    severity: INFO
+    message: "Use JobScheduler instead of AlarmManager.setRepeating to batch jobs and reduce battery consumption."
+    patterns:
+      - pattern: $ALARM_MANAGER.setRepeating(...)

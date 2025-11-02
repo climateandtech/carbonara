@@ -1,0 +1,12 @@
+rules:
+  - id: gci513-java-leakage-location-leak
+    languages:
+      - java
+    severity: INFO
+    message: "Release Location resources to avoid battery drain. Ensure every requestLocationUpdates() call has a corresponding removeUpdates()."
+    patterns:
+      - pattern: $LOCATION_MANAGER.requestLocationUpdates(...);
+      - pattern-not-inside: |
+          $LOCATION_MANAGER.requestLocationUpdates(...);
+          ...
+          $LOCATION_MANAGER.removeUpdates(...);

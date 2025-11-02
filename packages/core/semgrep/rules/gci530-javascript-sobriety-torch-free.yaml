@@ -1,0 +1,9 @@
+rules:
+  - id: gci530-javascript-sobriety-torch-free
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Avoid using react-native-torch. The flashlight is energy-intensive and should be used sparingly."
+    patterns:
+      - pattern: import Torch from 'react-native-torch';

@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- ruleid: gci507-xml-idleness-keep-cpu-on -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+</manifest>
+
+<!-- ok: gci507-xml-idleness-keep-cpu-on -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

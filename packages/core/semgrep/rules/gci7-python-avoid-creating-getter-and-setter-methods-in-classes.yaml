@@ -1,0 +1,21 @@
+rules:
+  - id: gci7-python-avoid-creating-getter-and-setter-methods-in-classes
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid creating getter and setter methods. Use direct attribute access or properties instead."
+    patterns:
+      - pattern-inside: |
+          class $CLASS:
+              ...
+      - pattern-either:
+          - patterns:
+              - pattern-regex: 'def\s+get_\w+'
+              - pattern: |
+                  def $FUNC(self):
+                      ...
+          - patterns:
+              - pattern-regex: 'def\s+set_\w+'
+              - pattern: |
+                  def $FUNC(self, $ARG):
+                      ...

@@ -8,7 +8,7 @@ import type {
   SemgrepMatch,
   SemgrepServiceConfig,
 } from "@carbonara/core";
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
 
 // ESM-compliant __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -120,7 +120,10 @@ export async function semgrepCommand(
     }
 
     // Exit with appropriate code
-    process.exit(result.matches.length > 0 ? 1 : 0);
+    // The command should exit with 0 if the analysis completes successfully,
+    // regardless of whether it finds any matches. A non-zero exit code
+    // should only be used for actual failures in the execution of the command itself.
+    process.exit(0);
   } catch (error: any) {
     spinner.fail("Semgrep analysis failed");
     console.error(chalk.red("Error:"), error.message);
@@ -184,7 +187,7 @@ async function listAvailableRules(options: SemgrepOptions): Promise<void> {
       try {
         const packageRoot = path.resolve(__dirname, "..", "..", "..", "..");
         const ruleContent = fs.readFileSync(
-          path.join(packageRoot, "packages", "core", "semgrep-rules", rule),
+          path.join(packageRoot, "packages", "core", "semgrep", rule),
           "utf8"
         );
 
@@ -202,8 +205,6 @@ async function listAvailableRules(options: SemgrepOptions): Promise<void> {
         // Ignore errors reading rule details
       }
     }
-
-    
   } catch (error: any) {
     console.error(chalk.red("Error listing rules:"), error.message);
     process.exit(1);

@@ -1,0 +1,12 @@
+rules:
+  - id: gci67-java-use-plus-plus-i-instead-of-i-plus-plus
+    languages:
+      - java
+    severity: INFO
+    message: "Use prefix increment (++i) instead of postfix increment (i++) for better performance."
+    patterns:
+      - pattern: $VAR++;
+      - pattern-not-inside: |
+          bar($VAR++);
+      - pattern-not-inside: |
+          return $VAR++;

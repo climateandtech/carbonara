@@ -1,0 +1,12 @@
+rules:
+  - id: gci72-java-avoid-sql-request-in-loop
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid executing SQL queries in loops. Use a single bulk query or batch updates instead."
+    patterns:
+      - pattern-inside: |
+          for (...) {
+              ...
+          }
+      - pattern: $STATEMENT.executeQuery(...);

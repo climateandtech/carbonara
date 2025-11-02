@@ -1,0 +1,11 @@
+rules:
+  - id: gci76-java-avoid-usage-of-static-collections
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid usage of static collections. Use a singleton pattern or make them non-static to prevent memory leaks."
+    patterns:
+      - pattern-either:
+          - pattern: public static final List $VAR = new ArrayList<>();
+          - pattern: public static final Set $VAR = new HashSet<>();
+          - pattern: public static final Map $VAR = new HashMap<>();

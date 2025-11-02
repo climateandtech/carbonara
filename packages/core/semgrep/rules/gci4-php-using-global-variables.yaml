@@ -1,0 +1,15 @@
+rules:
+  - id: gci4-php-avoid-using-global-variables
+    languages:
+      - php
+    severity: INFO
+    message: "Avoid using global variables. Pass them as parameters to functions instead."
+    patterns:
+      - pattern-either:
+          - pattern: |
+              function $FUNC(...) {
+                ...
+                global $VAR;
+                ...
+              }
+          - pattern: $GLOBALS[...]

@@ -1,0 +1,12 @@
+rules:
+  - id: gci513-swift-leakage-location-leak
+    languages:
+      - swift
+    severity: INFO
+    message: "Release Location resources to avoid battery drain. Ensure every startUpdatingLocation() call has a corresponding stopUpdatingLocation()."
+    patterns:
+      - pattern: $LOCATION_MANAGER.startUpdatingLocation()
+      - pattern-not-inside: |
+          $LOCATION_MANAGER.startUpdatingLocation()
+          ...
+          $LOCATION_MANAGER.stopUpdatingLocation()

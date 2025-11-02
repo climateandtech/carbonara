@@ -1,0 +1,12 @@
+rules:
+  - id: gci523-javascript-sobriety-thrifty-geolocation-mintime
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Avoid thrifty geolocation. Request less accurate geolocation to conserve resources."
+    patterns:
+      - pattern-either:
+          - pattern: |
+              { ..., enableHighAccuracy: true, ... }
+          - pattern: Location.enableNetworkProviderAsync()

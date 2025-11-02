@@ -1,0 +1,9 @@
+rules:
+  - id: gci522-swift-sobriety-brightness-override
+    languages:
+      - swift
+    severity: INFO
+    message: "Avoid overriding screen brightness. Let the system manage brightness for better battery life."
+    patterns:
+      - pattern: UIScreen.main.brightness = $VALUE
+      - pattern-not: UIScreen.main.brightness = UIScreen.main.brightness

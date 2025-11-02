@@ -1,0 +1,13 @@
+rules:
+  - id: gci88-csharp-dispose-resource-asynchronously
+    languages:
+      - csharp
+    severity: INFO
+    message: "Dispose resources asynchronously. Use 'await using' for IAsyncDisposable resources in async methods."
+    patterns:
+      - pattern-inside: |
+          public static async Task $METHOD(...) {
+              ...
+          }
+      - pattern: using var $VAR = $EXPR;
+      - pattern-not: await using var $VAR = $EXPR;

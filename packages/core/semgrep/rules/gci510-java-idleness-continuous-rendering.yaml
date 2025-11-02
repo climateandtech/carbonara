@@ -1,0 +1,8 @@
+rules:
+  - id: gci510-java-idleness-continuous-rendering
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid continuous rendering. Use RENDERMODE_WHEN_DIRTY for GLSurfaceView to improve battery life and performance."
+    patterns:
+      - pattern: $SURFACE_VIEW.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);

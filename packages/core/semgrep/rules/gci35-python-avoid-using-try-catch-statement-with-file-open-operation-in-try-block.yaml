@@ -1,0 +1,13 @@
+rules:
+  - id: gci35-python-avoid-using-try-catch-statement-with-file-open-operation-in-try-block
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid using try-except for file open operations. Use conditional checks like os.path.isfile() instead."
+    patterns:
+      - pattern-inside: |
+          try:
+              open(...)
+              ...
+          except:
+              ...

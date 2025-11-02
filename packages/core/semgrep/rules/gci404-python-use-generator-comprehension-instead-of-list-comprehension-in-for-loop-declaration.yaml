@@ -1,0 +1,10 @@
+rules:
+  - id: gci404-python-use-generator-comprehension-instead-of-list-comprehension-in-for-loop-declaration
+    languages:
+      - python
+    severity: INFO
+    message: "Use generator comprehension instead of list comprehension in for loop declaration for memory efficiency."
+    patterns:
+      - pattern: |
+          for $VAR in [$EXPR for $EXPR2 in $ITERABLE]:
+              ...

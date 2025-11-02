@@ -1,0 +1,17 @@
+rules:
+  - id: gci3-php-avoid-getting-the-size-of-the-collection-in-the-loop
+    languages:
+      - php
+    severity: INFO
+    message: "Avoid getting the size of the collection in the loop. Store the size in a variable before the loop."
+    patterns:
+      - pattern-either:
+        - pattern: for($INIT; $I < $COUNT_FUNC($ARRAY); $INCR) { ... }
+        - pattern: for($INIT; $COUNT_FUNC($ARRAY) > $I; $INCR) { ... }
+        - pattern: while($I < $COUNT_FUNC($ARRAY)) { ... }
+        - pattern: while($COUNT_FUNC($ARRAY) > $I) { ... }
+        - pattern: do { ... } while($I < $COUNT_FUNC($ARRAY));
+        - pattern: do { ... } while($COUNT_FUNC($ARRAY) > $I);
+      - metavariable-regex:
+          metavariable: $COUNT_FUNC
+          regex: "(count|sizeof|iterator_count)"

@@ -1,0 +1,8 @@
+rules:
+  - id: gci530-java-sobriety-torch-free
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid turning on torch mode. The flashlight is energy-intensive and should be used sparingly."
+    patterns:
+      - pattern: $CAMERA_MANAGER.setTorchMode($CAMERA_ID, true);

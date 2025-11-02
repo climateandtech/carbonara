@@ -1,0 +1,8 @@
+rules:
+  - id: gci526-java-sobriety-thrifty-bluetooth-low-energy-requestconnectionpriority
+    languages:
+      - java
+    severity: INFO
+    message: "Use CONNECTION_PRIORITY_LOW_POWER for Bluetooth Low Energy connection priority to conserve battery. Avoid CONNECTION_PRIORITY_HIGH."
+    patterns:
+      - pattern: $GATT.requestConnectionPriority(CONNECTION_PRIORITY_HIGH);

@@ -1,0 +1,8 @@
+rules:
+  - id: gci527-java-sobriety-thrifty-geolocation-mindistance
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid thrifty geolocation. Set minDistance to a value greater than 0 in requestLocationUpdates to conserve battery life."
+    patterns:
+      - pattern: $LOCATION_MANAGER.requestLocationUpdates($PROVIDER, $MIN_TIME, 0, $LISTENER);
