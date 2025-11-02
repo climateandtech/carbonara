@@ -1,0 +1,26 @@
+rules:
+  - id: gci1-java-avoid-spring-repository-call-in-loop-or-stream-operations
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid Spring repository call in loop or stream operations. This can lead to a large number of database queries, impacting performance."
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              for ($TYPE $VAR : $ITERABLE) {
+                ...
+                $REPO.$METHOD(...);
+                ...
+              }
+          - pattern-inside: |
+              $STREAM.forEach($LAMBDA -> {
+                ...
+                $REPO.$METHOD(...);
+                ...
+              });
+      - metavariable-pattern:
+          metavariable: $REPO
+          pattern-regex: ".*[rR]epository"
+      - metavariable-pattern:
+          metavariable: $METHOD
+          pattern-regex: "find.*|exists.*|get.*|read.*|query.*"

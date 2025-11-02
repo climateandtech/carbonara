@@ -69,7 +69,6 @@ export class VSCodeLauncher {
           fs.existsSync(variant.executablePath) &&
           fs.existsSync(variant.appPath)
         ) {
-          console.log(`✅ Found ${variant.name} at ${variant.executablePath}`);
           return {
             executablePath: variant.executablePath,
             appPath: variant.appPath,
@@ -140,9 +139,6 @@ export class VSCodeLauncher {
   ): Promise<VSCodeInstance> {
     // Wait if another instance is currently launching
     while (this.isLaunching) {
-      console.log(
-        "⏳ Waiting for previous VSCode instance to finish launching..."
-      );
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
@@ -151,17 +147,14 @@ export class VSCodeLauncher {
     try {
       // Clean up any existing instances first
       if (this.activeInstances.length > 0) {
-        console.log(
-          `🧹 Cleaning up ${this.activeInstances.length} existing VSCode instances...`
-        );
         await this.closeAllActive();
       }
 
       const extensionDevelopmentPath = path.resolve(__dirname, "../../../../");
 
       // Ensure the extension is built
-      const outPath = path.join(extensionDevelopmentPath, "out");
-      if (!fs.existsSync(outPath)) {
+      const distPath = path.join(extensionDevelopmentPath, "dist");
+      if (!fs.existsSync(distPath)) {
         throw new Error('Extension not built. Run "npm run build" first.');
       }
 
@@ -176,9 +169,6 @@ export class VSCodeLauncher {
           `Workspace fixture not found: ${workspaceFixture} at ${workspacePath}`
         );
       }
-
-      console.log(`🧪 Using workspace fixture: ${workspaceFixture}`);
-      console.log(`📁 Workspace path: ${workspacePath}`);
 
       // Detect VS Code installation
       const vscode = this.detectVSCodePath();
@@ -229,10 +219,6 @@ export class VSCodeLauncher {
       const instance = { app, window };
       this.activeInstances.push(instance);
 
-      console.log(
-        `✅ VSCode instance launched. Total active instances: ${this.activeInstances.length}`
-      );
-
       return instance;
     } finally {
       this.isLaunching = false;
@@ -241,8 +227,6 @@ export class VSCodeLauncher {
 
   static async close(instance: VSCodeInstance): Promise<void> {
     try {
-      console.log("🔄 Closing VSCode instance...");
-
       // Remove from active instances
       const index = this.activeInstances.indexOf(instance);
       if (index > -1) {
@@ -252,23 +236,15 @@ export class VSCodeLauncher {
       // First, try to close gracefully
       if (instance.app) {
         await instance.app.close();
-        console.log("✅ VSCode closed gracefully");
       }
     } catch (error) {
-      console.log("⚠️ Graceful close failed, attempting force close...");
-
       try {
         // Force close the app if graceful close failed
         if (instance.app) {
           // Use process.exit() as a fallback for force closing
           await this.killVSCodeProcesses();
-          console.log("✅ VSCode force closed");
         }
       } catch (killError) {
-        console.log(
-          "⚠️ Force close also failed, attempting process cleanup..."
-        );
-
         // As a last resort, try to kill any remaining VSCode processes
         await this.killVSCodeProcesses();
       }
@@ -279,17 +255,12 @@ export class VSCodeLauncher {
   }
 
   static async closeAllActive(): Promise<void> {
-    console.log(
-      `🧹 Closing all ${this.activeInstances.length} active VSCode instances...`
-    );
-
     const closePromises = this.activeInstances.map((instance) =>
       this.close(instance)
     );
     await Promise.allSettled(closePromises);
 
     this.activeInstances = [];
-    console.log("✅ All active VSCode instances closed");
   }
 
   static async killVSCodeProcesses(): Promise<void> {
@@ -304,7 +275,6 @@ export class VSCodeLauncher {
           'ps aux | grep -E "(Visual Studio Code|Electron)" | grep -v grep || true'
         );
         if (stdout) {
-          console.log("🔍 Found VSCode processes:", stdout);
           // Only kill if it's likely our test instance
           await execAsync('pkill -f "extensionDevelopmentPath" || true');
         }
@@ -317,15 +287,12 @@ export class VSCodeLauncher {
           'taskkill /f /im "Code.exe" /fi "WINDOWTITLE eq Extension Development Host*" 2>nul || true'
         );
       }
-
-      console.log("✅ Cleaned up test VSCode processes");
     } catch (error) {
-      console.log("⚠️ Process cleanup failed:", error);
+      // Process cleanup failed
     }
   }
 
   static async cleanupAll(): Promise<void> {
-    console.log("🧹 Running global VSCode cleanup...");
     await this.closeAllActive();
     await this.killVSCodeProcesses();
     await this.cleanupTempData();
@@ -337,17 +304,14 @@ export class VSCodeLauncher {
       if (fs.existsSync(tempDataDir)) {
         // Remove all temporary VSCode data directories
         await execAsync(`rm -rf "${tempDataDir}"`);
-        console.log("✅ Cleaned up temporary VSCode data directories");
       }
     } catch (error) {
-      console.log("⚠️ Failed to cleanup temp data:", error);
+      // Failed to cleanup temp data
     }
   }
 
   static async waitForExtension(window: Page, timeout = 20000): Promise<void> {
     // Wait for the extension to load by checking for the status bar item
-    console.log("🔍 Waiting for Carbonara extension to load...");
-
     try {
       // Wait for the specific clickable status bar button (not the container div)
       await window.waitForSelector(
@@ -357,10 +321,7 @@ export class VSCodeLauncher {
           timeout,
         }
       );
-      console.log("✅ Found Carbonara status bar button");
     } catch (error) {
-      console.log("⚠️ Button not found, trying alternative selectors...");
-
       // Try alternative approaches
       const alternatives = [
         () =>
@@ -385,9 +346,6 @@ export class VSCodeLauncher {
         try {
           await alt();
           success = true;
-          console.log(
-            "✅ Found Carbonara status bar with alternative selector"
-          );
           break;
         } catch (e) {
           continue;
@@ -395,7 +353,6 @@ export class VSCodeLauncher {
       }
 
       if (!success) {
-        console.log("❌ Could not find Carbonara status bar item");
         throw new Error("Carbonara extension status bar item not found");
       }
     }
@@ -506,7 +463,6 @@ export class VSCodeLauncher {
         'button:has-text("Reload and Enable Extensions")'
       );
       if (await reloadButton.isVisible({ timeout: 2000 })) {
-        console.log("📦 Enabling extensions...");
         await reloadButton.click();
         await window.waitForTimeout(3000);
       }

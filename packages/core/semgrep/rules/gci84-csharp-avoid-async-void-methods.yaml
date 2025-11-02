@@ -1,0 +1,8 @@
+rules:
+  - id: gci84-csharp-avoid-async-void-methods
+    languages:
+      - csharp
+    severity: INFO
+    message: "Avoid async void methods. Use async Task instead for better error handling and testability."
+    patterns:
+      - pattern: public async void $METHOD(...) { ... }

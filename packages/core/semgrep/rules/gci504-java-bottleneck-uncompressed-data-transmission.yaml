@@ -1,0 +1,9 @@
+rules:
+  - id: gci504-java-bottleneck-uncompressed-data-transmission
+    languages:
+      - java
+    severity: INFO
+    message: "Avoid uncompressed data transmission. Use GZIPOutputStream to compress data before sending over network."
+    patterns:
+      - pattern: OutputStream $STREAM = $CON.getOutputStream();
+      - pattern-not: OutputStream $STREAM = new GZIPOutputStream($CON.getOutputStream());

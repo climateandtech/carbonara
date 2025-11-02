@@ -1,0 +1,8 @@
+rules:
+  - id: gci517-java-optimized-api-fused-location
+    languages:
+      - java
+    severity: INFO
+    message: "Use Fused Location API for optimized location services. Import from com.google.android.gms.location instead of android.location."
+    patterns:
+      - pattern: import android.location.*;

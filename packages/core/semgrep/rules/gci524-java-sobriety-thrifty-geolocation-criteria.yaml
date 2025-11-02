@@ -1,0 +1,12 @@
+rules:
+  - id: gci524-java-sobriety-thrifty-geolocation-criteria
+    languages:
+      - java
+    severity: INFO
+    message: "Use Criteria.POWER_LOW for thrifty geolocation. Request location updates with the best provider based on low power criteria."
+    patterns:
+      - pattern: $LOCATION_MANAGER.requestLocationUpdates($PROVIDER, $MIN_TIME, $MIN_DISTANCE, $LISTENER);
+      - pattern-not: $LOCATION_MANAGER.requestLocationUpdates($LOCATION_MANAGER.getBestProvider($CRITERIA, true), $MIN_TIME, $MIN_DISTANCE, $LISTENER);
+      - pattern-not-inside: |
+          Criteria $CRITERIA = new Criteria();
+          $CRITERIA.setPowerRequirement(Criteria.POWER_LOW);

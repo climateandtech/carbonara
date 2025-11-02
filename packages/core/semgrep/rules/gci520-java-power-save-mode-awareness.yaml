@@ -1,0 +1,37 @@
+rules:
+  - id: gci520-java-power-save-mode-awareness
+    languages:
+      - java
+    severity: INFO
+    message: "Consider implementing power save mode awareness. Monitor ACTION_POWER_SAVE_MODE_CHANGED or check PowerManager.isPowerSaveMode() to optimize behavior during low battery."
+    patterns:
+      - patterns:
+          - pattern-inside: |
+              $FUNC(...) {
+                ...
+              }
+          - pattern-either:
+              - pattern: new JobInfo.Builder(...). ... .build()
+              - patterns:
+                  - pattern-inside: |
+                      $BUILDER = new JobInfo.Builder(...);
+                      ...
+                  - pattern: $BUILDER.build()
+          - pattern-not-inside: |
+              $FUNC(...) {
+                ...
+                new IntentFilter(Intent.ACTION_POWER_SAVE_MODE_CHANGED);
+                ...
+              }
+          - pattern-not-inside: |
+              $FUNC(...) {
+                ...
+                $IF.addAction(Intent.ACTION_POWER_SAVE_MODE_CHANGED);
+                ...
+              }
+          - pattern-not-inside: |
+              $FUNC(...) {
+                ...
+                $PM.isPowerSaveMode();
+                ...
+              }

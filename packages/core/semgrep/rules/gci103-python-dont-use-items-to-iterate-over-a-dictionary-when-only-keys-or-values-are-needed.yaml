@@ -1,0 +1,17 @@
+rules:
+  - id: gci103-python-dont-use-items-to-iterate-over-a-dictionary-when-only-keys-or-values-are-needed
+    languages:
+      - python
+    severity: INFO
+    message: "Avoid using .items() to iterate over a dictionary when only keys or values are needed. Use .keys() or .values() for better performance."
+    patterns:
+      - pattern: |
+          for $KEY, $VALUE in $DICT.items():
+              ...
+              $KEY
+              ...
+      - pattern-not: |
+          for $KEY, $VALUE in $DICT.items():
+              ...
+              $VALUE
+              ...

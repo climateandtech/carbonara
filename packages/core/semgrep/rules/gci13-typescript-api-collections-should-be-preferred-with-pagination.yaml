@@ -1,0 +1,19 @@
+rules:
+  - id: gci13-typescript-api-collections-should-be-preferred-with-pagination
+    languages:
+      - typescript
+    severity: INFO
+    message: "API collections should be preferred with pagination. Avoid returning raw collections directly from API endpoints."
+    patterns:
+      - pattern-inside: |
+          @Controller()
+          class $CLASS {
+            ...
+          }
+      - pattern: |
+          @Get(...)
+          public $METHOD(): $TYPE[] { ... }
+      - pattern-not: |
+          public $METHOD(): Promise<Pagination> { ... }
+      - pattern-not: |
+          public $METHOD(): Pagination { ... }

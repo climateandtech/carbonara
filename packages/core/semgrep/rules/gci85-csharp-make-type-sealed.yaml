@@ -1,0 +1,26 @@
+rules:
+  - id: gci85-csharp-make-type-sealed
+    languages:
+      - csharp
+    severity: INFO
+    message: "Make type sealed. Non-sealed types prevent JIT compiler optimizations. Seal types explicitly if not intended for inheritance."
+    pattern-either:
+      # Match public classes without virtual methods or unsealed overrides
+      - patterns:
+          - pattern-inside: |
+              public class $CLASS_NAME { ... }
+          - pattern: public class $CLASS_NAME { ... }
+          - pattern-not: public sealed class $CLASS_NAME { ... }
+          - pattern-not-regex: "public\\s+virtual"
+          - pattern-not-regex: "protected\\s+virtual"
+          - pattern-not-regex: "public\\s+override"
+          - pattern-not-regex: "protected\\s+override"
+      # Match internal/private classes (even with virtual methods, as they can't be inherited from other assemblies)
+      - patterns:
+          - pattern-either:
+              - pattern: internal class $CLASS_NAME { ... }
+              - pattern: private class $CLASS_NAME { ... }
+              - pattern: protected class $CLASS_NAME { ... }
+          - pattern-not: internal sealed class $CLASS_NAME { ... }
+          - pattern-not: private sealed class $CLASS_NAME { ... }
+          - pattern-not: protected sealed class $CLASS_NAME { ... }

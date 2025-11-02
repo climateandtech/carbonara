@@ -1,0 +1,8 @@
+rules:
+  - id: gci31-javascript-lighter-formats-should-be-used-for-image-files
+    languages:
+      - html
+    severity: INFO
+    message: "Lighter formats should be used for image files. Consider using WebP, AVIF, or SVG instead of JPG, PNG, or GIF."
+    patterns:
+      - pattern-regex: "<img src=\".*\\.(jpg|jpeg|png|gif)\".*" # Added .* to match the rest of the tag

@@ -1,0 +1,10 @@
+rules:
+  - id: gci97-python-use-multiplication-instead-of-math-pow-or-exponentiation
+    languages:
+      - python
+    severity: INFO
+    message: "Use multiplication (x*x) instead of math.pow(x,2) or exponentiation (x**2) for squaring numbers for better performance."
+    patterns:
+      - pattern-either:
+          - pattern: $VAR**2
+          - pattern: math.pow($VAR, 2)

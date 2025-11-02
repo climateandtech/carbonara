@@ -1,0 +1,21 @@
+<head>
+  <title>Web Page</title>
+  <!-- ruleid: gci30-javascript-print-stylesheet-should-be-provided -->
+  <link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+
+<!-- ok: gci30-javascript-print-stylesheet-should-be-provided -->
+<head>
+  <title>Web Page</title>
+  <link rel="stylesheet" media="print" type="text/css" href="print.css" />
+</head>
+
+<!-- ok: gci30-javascript-print-stylesheet-should-be-provided -->
+<head>
+  <title>Web Page</title>
+  <style>
+    @media print {
+      /* Compliant: print-specific styles */
+    }
+  </style>
+</head>

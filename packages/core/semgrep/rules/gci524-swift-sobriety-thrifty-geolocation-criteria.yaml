@@ -1,0 +1,10 @@
+rules:
+  - id: gci524-swift-sobriety-thrifty-geolocation-criteria
+    languages:
+      - swift
+    severity: INFO
+    message: "Set CLLocationManager desiredAccuracy to a reasonable value. Avoid using kCLLocationAccuracyBest unless high precision is required. Use lower accuracy values to conserve battery."
+    patterns:
+      - pattern-either:
+          - pattern: $MGR.desiredAccuracy = kCLLocationAccuracyBest
+          - pattern: $MGR.desiredAccuracy = kCLLocationAccuracyBestForNavigation

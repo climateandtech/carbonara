@@ -1,0 +1,12 @@
+rules:
+  - id: gci516-java-leakage-media-leak-mediaplayer
+    languages:
+      - java
+    severity: INFO
+    message: "Release MediaPlayer resources to avoid battery drain. Ensure every MediaPlayer creation has a corresponding release()."
+    patterns:
+      - pattern: MediaPlayer $MP = new MediaPlayer();
+      - pattern-not-inside: |
+          MediaPlayer $MP = new MediaPlayer();
+          ...
+          $MP.release();

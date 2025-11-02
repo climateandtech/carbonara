@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { DataService } from '@carbonara/core';
 
 export interface AssessmentSection {
     id: string;
@@ -436,74 +437,62 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             sustainabilityGoals: this.assessmentData.find(s => s.id === 'sustainability')?.data || {}
         };
 
-        // Save assessment data file
+        // Save assessment data file (for reference)
         const projectPath = this.getCurrentProjectPath();
         const assessmentFile = path.join(projectPath, 'carbonara-assessment.json');
         fs.writeFileSync(assessmentFile, JSON.stringify(assessmentData, null, 2));
 
-        // Run CLI assessment with the file
-        const { spawn } = require('child_process');
-        const cliPath = this.findCarbonaraCLI();
-        
-        if (!cliPath) {
-            vscode.window.showErrorMessage('Carbonara CLI not found');
-            return;
-        }
-
-        return new Promise((resolve, reject) => {
-            vscode.window.withProgress({
+        // Store assessment data using core DataService
+        try {
+            await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: 'Running CO2 Assessment...',
+                title: 'Saving CO2 Assessment...',
                 cancellable: false
-            }, () => {
-                return new Promise<void>((progressResolve, progressReject) => {
-                    const child = spawn('node', [cliPath, 'assess', '--file', assessmentFile], {
-                        cwd: projectPath,
-                        stdio: 'pipe'
-                    });
-
-                    child.on('close', (code: number | null) => {
-                        if (code === 0) {
-                            vscode.window.showInformationMessage('🎉 CO2 Assessment completed successfully!');
-                            progressResolve();
-                            resolve();
-                        } else {
-                            vscode.window.showErrorMessage('Assessment failed');
-                            progressReject();
-                            reject();
-                        }
-                    });
-
-                    child.on('error', (error: Error) => {
-                        vscode.window.showErrorMessage(`Assessment error: ${error.message}`);
-                        progressReject();
-                        reject();
-                    });
+            }, async () => {
+                const dataService = new DataService({
+                    dbPath: path.join(projectPath, '.carbonara', 'carbonara.db')
                 });
+
+                await dataService.initialize();
+
+                // Get or create project
+                let project = await dataService.getProject(projectPath);
+                if (!project) {
+                    const configPath = path.join(projectPath, 'carbonara.config.json');
+                    let projectName = 'Carbonara Project';
+                    if (fs.existsSync(configPath)) {
+                        try {
+                            const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+                            projectName = config.name || projectName;
+                        } catch {}
+                    }
+                    const projectId = await dataService.createProject(projectName, projectPath, {});
+                    project = await dataService.getProject(projectPath);
+                }
+
+                if (project) {
+                    // Store assessment data
+                    await dataService.storeAssessmentData(
+                        project.id,
+                        'co2-assessment',
+                        'assessment',
+                        assessmentData,
+                        'vscode-extension'
+                    );
+
+                    // Update project CO2 variables
+                    await dataService.updateProjectCO2Variables(project.id, assessmentData);
+                }
+
+                await dataService.close();
             });
-        });
-    }
 
-    private findCarbonaraCLI(): string | null {
-        if (!this.workspaceFolder) {
-            return null;
+            vscode.window.showInformationMessage('🎉 CO2 Assessment completed and saved successfully!');
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Assessment error: ${errorMessage}`);
+            throw error;
         }
-
-        const projectPath = this.getCurrentProjectPath();
-
-        // Check monorepo structure
-        const monorepoCliPath = path.join(projectPath, 'packages', 'cli', 'src', 'index.js');
-        if (fs.existsSync(monorepoCliPath)) {
-            return monorepoCliPath;
-        }
-
-        // Check parent of monorepo
-        const parentMonorepoPath = path.join(projectPath, '..', 'packages', 'cli', 'src', 'index.js');
-        if (fs.existsSync(parentMonorepoPath)) {
-            return parentMonorepoPath;
-        }
-
-        return null;
     }
 
     public getCompletionStatus(): { completed: number; total: number } {

@@ -1,0 +1,8 @@
+rules:
+  - id: gci94-java-orelseget-instead-of-orelse
+    languages:
+      - java
+    severity: INFO
+    message: "Use orElseGet() instead of orElse() with a function call. orElseGet() is only executed when the Optional value is not present, saving computing time."
+    patterns:
+      - pattern: $OPTIONAL.orElse($CALL());

@@ -1,0 +1,11 @@
+rules:
+  - id: gci87-csharp-use-collection-indexer
+    languages:
+      - csharp
+    severity: INFO
+    message: "Use collection indexer instead of Linq methods like First(), Last(), or ElementAt() for better performance on indexed collections."
+    patterns:
+      - pattern-either:
+          - pattern: $COLLECTION.First();
+          - pattern: $COLLECTION.Last();
+          - pattern: $COLLECTION.ElementAt($INDEX);

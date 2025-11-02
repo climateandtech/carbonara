@@ -1,0 +1,12 @@
+rules:
+  - id: gci548-xml-sobriety-dark-ui-theme
+    languages:
+      - generic
+    severity: INFO
+    message: "Avoid light themes for better battery life, especially on OLED screens. Consider using darker themes like Theme.Holo."
+    paths:
+      include:
+        - "*.xml"
+    pattern-either:
+      - pattern-regex: 'parent\s*=\s*"@android:style/Theme\.Holo\.Light"'
+      - pattern-regex: 'android:theme\s*=\s*"@android:style/Theme\.Holo\.Light"'

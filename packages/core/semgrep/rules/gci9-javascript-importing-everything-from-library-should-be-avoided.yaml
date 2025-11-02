@@ -1,0 +1,17 @@
+rules:
+  - id: gci9-javascript-importing-everything-from-library-should-be-avoided
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Avoid importing entire libraries. Import only the specific modules or functions you need."
+    patterns:
+      - pattern-either:
+          - pattern: import $VAR from "lodash";
+          - pattern: import * as $VAR from "lodash";
+          - pattern: import $VAR from "underscore";
+          - pattern: import * as $VAR from "underscore";
+      - pattern-not: import { $ANYTHING } from "lodash";
+      - pattern-not: import { $ANYTHING } from "underscore";
+      - pattern-not: import $ANYTHING from "lodash/$SUBMODULE";
+      - pattern-not: import $ANYTHING from "underscore/$SUBMODULE";

@@ -1,0 +1,11 @@
+rules:
+  - id: gci26-javascript-shorthand-css-notations-should-be-used-to-reduce-stylesheets-size
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+    message: "Use shorthand CSS notations to reduce stylesheet size. Combine individual margin properties into a single 'margin' shorthand."
+    patterns:
+      - pattern: |
+          <div style={{ marginTop: $MT, marginRight: $MR, marginBottom: $MB, marginLeft: $ML }}>
+          </div>
