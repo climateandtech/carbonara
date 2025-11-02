@@ -300,6 +300,26 @@
         "method": "command",
         "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
       },
+      "parameters": [
+        {
+          "name": "url",
+          "required": true,
+          "type": "string",
+          "description": "URL of the webpage to analyze"
+        },
+        {
+          "name": "scrollToBottom",
+          "required": false,
+          "type": "boolean",
+          "description": "Whether to scroll to bottom of page during analysis"
+        },
+        {
+          "name": "firstVisitPercentage",
+          "required": false,
+          "type": "number",
+          "description": "Percentage of first-time visits (0-1)"
+        }
+      ],
       "manifestTemplate": {
         "name": "webpage-carbon-scan",
         "description": "Webpage carbon impact analysis",
@@ -422,6 +442,14 @@
         "method": "command",
         "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
       },
+      "parameters": [
+        {
+          "name": "url",
+          "required": true,
+          "type": "string",
+          "description": "URL of the website to check for green hosting"
+        }
+      ],
       "manifestTemplate": {
         "name": "green-hosting-check",
         "description": "Check if website is hosted on green energy",
@@ -503,6 +531,20 @@
         "method": "command",
         "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
       },
+      "parameters": [
+        {
+          "name": "thermal-design-power",
+          "required": false,
+          "type": "number",
+          "description": "CPU thermal design power in watts"
+        },
+        {
+          "name": "vcpus-total",
+          "required": false,
+          "type": "number",
+          "description": "Total number of vCPUs"
+        }
+      ],
       "manifestTemplate": {
         "name": "cpu-metrics-monitoring",
         "description": "Monitor local CPU utilization during web application analysis",
@@ -777,6 +819,14 @@
         "method": "command",
         "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
       },
+      "parameters": [
+        {
+          "name": "testCommand",
+          "required": true,
+          "type": "string",
+          "description": "E2E test command to run (e.g., 'npm run test:e2e', 'npx cypress run')"
+        }
+      ],
       "manifestTemplate": {
         "name": "e2e-test-cpu-monitoring",
         "description": "Monitor CPU utilization during E2E test execution",

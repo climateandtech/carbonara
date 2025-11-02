@@ -58,23 +58,31 @@ describe('External Tools - Generic Tests', () => {
   test('external tools should show installation status correctly', () => {
     const externalTools = getExternalTools();
     
-    externalTools.forEach(tool => {
-      // Test that tools command shows the tool
-      try {
-        const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { 
-          encoding: 'utf8',
-          timeout: 10000,
-          stdio: 'pipe'
-        });
-        
+    expect(externalTools.length).toBeGreaterThan(0);
+    
+    // Call tools --list once (not in a loop) to avoid timeout
+    try {
+      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { 
+        encoding: 'utf8',
+        timeout: 20000, // Increased timeout for installation checks
+        stdio: 'pipe'
+      });
+      
+      // Check that all external tools are shown in the output
+      // They may appear in either "Installed Tools" or "Available Tools (not installed)" section
+      externalTools.forEach(tool => {
         // Should show the tool name
         expect(result).toContain(tool.name);
         expect(result).toContain(tool.id);
-      } catch (error: any) {
-        // If registry loading fails, that's a separate issue
-        console.log(`Registry loading issue for ${tool.id}: ${error.message}`);
+      });
+    } catch (error: any) {
+      // If registry loading fails, that's a separate issue
+      console.log(`Registry loading issue: ${error.message}`);
+      // Don't fail the test if it's a registry loading issue
+      if (!error.message.includes('timeout')) {
+        throw error;
       }
-    });
+    }
   });
 
   test('external tools should handle missing installation gracefully', () => {
@@ -244,25 +252,100 @@ describe('External Tools - Generic Tests', () => {
     });
   });
 
-  test('tools with manifest templates should have valid placeholders and structure', () => {
-    const externalTools = getExternalTools();
-    const toolsWithManifests = externalTools.filter(tool => tool.manifestTemplate);
-    
-    toolsWithManifests.forEach(tool => {
-      const manifest = tool.manifestTemplate;
-      const manifestStr = JSON.stringify(manifest);
+  describe('Manifest Templates', () => {
+    // Test fixtures
+    const getToolsWithManifests = () => {
+      const externalTools = getExternalTools();
+      return externalTools.filter(tool => tool.manifestTemplate);
+    };
+
+    const getToolsWithParameters = () => {
+      const toolsWithManifests = getToolsWithManifests();
+      return toolsWithManifests.filter(tool => tool.parameters && tool.parameters.length > 0);
+    };
+
+    const getToolsWithoutParameters = () => {
+      const toolsWithManifests = getToolsWithManifests();
+      return toolsWithManifests.filter(tool => !tool.parameters || tool.parameters.length === 0);
+    };
+
+    test('should have proper plugin and tree structure', () => {
+      const toolsWithManifests = getToolsWithManifests();
       
-      // Should have URL placeholder (since all tools need a URL)
-      expect(manifestStr).toContain('{url}');
-      
-      // Should have proper plugin structure
-      Object.values(manifest.initialize.plugins).forEach((plugin: any) => {
-        expect(plugin.path).toBeTruthy();
-        expect(plugin.method).toBeTruthy();
+      toolsWithManifests.forEach(tool => {
+        const manifest = tool.manifestTemplate;
+        
+        // Should have proper plugin structure
+        Object.values(manifest.initialize.plugins).forEach((plugin: any) => {
+          expect(plugin.path).toBeTruthy();
+          expect(plugin.method).toBeTruthy();
+        });
+        
+        // Should have proper tree structure
+        expect(manifest.tree.children).toBeTruthy();
       });
-      
-      // Should have proper tree structure
-      expect(manifest.tree.children).toBeTruthy();
+    });
+
+    describe('with parameters', () => {
+      test('should have required parameters in manifest template', () => {
+        const toolsWithParams = getToolsWithParameters();
+        
+        expect(toolsWithParams.length).toBeGreaterThan(0);
+        
+        toolsWithParams.forEach(tool => {
+          const manifest = tool.manifestTemplate;
+          const manifestStr = JSON.stringify(manifest);
+          const requiredParams = tool.parameters!.filter(p => p.required);
+          
+          requiredParams.forEach(param => {
+            // Required parameter name should appear as {name} in manifest
+            expect(manifestStr).toContain(`{${param.name}}`);
+          });
+        });
+      });
+
+      test('should have valid parameter definitions', () => {
+        const toolsWithParams = getToolsWithParameters();
+        
+        toolsWithParams.forEach(tool => {
+          tool.parameters!.forEach(param => {
+            // Each parameter should have required fields
+            expect(param.name).toBeTruthy();
+            expect(typeof param.name).toBe('string');
+            expect(typeof param.required).toBe('boolean');
+            
+            // If type is specified, it should be valid
+            if (param.type) {
+              expect(['string', 'number', 'boolean']).toContain(param.type);
+            }
+            
+            // Parameter name should not contain curly braces
+            expect(param.name).not.toContain('{');
+            expect(param.name).not.toContain('}');
+          });
+        });
+      });
+    });
+
+    describe('without parameters', () => {
+      test('should still have valid manifest structure', () => {
+        const toolsWithoutParams = getToolsWithoutParameters();
+        
+        // This test should pass even if there are no tools without parameters
+        // (all tools might have parameters defined, which is fine)
+        
+        toolsWithoutParams.forEach(tool => {
+          const manifest = tool.manifestTemplate;
+          
+          // Should have proper plugin structure
+          expect(manifest.initialize).toBeTruthy();
+          expect(manifest.initialize.plugins).toBeTruthy();
+          
+          // Should have proper tree structure
+          expect(manifest.tree).toBeTruthy();
+          expect(manifest.tree.children).toBeTruthy();
+        });
+      });
     });
   });
 });

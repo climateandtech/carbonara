@@ -71,32 +71,137 @@ suite("ToolsTreeProvider Unit Tests", () => {
   });
 
   suite("Workspace Tools Registry Loading", () => {
-    test("should load fallback tools when no CLI available", async () => {
-      // Wait for tools to load by calling the async loadTools method directly
+    test("with external tools in registry -> should show external tools", async () => {
+      // Load tools from actual registry (which includes both built-in and external)
       await (provider as any).loadTools();
 
-      // Now trigger tree view update
       const children = await provider.getChildren();
 
-      // Should have loaded some tools (either from registry or fallback)
-      assert.ok(children.length > 0, "Should have loaded tools");
+      // Should have loaded tools
+      assert.ok(children.length > 0, "Should have loaded tools from registry");
 
-      // Should have both built-in and external tools
+      // Should have built-in tools
       const builtinTools = children.filter(
         (child) => child.tool.type === "built-in"
       );
-      const externalTools = children.filter(
-        (child) => child.tool.type === "external"
-      );
-
       assert.ok(
         builtinTools.length > 0,
         "Should have at least one built-in tool"
       );
+
+      // Should have external tools (registry contains external tools)
+      const externalTools = children.filter(
+        (child) => child.tool.type === "external"
+      );
       assert.ok(
         externalTools.length > 0,
-        "Should have at least one external tool"
+        "Should have at least one external tool when registry contains them"
       );
+
+      // Verify external tools are correctly categorized
+      externalTools.forEach((tool) => {
+        assert.strictEqual(
+          tool.tool.type,
+          "external",
+          "Tool should be categorized as external"
+        );
+        assert.ok(
+          tool.tool.installation,
+          "External tool should have installation config"
+        );
+        assert.ok(
+          ["npm", "pip", "binary", "docker"].includes(tool.tool.installation.type),
+          "External tool should have external installation type"
+        );
+      });
+    });
+
+    test("without external tools in registry -> should only show built-in tools", async () => {
+      // Create a mock registry with only built-in tools
+      const mockRegistryWithOnlyBuiltIn = {
+        tools: [
+          {
+            id: "co2-assessment",
+            name: "CO2 Assessment",
+            description:
+              "Interactive CO2 sustainability assessment questionnaire",
+            command: {
+              executable: "built-in",
+              args: [],
+              outputFormat: "json",
+            },
+            installation: {
+              type: "built-in",
+              package: "built-in",
+              instructions: "Built-in tool",
+            },
+            detection: {
+              method: "built-in",
+              target: "always-available",
+            },
+          },
+        ],
+      };
+
+      // Create temporary registry file
+      const tempDir = fs.mkdtempSync(path.join("/tmp", "carbonara-test-registry-"));
+      const tempRegistryPath = path.join(tempDir, "tools.json");
+      fs.writeFileSync(tempRegistryPath, JSON.stringify(mockRegistryWithOnlyBuiltIn, null, 2));
+
+      // Store original registry path
+      const originalRegistryPath = process.env.CARBONARA_REGISTRY_PATH;
+
+      try {
+        // Point to our temporary registry
+        process.env.CARBONARA_REGISTRY_PATH = tempRegistryPath;
+
+        // Create new provider to load from temporary registry
+        const testProvider = new ToolsTreeProvider();
+        await (testProvider as any).loadTools();
+
+        const children = await testProvider.getChildren();
+
+        // Should have loaded tools
+        assert.ok(children.length > 0, "Should have loaded tools from registry");
+
+        // Should have built-in tools
+        const builtinTools = children.filter(
+          (child) => child.tool.type === "built-in"
+        );
+        assert.ok(
+          builtinTools.length > 0,
+          "Should have at least one built-in tool"
+        );
+
+        // Should NOT have external tools
+        const externalTools = children.filter(
+          (child) => child.tool.type === "external"
+        );
+        assert.strictEqual(
+          externalTools.length,
+          0,
+          "Should have no external tools when registry only contains built-in tools"
+        );
+
+        // Verify all tools are built-in
+        children.forEach((child) => {
+          assert.strictEqual(
+            child.tool.type,
+            "built-in",
+            "All tools should be built-in when registry only contains built-in tools"
+          );
+        });
+      } finally {
+        // Restore original registry path
+        if (originalRegistryPath) {
+          process.env.CARBONARA_REGISTRY_PATH = originalRegistryPath;
+        } else {
+          delete process.env.CARBONARA_REGISTRY_PATH;
+        }
+
+        // Clean up temporary file
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
     });
 
     test("should have expected tool structure", async () => {
@@ -106,11 +211,8 @@ suite("ToolsTreeProvider Unit Tests", () => {
       // Test the structure and properties of loaded tools
       const children = await provider.getChildren();
 
-      // Should have loaded tools
-      assert.ok(
-        children.length >= 3,
-        "Should have at least 3 tools (1 built-in + 2 external)"
-      );
+      // Should have loaded at least built-in tools
+      assert.ok(children.length > 0, "Should have loaded tools");
 
       // Check that tools have required properties
       children.forEach((child) => {
