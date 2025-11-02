@@ -91,15 +91,19 @@ private projectDetector: ProjectDetector = new ProjectDetector();
   constructor() {
     console.log('🔧 ToolsTreeProvider constructor called');
     this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    // Load tools and detect project asynchronously
+    // Load tools asynchronously (but don't block activation)
     this.loadTools().catch(error => {
         console.error('🔧 Failed to load tools in constructor:', error);
       // Fire change event even if loading failed so UI shows the "no tools" message
       this._onDidChangeTreeData.fire();
     });
-    this.detectProject().catch(error => {
-        console.error('🔧 Failed to detect project in constructor:', error);
-    });
+    // Defer project detection until after activation completes
+    // This prevents timing issues in E2E tests where workspace might not be ready
+    setTimeout(() => {
+      this.detectProject().catch(error => {
+        console.error('🔧 Failed to detect project:', error);
+      });
+    }, 0);
   }
 
   refresh(): void {
