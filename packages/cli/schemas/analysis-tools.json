@@ -42,6 +42,37 @@
           "items": {
             "$ref": "#/definitions/ToolOption"
           }
+        },
+        "parameters": {
+          "type": "array",
+          "description": "List of parameters/placeholders required by this tool",
+          "items": {
+            "$ref": "#/definitions/ToolParameter"
+          }
+        }
+      }
+    },
+    "ToolParameter": {
+      "type": "object",
+      "required": ["name", "required"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Parameter name (without curly braces, e.g., 'url', 'testCommand')"
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether this parameter is required"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean"],
+          "default": "string",
+          "description": "Parameter type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what this parameter is used for"
         }
       }
     },

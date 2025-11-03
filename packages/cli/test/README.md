@@ -15,6 +15,26 @@ Basic functionality tests using `execSync` for reliability:
 - **Basic Commands**: Tests core command structure
 - **Database Operations**: Tests data management with graceful error handling
 
+### `external-tools.test.ts`
+
+Generic unit tests for all external tools (Impact Framework, GreenFrame, Semgrep, etc.):
+
+- **Registry Configuration**: Validates tool configuration structure
+- **Installation Detection**: Tests tool installation checking
+- **Option Validation**: Tests tool option configurations
+- **Manifest Templates**: Tests tools with manifest templates (IF tools)
+- **Package Consistency**: Validates tools with same installation packages
+
+### `external-tools-integration.test.ts`
+
+Generic integration tests for external tools:
+
+- **CLI Integration**: Tests analyze command execution
+- **VSCode Integration**: Tests option passing from VSCode to CLI
+- **Database Operations**: Tests result storage
+- **Error Handling**: Tests graceful failures when tools not installed
+- **Manifest Generation**: Tests tools with manifest templates
+
 ## Test Philosophy
 
 1. **Synchronous Testing**: Uses `execSync` instead of complex async process management
@@ -35,7 +55,7 @@ npm run test:watch
 
 ## Test Results
 
-All 7 tests currently pass:
+All tests currently pass:
 - ✅ CLI should show help
 - ✅ CLI should show version  
 - ✅ assess command should show warning without project
@@ -43,6 +63,8 @@ All 7 tests currently pass:
 - ✅ greenframe command should work with valid URL
 - ✅ data command should show help when no options provided
 - ✅ data --list should handle missing database gracefully
+- ✅ External tools configuration validation (9 tests)
+- ✅ External tools integration testing (10 tests)
 
 ## Testing Strategy
 
@@ -62,7 +84,9 @@ All 7 tests currently pass:
 
 ## Adding New Tests
 
-When adding new tests:
+### For CLI Commands
+
+When adding new CLI tests:
 
 1. Use `execSync` for reliability
 2. Create isolated test directories
@@ -84,4 +108,47 @@ test('new command should work', () => {
     expect(error.stderr.toString()).toContain('expected error');
   }
 });
+```
+
+### For External Tools
+
+**No additional test files needed!** External tools are automatically tested by the generic test suites.
+
+To add a new external tool:
+
+1. Add tool configuration to `src/registry/tools.json`
+2. Run tests - your tool is automatically included
+3. Tests validate: configuration, installation detection, options, CLI integration, VSCode integration
+
+The generic tests work for any external tool by reading the registry configuration.
+
+### Impact Framework Tools
+
+For Impact Framework tools specifically:
+
+1. Add tool to `tools.json` with `manifestTemplate` field
+2. Include `display` configuration for VSCode integration
+3. Use placeholder replacement: `{url}`, `{optionName}`
+4. Tests automatically validate manifest generation and plugin detection
+
+Example tool configuration:
+```json
+{
+  "id": "if-webpage-scan",
+  "manifestTemplate": {
+    "initialize": {
+      "plugins": {
+        "webpage-impact": {
+          "method": "WebpageImpact",
+          "config": { "url": "{url}", "scrollToBottom": "{scrollToBottom}" }
+        }
+      }
+    }
+  },
+  "display": {
+    "fields": [
+      { "key": "carbon", "path": "data.tree.children.child.outputs[0]['operational-carbon']" }
+    ]
+  }
+}
 ``` 

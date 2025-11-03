@@ -32,6 +32,14 @@ export interface AnalysisTool {
     type: 'boolean' | 'string' | 'number';
     default?: any;
   }>;
+  parameters?: Array<{
+    name: string; // Parameter name without curly braces (e.g., 'url', 'testCommand')
+    required: boolean;
+    type?: 'string' | 'number' | 'boolean';
+    description?: string;
+  }>;
+  manifestTemplate?: any; // For Impact Framework tools
+  display?: any; // For display configuration
 }
 
 export interface ToolRegistry {

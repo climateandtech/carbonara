@@ -20,6 +20,12 @@ export interface AnalysisTool {
     method: "command" | "npm" | "file" | "built-in";
     target: string;
   };
+  options?: Array<{
+    flag: string;
+    description: string;
+    type: "boolean" | "string" | "number";
+    default?: any;
+  }>;
   isInstalled?: boolean;
 }
 
@@ -374,6 +380,76 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return;
     }
 
+    // Collect tool options if available
+    const cliArgs = ["analyze", tool.id, url, "--save"];
+
+    if (tool.options && tool.options.length > 0) {
+      for (const option of tool.options) {
+        // Skip built-in options that are handled automatically
+        if (
+          option.flag.includes("--save") ||
+          option.flag.includes("--output")
+        ) {
+          continue;
+        }
+
+        let value: any = undefined;
+
+        switch (option.type) {
+          case "boolean":
+            const booleanResult = await vscode.window.showQuickPick(
+              [
+                { label: "Yes", value: true },
+                { label: "No", value: false },
+              ],
+              {
+                placeHolder: option.description,
+                ignoreFocusOut: true,
+              }
+            );
+            value = booleanResult?.value;
+            break;
+
+          case "number":
+            const numberInput = await vscode.window.showInputBox({
+              prompt: option.description,
+              value: option.default?.toString() || "",
+              validateInput: (value) => {
+                if (value && isNaN(Number(value))) {
+                  return "Please enter a valid number";
+                }
+                return undefined;
+              },
+              ignoreFocusOut: true,
+            });
+            value = numberInput ? Number(numberInput) : undefined;
+            break;
+
+          case "string":
+            const stringInput = await vscode.window.showInputBox({
+              prompt: option.description,
+              value: option.default?.toString() || "",
+              ignoreFocusOut: true,
+            });
+            value = stringInput;
+            break;
+        }
+
+        // Add option to CLI args if value was provided
+        if (value !== undefined && value !== null) {
+          if (option.type === "boolean" && value === true) {
+            // For boolean true, just add the flag
+            const flag = option.flag.split(",")[0].trim(); // Get first flag if multiple
+            cliArgs.push(flag);
+          } else if (option.type !== "boolean") {
+            // For non-boolean, add flag and value
+            const flag = option.flag.split(",")[0].trim();
+            cliArgs.push(flag, value.toString());
+          }
+        }
+      }
+    }
+
     try {
       const cliPath = await this.findCarbonaraCLI();
       if (!cliPath) {
@@ -385,12 +461,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         UI_TEXT.NOTIFICATIONS.ANALYSIS_RUNNING(tool.name)
       );
 
-      const result = await this.runCarbonaraCommand(cliPath, [
-        "analyze",
-        tool.id,
-        url,
-        "--save",
-      ]);
+      const result = await this.runCarbonaraCommand(cliPath, cliArgs);
 
       vscode.window.showInformationMessage(
         UI_TEXT.NOTIFICATIONS.ANALYSIS_COMPLETED(tool.name)
