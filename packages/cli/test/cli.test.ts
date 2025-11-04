@@ -124,7 +124,7 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze command with tool but no URL should show help', () => {
+  test('analyze command with tool but no target should show help', () => {
     try {
       execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer`, {
         encoding: 'utf8',
@@ -132,7 +132,7 @@ describe('Carbonara CLI - Tests', () => {
       });
     } catch (error: any) {
       expect(error.status).toBe(1);
-      expect(error.stderr.toString()).toContain("missing required argument 'url'");
+      expect(error.stderr.toString()).toContain("missing required argument 'target'");
     }
   });
 
