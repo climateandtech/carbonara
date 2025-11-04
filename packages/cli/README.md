@@ -62,9 +62,9 @@ carbonara assess
 
 ## Project Structure
 
-When you run `carbonara init`, it creates:
-- `carbonara.config.json` - Project configuration
-- `carbonara.db` - SQLite database for assessment data
+When you run `carbonara init`, it creates a `.carbonara/` directory containing:
+- `.carbonara/carbonara.config.json` - Project configuration
+- `.carbonara/carbonara.db` - SQLite database for assessment data
 
 ## Configuration
 
@@ -95,8 +95,8 @@ Initialize a new Carbonara project in the current directory.
 - `-p, --path <path>` - Project path (default: current directory)
 
 **Creates:**
-- `carbonara.config.json` - Project configuration file
-- `carbonara.db` - SQLite database for storing assessment data
+- `.carbonara/carbonara.config.json` - Project configuration file
+- `.carbonara/carbonara.db` - SQLite database for storing assessment data
 
 #### `carbonara assess [options]`
 Run interactive CO2 assessment questionnaire.

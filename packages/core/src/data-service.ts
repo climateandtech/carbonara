@@ -44,7 +44,8 @@ export class DataService {
   private SQL: any = null;
 
   constructor(config: DatabaseConfig = {}) {
-    this.dbPath = config.dbPath || path.join(process.cwd(), "carbonara.db");
+    this.dbPath =
+      config.dbPath || path.join(process.cwd(), ".carbonara", "carbonara.db");
   }
 
   getDbPath(): string {
@@ -62,6 +63,12 @@ export class DataService {
   async initialize(): Promise<void> {
     // Initialize sql.js
     this.SQL = await initSqlJs();
+
+    // Ensure the .carbonara directory exists
+    const dbDir = path.dirname(this.dbPath);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
 
     // Try to load existing database file
     let existingData: Buffer | undefined;

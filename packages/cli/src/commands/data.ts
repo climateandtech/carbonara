@@ -215,7 +215,7 @@ async function exportData(dataLake: any, projectId: number, format: 'json' | 'cs
 
   // Export all data (don't filter by projectId)
   const assessmentData = await dataLake.getAssessmentData();
-  
+
   if (assessmentData.length === 0) {
     console.log(chalk.gray('No data to export.'));
     return;
@@ -223,16 +223,24 @@ async function exportData(dataLake: any, projectId: number, format: 'json' | 'cs
 
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = `carbonara-export-${timestamp}.${format}`;
+  const carbonaraDir = path.join(process.cwd(), '.carbonara');
 
-  if (format === 'json') {
-    fs.writeFileSync(filename, JSON.stringify(assessmentData, null, 2));
-  } else if (format === 'csv') {
-    const csv = convertToCSV(assessmentData);
-    fs.writeFileSync(filename, csv);
+  // Ensure .carbonara directory exists
+  if (!fs.existsSync(carbonaraDir)) {
+    fs.mkdirSync(carbonaraDir, { recursive: true });
   }
 
-  console.log(chalk.green(`✅ Data exported to ${filename}`));
-  console.log(chalk.gray(`📁 Location: ${path.resolve(filename)}`));
+  const filePath = path.join(carbonaraDir, filename);
+
+  if (format === 'json') {
+    fs.writeFileSync(filePath, JSON.stringify(assessmentData, null, 2));
+  } else if (format === 'csv') {
+    const csv = convertToCSV(assessmentData);
+    fs.writeFileSync(filePath, csv);
+  }
+
+  console.log(chalk.green(`✅ Data exported to .carbonara/${filename}`));
+  console.log(chalk.gray(`📁 Location: ${path.resolve(filePath)}`));
 }
 
 async function clearData(dataLake: any, projectId: number) {

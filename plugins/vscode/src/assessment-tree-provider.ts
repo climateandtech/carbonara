@@ -34,23 +34,23 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
     }
 
     private getCurrentProjectPath(): string {
-        // Find project root by searching for carbonara.config.json
+        // Find project root by searching for .carbonara/carbonara.config.json
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         if (!workspaceFolder) {
             return process.cwd();
         }
 
         let currentDir = workspaceFolder.uri.fsPath;
-        
-        // Search up the directory tree for carbonara.config.json
+
+        // Search up the directory tree for .carbonara/carbonara.config.json
         while (currentDir !== path.dirname(currentDir)) {
-            const configPath = path.join(currentDir, 'carbonara.config.json');
+            const configPath = path.join(currentDir, '.carbonara', 'carbonara.config.json');
             if (fs.existsSync(configPath)) {
                 return currentDir;
             }
             currentDir = path.dirname(currentDir);
         }
-        
+
         // Default to workspace root
         return workspaceFolder.uri.fsPath;
     }
@@ -270,7 +270,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
         }
 
         const projectPath = this.getCurrentProjectPath();
-        const progressFile = path.join(projectPath, '.carbonara-progress.json');
+        const progressFile = path.join(projectPath, '.carbonara', '.carbonara-progress.json');
         if (fs.existsSync(progressFile)) {
             try {
                 const progress = JSON.parse(fs.readFileSync(progressFile, 'utf-8'));
@@ -390,7 +390,14 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
         }
 
         const projectPath = this.getCurrentProjectPath();
-        const progressFile = path.join(projectPath, '.carbonara-progress.json');
+        const carbonaraDir = path.join(projectPath, '.carbonara');
+
+        // Ensure .carbonara directory exists
+        if (!fs.existsSync(carbonaraDir)) {
+            fs.mkdirSync(carbonaraDir, { recursive: true });
+        }
+
+        const progressFile = path.join(carbonaraDir, '.carbonara-progress.json');
         fs.writeFileSync(progressFile, JSON.stringify(progress, null, 2));
     }
 
@@ -413,7 +420,14 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
 
         // Save assessment data file (for reference)
         const projectPath = this.getCurrentProjectPath();
-        const assessmentFile = path.join(projectPath, 'carbonara-assessment.json');
+        const carbonaraDir = path.join(projectPath, '.carbonara');
+
+        // Ensure .carbonara directory exists
+        if (!fs.existsSync(carbonaraDir)) {
+            fs.mkdirSync(carbonaraDir, { recursive: true });
+        }
+
+        const assessmentFile = path.join(carbonaraDir, 'carbonara-assessment.json');
         fs.writeFileSync(assessmentFile, JSON.stringify(assessmentData, null, 2));
 
         // Store assessment data using core DataService
@@ -432,7 +446,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                 // Get or create project
                 let project = await dataService.getProject(projectPath);
                 if (!project) {
-                    const configPath = path.join(projectPath, 'carbonara.config.json');
+                    const configPath = path.join(projectPath, '.carbonara', 'carbonara.config.json');
                     let projectName = 'Carbonara Project';
                     if (fs.existsSync(configPath)) {
                         try {

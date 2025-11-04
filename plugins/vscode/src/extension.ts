@@ -148,7 +148,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Watch for project config changes and refresh views/status accordingly
   const watcher = vscode.workspace.createFileSystemWatcher(
-    "**/carbonara.config.json"
+    "**/.carbonara/carbonara.config.json"
   );
   watcher.onDidCreate(() => {
     assessmentTreeProvider.refresh();
@@ -290,7 +290,7 @@ async function runAssessment() {
 
   // Check if project is initialized
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, "carbonara.config.json");
+  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
   if (!fs.existsSync(configPath)) {
     const answer = await vscode.window.showInformationMessage(
       "Project not initialized. Initialize now?",
@@ -390,7 +390,7 @@ async function viewTools() {
 
 async function showStatus() {
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, "carbonara.config.json");
+  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
   if (!fs.existsSync(configPath)) {
     vscode.window.showInformationMessage(
       "No Carbonara project detected. Initialize one from the status bar or sidebar."
@@ -409,7 +409,7 @@ async function openConfig() {
   }
 
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, "carbonara.config.json");
+  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
 
   if (fs.existsSync(configPath)) {
     const doc = await vscode.workspace.openTextDocument(configPath);
@@ -436,7 +436,7 @@ async function openCarbonaraProject() {
 
   // First check if current workspace already has a Carbonara project
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, "carbonara.config.json");
+  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
   if (fs.existsSync(configPath)) {
     try {
       const configContent = fs.readFileSync(configPath, "utf-8");
@@ -448,7 +448,7 @@ async function openCarbonaraProject() {
       return;
     } catch (error) {
       vscode.window.showWarningMessage(
-        "Found carbonara.config.json but it appears to be invalid"
+        "Found .carbonara/carbonara.config.json but it appears to be invalid"
       );
     }
   }
@@ -504,7 +504,7 @@ async function browseForConfig() {
       "Carbonara Config": ["json"],
       "All Files": ["*"],
     },
-    title: "Select carbonara.config.json file",
+    title: "Select .carbonara/carbonara.config.json file",
   });
 
   if (fileUri && fileUri[0]) {
@@ -527,7 +527,7 @@ async function browseForConfig() {
         );
       } else {
         vscode.window.showErrorMessage(
-          "Selected file is not a valid carbonara.config.json"
+          "Selected file is not a valid .carbonara/carbonara.config.json"
         );
       }
     } catch (error) {
@@ -544,7 +544,7 @@ async function searchWorkspaceForProjects() {
 
   // Search for all carbonara.config.json files
   const configs = await vscode.workspace.findFiles(
-    "**/carbonara.config.json",
+    "**/.carbonara/carbonara.config.json",
     "**/node_modules/**"
   );
 
@@ -616,7 +616,7 @@ async function openProjectFolder() {
 
   if (folderUri && folderUri[0]) {
     const projectPath = folderUri[0].fsPath;
-    const configPath = path.join(projectPath, "carbonara.config.json");
+    const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
 
     if (fs.existsSync(configPath)) {
       try {
@@ -629,12 +629,12 @@ async function openProjectFolder() {
         );
       } catch (error) {
         vscode.window.showErrorMessage(
-          "Invalid carbonara.config.json in selected folder"
+          "Invalid .carbonara/carbonara.config.json in selected folder"
         );
       }
     } else {
       const answer = await vscode.window.showInformationMessage(
-        "No carbonara.config.json found in selected folder. Initialize a new Carbonara project here?",
+        "No .carbonara/carbonara.config.json found in selected folder. Initialize a new Carbonara project here?",
         "Initialize",
         "Cancel"
       );
@@ -668,7 +668,7 @@ async function ensureLocalCarbonaraProject(
   projectType: string
 ): Promise<void> {
   try {
-    const configPath = path.join(projectPath, "carbonara.config.json");
+    const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
     if (!fs.existsSync(configPath)) {
       const minimalConfig = {
         name: projectName,
@@ -733,7 +733,7 @@ function checkProjectStatus() {
   }
 
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, "carbonara.config.json");
+  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
 
   if (fs.existsSync(configPath)) {
     carbonaraStatusBar.text = "$(check) Carbonara";

@@ -90,7 +90,7 @@ export const UI_TEXT = {
       },
       BROWSE: {
         LABEL: "📁 Browse for existing config (new window)",
-        DESCRIPTION: "Select a carbonara.config.json file to open its project",
+        DESCRIPTION: "Select a .carbonara/carbonara.config.json file to open its project",
         SEARCH_TEXT: "Browse for existing config"
       }
     }

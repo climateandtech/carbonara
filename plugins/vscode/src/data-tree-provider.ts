@@ -100,6 +100,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       let dbPath: string;
       const configPath = path.join(
         this.workspaceFolder.uri.fsPath,
+        ".carbonara",
         "carbonara.config.json"
       );
 
@@ -117,14 +118,14 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
                   config.database.path
                 );
           } else {
-            dbPath = path.join(this.workspaceFolder.uri.fsPath, "carbonara.db");
+            dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
           }
         } else {
-          dbPath = path.join(this.workspaceFolder.uri.fsPath, "carbonara.db");
+          dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
         }
       } catch (error) {
         console.error("❌ Error reading config:", error);
-        dbPath = path.join(this.workspaceFolder.uri.fsPath, "carbonara.db");
+        dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
       }
 
       // Test individual steps to isolate the hanging issue
@@ -241,6 +242,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         // Try to read database path from config
         const configPath = path.join(
           this.workspaceFolder.uri.fsPath,
+          ".carbonara",
           "carbonara.config.json"
         );
         try {
@@ -259,11 +261,12 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             } else {
               dbPath = path.join(
                 this.workspaceFolder.uri.fsPath,
+                ".carbonara",
                 "carbonara.db"
               );
             }
           } else {
-            dbPath = path.join(this.workspaceFolder.uri.fsPath, "carbonara.db");
+            dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
           }
           dbExists = require("fs").existsSync(dbPath);
         } catch (error) {
@@ -514,7 +517,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   private async loadRootItemsAsync(): Promise<DataItem[]> {
     try {
       const projectPath = this.workspaceFolder!.uri.fsPath;
-      const dbPath = path.join(projectPath, "carbonara.db");
+      const dbPath = path.join(projectPath, ".carbonara", "carbonara.db");
 
       if (!require("fs").existsSync(dbPath)) {
         return [
@@ -655,7 +658,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       const startTime = Date.now();
 
       const projectPath = this.workspaceFolder.uri.fsPath;
-      const dbPath = path.join(projectPath, "carbonara.db");
+      const dbPath = path.join(projectPath, ".carbonara", "carbonara.db");
       const dbExists = require("fs").existsSync(dbPath);
 
       if (!dbExists) {
@@ -770,11 +773,18 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       const timestamp = new Date().toISOString().split("T")[0];
       const filename = `carbonara-export-${timestamp}.${format}`;
-      const filePath = path.join(this.workspaceFolder.uri.fsPath, filename);
+      const carbonaraDir = path.join(this.workspaceFolder.uri.fsPath, ".carbonara");
+
+      // Ensure .carbonara directory exists
+      if (!require("fs").existsSync(carbonaraDir)) {
+        require("fs").mkdirSync(carbonaraDir, { recursive: true });
+      }
+
+      const filePath = path.join(carbonaraDir, filename);
 
       require("fs").writeFileSync(filePath, exportData);
 
-      vscode.window.showInformationMessage(`Data exported to ${filename}`);
+      vscode.window.showInformationMessage(`Data exported to .carbonara/${filename}`);
     } catch (error) {
       console.error("Export failed:", error);
       vscode.window.showErrorMessage("Failed to export data");
