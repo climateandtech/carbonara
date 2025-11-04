@@ -112,6 +112,11 @@ export function activate(context: vscode.ExtensionContext) {
       "carbonara.clearSemgrepResults",
       clearSemgrepResults
     ),
+    vscode.commands.registerCommand(
+      "carbonara.checkCliInstallation",
+      checkCliInstallation
+    ),
+    vscode.commands.registerCommand("carbonara.openWalkthrough", openWalkthrough),
   ];
 
   context.subscriptions.push(carbonaraStatusBar, ...commands);
@@ -139,6 +144,44 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Check if project is already initialized
   checkProjectStatus();
+
+  // Show walkthrough on first activation
+  const walkthroughShown = context.globalState.get<boolean>("carbonara.walkthroughShown");
+  if (!walkthroughShown) {
+    // Open walkthrough after a short delay to let VS Code fully initialize
+    setTimeout(() => {
+      openWalkthrough();
+      context.globalState.update("carbonara.walkthroughShown", true);
+    }, 1000);
+  }
+}
+
+async function openWalkthrough(): Promise<void> {
+  const walkthroughId = "carbonara.carbonara-vscode#getStarted";
+  console.log(`[Carbonara] Attempting to open walkthrough: ${walkthroughId}`);
+  
+  try {
+    await vscode.commands.executeCommand(
+      "workbench.action.openWalkthrough",
+      walkthroughId,
+      false
+    );
+    console.log(`[Carbonara] Walkthrough opened successfully`);
+  } catch (error: any) {
+    console.error(`[Carbonara] Failed to open walkthrough:`, error);
+    // Fallback: try alternative command format
+    try {
+      await vscode.commands.executeCommand(
+        "workbench.action.openWalkthrough",
+        walkthroughId
+      );
+      console.log(`[Carbonara] Walkthrough opened with fallback method`);
+    } catch (fallbackError: any) {
+      console.error(`[Carbonara] Fallback also failed:`, fallbackError);
+      const message = `Failed to open walkthrough. Try: Command Palette → "Welcome: Open Walkthrough..." → "Carbon Reduction with Carbonara"`;
+      vscode.window.showWarningMessage(message);
+    }
+  }
 }
 
 export function deactivate() {
@@ -692,6 +735,91 @@ async function installCli(): Promise<void> {
       });
     }
   );
+}
+
+async function checkCliInstallation(): Promise<void> {
+  // Check environment variable first
+  const envPath = process.env.CARBONARA_CLI_PATH;
+  if (envPath && fs.existsSync(envPath)) {
+    vscode.window.showInformationMessage(
+      `✅ Carbonara CLI found at: ${envPath}`
+    );
+    return;
+  }
+
+  // Check if we're in the monorepo
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (workspaceFolder) {
+    const monorepoCliPath = path.join(
+      workspaceFolder.uri.fsPath,
+      "..",
+      "..",
+      "packages",
+      "cli",
+      "dist",
+      "index.js"
+    );
+    if (fs.existsSync(monorepoCliPath)) {
+      vscode.window.showInformationMessage(
+        `✅ Carbonara CLI found in monorepo: ${monorepoCliPath}`
+      );
+      return;
+    }
+  }
+
+  // Try global installation
+  try {
+    const { stdout } = await new Promise<{ stdout: string; stderr: string }>(
+      (resolve, reject) => {
+        const childProcess = spawn("carbonara", ["--version"], {
+          stdio: ["ignore", "pipe", "pipe"],
+          shell: true,
+        });
+
+        let stdout = "";
+        let stderr = "";
+
+        childProcess.stdout?.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        childProcess.stderr?.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        childProcess.on("close", (code) => {
+          if (code === 0) {
+            resolve({ stdout, stderr });
+          } else {
+            reject(new Error(stderr || `Process exited with code ${code}`));
+          }
+        });
+
+        childProcess.on("error", (error) => {
+          reject(error);
+        });
+      }
+    );
+
+    const version = stdout.trim();
+    vscode.window.showInformationMessage(
+      `✅ Carbonara CLI is installed (version: ${version})`
+    );
+  } catch (error) {
+    const installOption = await vscode.window.showWarningMessage(
+      "Carbonara CLI not found. Would you like to install it?",
+      "Install CLI",
+      "Cancel"
+    );
+
+    if (installOption === "Install CLI") {
+      await installCli();
+    } else {
+      vscode.window.showInformationMessage(
+        "You can install Carbonara CLI manually using: npm install -g @carbonara/cli"
+      );
+    }
+  }
 }
 
 function checkProjectStatus() {

@@ -2,7 +2,7 @@
   "name": "carbonara-vscode",
   "displayName": "Carbonara",
   "description": "Multi-Editor Plugin Architecture client for VS Code",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "carbonara",
   "icon": "icon.png",
   "repository": {
@@ -11,7 +11,7 @@
   },
   "license": "To be clarified - All rights reserved",
   "engines": {
-    "vscode": "^1.104.0"
+    "vscode": "^1.60.0"
   },
   "categories": [
     "Other",
@@ -124,6 +124,15 @@
       {
         "command": "carbonara.clearSemgrepResults",
         "title": "Clear Semgrep Results"
+      },
+      {
+        "command": "carbonara.checkCliInstallation",
+        "title": "Check Carbonara CLI Installation"
+      },
+      {
+        "command": "carbonara.openWalkthrough",
+        "title": "Open Walkthrough",
+        "category": "Carbonara"
       }
     ],
     "viewsContainers": {
@@ -263,6 +272,84 @@
           ".jsx"
         ]
       }
+    ],
+    "walkthroughs": [
+      {
+        "id": "getStarted",
+        "title": "Carbon Reduction with Carbonara",
+        "description": "Learn how to use Carbonara to assess and reduce your project's carbon footprint",
+        "icon": "icon.svg",
+        "primary": true,
+        "steps": [
+          {
+            "id": "carbonara.setup",
+            "title": "Setup & CLI Installation",
+            "description": "First, let's make sure the Carbonara CLI is installed. The extension will automatically detect if Carbonara CLI is available in your environment. If not installed, you can install it globally using: `npm install -g @carbonara/cli`\n\nClick the button below to check your installation status.",
+            "media": {
+              "markdown": "media/setup.md"
+            },
+            "completionEvents": [
+              "onCommand:carbonara.checkCliInstallation"
+            ]
+          },
+          {
+            "id": "carbonara.assessment",
+            "title": "Complete Assessment Questionnaire",
+            "description": "Run the CO2 assessment questionnaire to evaluate your project's carbon footprint. This interactive questionnaire collects information about your project's infrastructure, development practices, features, and sustainability goals.\n\nUse the 'Run CO2 Assessment' command or click the Carbonara icon in the status bar to get started.",
+            "media": {
+              "markdown": "media/assessment.md"
+            },
+            "completionEvents": [
+              "onCommand:carbonara.runAssessment",
+              "onCommand:carbonara.completeAssessment"
+            ]
+          },
+          {
+            "id": "carbonara.website",
+            "title": "Test Your Website (Optional)",
+            "description": "If you have a website, you can test it using Carbonara's built-in Site-Wide Diagnostics (SWD) analyzer. This tool estimates CO2 emissions from web page data transfer using the Sustainable Web Design model.\n\nUse the 'Analyze Website' command to test your website's carbon footprint.",
+            "media": {
+              "markdown": "media/website.md"
+            },
+            "completionEvents": [
+              "onCommand:carbonara.analyzeWebsite"
+            ]
+          },
+          {
+            "id": "carbonara.builtin",
+            "title": "Run Built-in Analysis Tools",
+            "description": "Carbonara comes with built-in analysis tools ready to use. The Carbonara SWD Analyzer is available immediately without installation.\n\nOpen the 'Analysis Tools' view in the Carbonara sidebar to see available tools. Click on any built-in tool to run an analysis.",
+            "media": {
+              "markdown": "media/builtin.md"
+            },
+            "completionEvents": [
+              "onCommand:carbonara.analyzeTool"
+            ]
+          },
+          {
+            "id": "carbonara.external",
+            "title": "Install External Tools",
+            "description": "Enhance your analysis by installing additional external tools like GreenFrame or Impact Framework. These tools provide more detailed sustainability metrics.\n\nIn the 'Analysis Tools' view, right-click on any uninstalled tool and select 'Install Tool' to add it to your toolkit.",
+            "media": {
+              "markdown": "media/external.md"
+            },
+            "completionEvents": [
+              "onCommand:carbonara.installTool"
+            ]
+          },
+          {
+            "id": "carbonara.workflow",
+            "title": "Snapshot & Compare Workflow",
+            "description": "Use Carbonara's iterative improvement workflow:\n\n1. **Create a snapshot**: Run your first analysis (this automatically creates a snapshot of your current state)\n2. **Make improvements**: Based on the analysis results, implement optimizations in your project\n3. **Test again**: Run the analysis again to see the impact of your changes\n4. **Compare results**: View your data in the 'Data & Results' panel to compare before and after\n5. **Export (optional)**: Export your assessment data as JSON or CSV for external analysis\n\nRepeat this cycle to continuously improve your project's carbon footprint!",
+            "media": {
+              "markdown": "media/workflow.md"
+            },
+            "completionEvents": [
+              "onCommand:carbonara.viewData"
+            ]
+          }
+        ]
+      }
     ]
   },
   "scripts": {
@@ -296,7 +383,7 @@
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "22.9.0",
-    "@types/vscode": "^1.104.0",
+    "@types/vscode": "^1.60.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
     "glob": "^11.0.3",
