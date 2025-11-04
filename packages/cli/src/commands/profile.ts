@@ -1,15 +1,15 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import inquirer from 'inquirer';
+import { select, input } from '@inquirer/prompts';
 import {
   PythonProfilerAdapter,
   NodeProfilerAdapter,
   RubyProfilerAdapter,
-  GoProfilerAdapter
+  GoProfilerAdapter,
+  createDataLake
 } from '@carbonara/core';
-import { createDataLake } from '@carbonara/core';
 import { loadProjectConfig } from '../utils/config.js';
-import type { CpuProfileResult } from '@carbonara/core';
+import type { CpuProfileResult, CpuProfileLine } from '@carbonara/core';
 
 interface ProfileOptions {
   url?: string;
@@ -45,48 +45,44 @@ export async function profileCommand(options: ProfileOptions) {
     } else {
       // Interactive prompt
       spinner.stop();
-      const answer = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'scenarioType',
-          message: 'What would you like to profile?',
-          choices: [
-            { name: 'URL (profile web request)', value: 'url' },
-            { name: 'Test command (e.g., npm test)', value: 'test' },
-            { name: 'Server command (e.g., npm start)', value: 'server' }
-          ]
-        },
-        {
-          type: 'input',
-          name: 'value',
-          message: (answers: any) => {
-            if (answers.scenarioType === 'url') {
-              return 'Enter URL to profile:';
-            } else if (answers.scenarioType === 'test') {
-              return 'Enter test command to run:';
-            } else {
-              return 'Enter server command to start:';
-            }
-          },
-          validate: (input: string, answers: any) => {
-            if (!input.trim()) {
-              return 'Please enter a value';
-            }
-            if (answers?.scenarioType === 'url') {
-              try {
-                new URL(input);
-              } catch {
-                return 'Please enter a valid URL';
-              }
-            }
-            return true;
-          }
-        }
-      ] as any);
+      const scenarioTypeAnswer = await select({
+        message: 'What would you like to profile?',
+        choices: [
+          { name: 'URL (profile web request)', value: 'url' },
+          { name: 'Test command (e.g., npm test)', value: 'test' },
+          { name: 'Server command (e.g., npm start)', value: 'server' }
+        ]
+      });
 
-      scenario = { type: answer.scenarioType, value: answer.value };
-      command = answer.value;
-      scenarioType = answer.scenarioType;
+      let valueMessage = 'Enter value:';
+      if (scenarioTypeAnswer === 'url') {
+        valueMessage = 'Enter URL to profile:';
+      } else if (scenarioTypeAnswer === 'test') {
+        valueMessage = 'Enter test command to run:';
+      } else {
+        valueMessage = 'Enter server command to start:';
+      }
+
+      const valueAnswer = await input({
+        message: valueMessage,
+        validate: (input: string) => {
+          if (!input.trim()) {
+            return 'Please enter a value';
+          }
+          if (scenarioTypeAnswer === 'url') {
+            try {
+              new URL(input);
+            } catch {
+              return 'Please enter a valid URL';
+            }
+          }
+          return true;
+        }
+      });
+
+      scenario = { type: scenarioTypeAnswer as 'url' | 'test' | 'server', value: valueAnswer };
+      command = valueAnswer;
+      scenarioType = scenarioTypeAnswer as 'url' | 'test' | 'server';
       spinner.start('Setting up CPU profiling...');
     }
 
@@ -171,10 +167,10 @@ function getAdapter(lang: string) {
 async function detectLanguage(
   scenarioType: 'url' | 'test' | 'server',
   command: string
-): Promise<'python' | 'node' | 'ruby' | 'go' | null> {
+): Promise<'python' | 'node' | 'ruby' | 'go' | undefined> {
   // For URLs, we can't easily detect - user should specify
   if (scenarioType === 'url') {
-    return null;
+    return undefined;
   }
 
   // Check for common patterns in commands
@@ -223,7 +219,7 @@ async function detectLanguage(
     }
   } catch {}
 
-  return null;
+  return undefined;
 }
 
 function displayResults(result: CpuProfileResult, format: 'json' | 'table') {
@@ -251,7 +247,7 @@ function displayResults(result: CpuProfileResult, format: 'json' | 'table') {
 
   // Show top 20 lines
   const topLines = result.lines.slice(0, 20);
-  topLines.forEach((line, index) => {
+  topLines.forEach((line: CpuProfileLine, index: number) => {
     const severity = line.percent > 10 ? chalk.red : line.percent > 5 ? chalk.yellow : chalk.green;
     console.log(
       `${chalk.gray(`${(index + 1).toString().padStart(2)}.`)} ${severity(`${line.percent.toFixed(1)}%`)} ` +
