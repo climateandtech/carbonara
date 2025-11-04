@@ -195,7 +195,8 @@ export function clearCpuProfiles(): void {
 export function getCpuProfilerDiagnostics(
   uri: vscode.Uri
 ): vscode.Diagnostic[] {
-  return cpuProfilerDiagnostics.get(uri) || [];
+  const diagnostics = cpuProfilerDiagnostics.get(uri);
+  return diagnostics ? [...diagnostics] : [];
 }
 
 /**
