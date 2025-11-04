@@ -6,8 +6,8 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { Command } from 'commander';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
-import { createDataLake } from '@carbonara/core';
-import { loadProjectConfig } from '../utils/config.js';
+import { createDataLake, createDeploymentCheckService, createDataService } from '@carbonara/core';
+import { loadProjectConfig, getProjectRoot } from '../utils/config.js';
 import { CarbonaraSWDAnalyzer } from '../analyzers/carbonara-swd.js';
 
 interface AnalyzeOptions {
@@ -16,8 +16,8 @@ interface AnalyzeOptions {
   [key: string]: any; // Allow dynamic options
 }
 
-export async function analyzeCommand(toolId: string | undefined, url: string | undefined, options: AnalyzeOptions, command: Command) {
-  if (!toolId || !url) {
+export async function analyzeCommand(toolId: string | undefined, target: string | undefined, options: AnalyzeOptions, command: Command) {
+  if (!toolId || !target) {
     command.help();
     return;
   }
@@ -75,11 +75,31 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
   const spinner = ora(`Running ${tool.name} analysis...`).start();
 
   try {
-    // Validate URL
-    try {
-      new URL(url);
-    } catch {
-      throw new Error('Invalid URL provided');
+    // Determine input type (default to 'url' for backward compatibility)
+    const inputType = tool.inputType || 'url';
+    
+    // Validate input based on tool's inputType
+    if (inputType === 'url') {
+      try {
+        new URL(target);
+      } catch {
+        throw new Error('Invalid URL provided');
+      }
+    } else if (inputType === 'path') {
+      // For path-based tools, default to current directory if not provided or empty
+      const targetPath = target || '.';
+      const resolvedPath = path.resolve(targetPath);
+      try {
+        const stats = fs.statSync(resolvedPath);
+        if (!stats.isDirectory() && !stats.isFile()) {
+          throw new Error(`Path is not a valid directory or file: ${targetPath}`);
+        }
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          throw new Error(`Path does not exist: ${targetPath}`);
+        }
+        throw error;
+      }
     }
 
     spinner.text = `Analyzing with ${tool.name}...`;
@@ -87,13 +107,15 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     let results: any;
     
     if (toolId === 'test-analyzer') {
-      results = await runTestAnalyzer(url, options, tool);
+      results = await runTestAnalyzer(target, options, tool);
     } else if (toolId === 'carbonara-swd') {
-      results = await runCarbonaraSWD(url, options, tool);
+      results = await runCarbonaraSWD(target, options, tool);
     } else if (toolId === 'impact-framework') {
-      results = await runImpactFramework(url, options, tool);
+      results = await runImpactFramework(target, options, tool);
+    } else if (toolId === 'deployment-check') {
+      results = await runDeploymentCheck(target || '.', options, tool);
     } else {
-      results = await runGenericTool(url, options, tool);
+      results = await runGenericTool(target, options, tool);
     }
 
     spinner.succeed(`${tool.name} analysis completed!`);
@@ -103,7 +125,7 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
     // Save to database if requested
     if (options.save) {
-      await saveToDatabase(toolId, url, results);
+      await saveToDatabase(toolId, target, results, tool);
     }
 
   } catch (error: any) {
@@ -166,6 +188,19 @@ async function runTestAnalyzer(url: string, options: AnalyzeOptions, tool: Analy
       details: `Analyzed ${url} with test analyzer`
     }
   };
+}
+
+async function runDeploymentCheck(dirPath: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+  // Initialize data service
+  const projectRoot = getProjectRoot() || process.cwd();
+  const dbPath = path.join(projectRoot, 'carbonara.db');
+  
+  const dataService = createDataService({ dbPath });
+  await dataService.initialize();
+  
+  // Use the deployment check service from core
+  const deploymentCheckService = createDeploymentCheckService(dataService);
+  return await deploymentCheckService.analyze(dirPath);
 }
 
 async function runImpactFramework(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
@@ -267,6 +302,8 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
     displayImpactFrameworkResults(results);
   } else if (tool.id === 'greenframe') {
     displayGreenframeResults(results);
+  } else if (tool.id === 'deployment-check') {
+    displayDeploymentCheckResults(results);
   } else {
     // Generic display
     console.log(JSON.stringify(results, null, 2));
@@ -320,7 +357,70 @@ function displayGreenframeResults(results: any) {
   // Add more Greenframe-specific display logic as needed
 }
 
-async function saveToDatabase(toolId: string, url: string, results: any) {
+function displayDeploymentCheckResults(results: any) {
+  console.log(chalk.blue('\n🚀 Deployment Check Results'));
+  console.log(chalk.gray('═'.repeat(50)));
+  
+  if (results.stats.deployment_count === 0) {
+    console.log(chalk.yellow('\n⚠️  No deployments detected'));
+    console.log(`  Scanned directory: ${chalk.gray(results.target)}`);
+    return;
+  }
+  
+  console.log(chalk.cyan(`\n📁 Scanned: ${results.target}`));
+  console.log(chalk.green('\n📊 Summary:'));
+  console.log(`  Deployments found: ${chalk.white(results.stats.deployment_count)}`);
+  console.log(`  Providers: ${chalk.white(results.stats.provider_count)}`);
+  console.log(`  Environments: ${chalk.white(results.stats.environment_count)}`);
+  console.log(`  High carbon deployments: ${chalk.white(results.stats.high_carbon_count)}`);
+  
+  if (results.deployments && results.deployments.length > 0) {
+    console.log(chalk.green('\n🚀 Deployments:'));
+    
+    // Group by provider
+    const byProvider = new Map<string, typeof results.deployments>();
+    results.deployments.forEach((d: any) => {
+      if (!byProvider.has(d.provider)) {
+        byProvider.set(d.provider, []);
+      }
+      byProvider.get(d.provider)!.push(d);
+    });
+    
+    for (const [provider, deployments] of byProvider) {
+      console.log(`\n  ${chalk.bold(provider.toUpperCase())}:`);
+      deployments.forEach((d: any) => {
+        const carbonBadge = d.carbon_intensity 
+          ? (d.carbon_intensity > 400 ? chalk.red('🔴') : d.carbon_intensity > 200 ? chalk.yellow('🟡') : chalk.green('🟢'))
+          : chalk.gray('⚪');
+        const intensityText = d.carbon_intensity 
+          ? `${d.carbon_intensity.toFixed(0)} gCO2/kWh`
+          : 'Unknown';
+        const regionText = d.region ? ` (${d.region})` : '';
+        const envText = d.environment ? ` [${d.environment}]` : '';
+        console.log(`    ${carbonBadge} ${chalk.white(d.name)}${envText}${regionText}`);
+        console.log(`       Carbon intensity: ${chalk.gray(intensityText)}`);
+      });
+    }
+  }
+  
+  if (results.recommendations && results.recommendations.length > 0) {
+    console.log(chalk.green('\n💡 Recommendations:'));
+    results.recommendations.forEach((rec: any) => {
+      console.log(`\n  ${chalk.bold('Deployment:')} ${chalk.white(rec.deploymentId)}`);
+      if (rec.potentialSavings) {
+        console.log(`    Potential savings: ${chalk.green(`${rec.potentialSavings.toFixed(0)}%`)} reduction`);
+      }
+      if (rec.suggestedProvider) {
+        console.log(`    Suggested: ${chalk.cyan(rec.suggestedProvider)}${rec.suggestedRegion ? ` (${rec.suggestedRegion})` : ''}`);
+      }
+      if (rec.reasoning) {
+        console.log(`    ${chalk.gray(rec.reasoning)}`);
+      }
+    });
+  }
+}
+
+async function saveToDatabase(toolId: string, target: string, results: any, tool: AnalysisTool) {
   try {
     const config = await loadProjectConfig();
     if (!config) {
@@ -357,15 +457,27 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
       console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
     }
 
+    // Determine data type based on tool
+    const inputType = tool.inputType || 'url';
+    const dataType = toolId === 'deployment-check' ? 'deployment-scan' : 'web-analysis';
+    
+    // Format assessment data based on tool type
+    // Spread results first, then add/override with metadata fields
     const assessmentData = {
-      url: url,
-      raw_results: JSON.stringify(results),
-      timestamp: new Date().toISOString(),
-      // Extract commonly needed fields for schema templates
-      ...results  // Spread the results to make fields directly accessible
+      // Spread all result fields first (includes target/url and timestamp if present)
+      ...results,
+      // Ensure we have the input identifier (target for path, url for URL)
+      ...(inputType === 'path' 
+        ? { target: results.target || target }
+        : { url: target }
+      ),
+      // Ensure timestamp exists (use from results if available, otherwise generate)
+      timestamp: results.timestamp || new Date().toISOString(),
+      // Store raw results as JSON string for reference
+      raw_results: JSON.stringify(results)
     };
 
-    await dataLake.storeAssessmentData(projectId, toolId, 'web-analysis', assessmentData, url);
+    await dataLake.storeAssessmentData(projectId, toolId, dataType, assessmentData, target);
 
     await dataLake.close();
 

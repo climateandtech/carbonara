@@ -45,7 +45,7 @@ program
   .command("analyze")
   .description("Run analysis with specified tool")
   .argument("<tool>", "Analysis tool to use")
-  .argument("<url>", "URL to analyze")
+  .argument("<target>", "URL or directory path to analyze (depends on tool)")
   .option("-s, --save", "Save results to data lake")
   .option("-o, --output <format>", "Output format (json|table)", "table")
   .option("--timeout <ms>", "Analysis timeout in milliseconds", "30000")

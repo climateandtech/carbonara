@@ -456,6 +456,76 @@
           "type": "boolean"
         }
       ]
+    },
+    {
+      "id": "deployment-check",
+      "name": "Deployment Check",
+      "description": "Scan directory for deployment configurations and assess carbon intensity",
+      "inputType": "path",
+      "command": {
+        "executable": "built-in",
+        "args": [],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "built-in",
+        "package": "built-in",
+        "global": false,
+        "instructions": "Built-in deployment analysis tool, no installation required"
+      },
+      "detection": {
+        "method": "built-in",
+        "target": "always-available"
+      },
+      "display": {
+        "category": "Deployment Analysis",
+        "icon": "🚀",
+        "groupName": "Deployment Checks",
+        "entryTemplate": "🚀 {target} - {date}",
+        "descriptionTemplate": "{deployment_count} deployments found",
+        "fields": [
+          {
+            "key": "target",
+            "label": "📁 Target Directory",
+            "path": "data.target",
+            "type": "string"
+          },
+          {
+            "key": "deployment_count",
+            "label": "🚀 Deployments",
+            "path": "data.stats.deployment_count",
+            "type": "number",
+            "format": "{value}"
+          },
+          {
+            "key": "provider_count",
+            "label": "☁️ Providers",
+            "path": "data.stats.provider_count",
+            "type": "number",
+            "format": "{value}"
+          },
+          {
+            "key": "high_carbon_count",
+            "label": "🌡️ High Carbon",
+            "path": "data.stats.high_carbon_count",
+            "type": "number",
+            "format": "{value}"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-s, --save",
+          "description": "Save results to data lake",
+          "type": "boolean"
+        },
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table)",
+          "type": "string",
+          "default": "table"
+        }
+      ]
     }
   ]
 }

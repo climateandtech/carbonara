@@ -331,3 +331,161 @@ describe('CLI analyze command with project management', () => {
     }
   });
 });
+
+describe('CLI deployment-check tool', () => {
+  let testDir: string;
+  let cliPath: string;
+
+  beforeEach(() => {
+    testDir = mkdtempSync(path.join(tmpdir(), 'carbonara-deployment-test-'));
+    cliPath = path.resolve(__dirname, '../dist/index.js');
+    
+    // Create a test project config
+    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
+      name: 'Test Project',
+      projectType: 'web',
+      version: '1.0.0'
+    }));
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  test('deployment-check tool should be listed in tools registry', () => {
+    vi.setConfig({ testTimeout: 30000 });
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
+    expect(result).toContain('deployment-check');
+  });
+
+  test('deployment-check should accept path as target parameter', () => {
+    vi.setConfig({ testTimeout: 30000 });
+    try {
+      const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze deployment-check .`, { 
+        encoding: 'utf8',
+        timeout: 10000,
+        stdio: 'pipe'
+      });
+      expect(result).toContain('Deployment Check');
+    } catch (error: any) {
+      // Should not fail with "Invalid URL" error for path-based tools
+      expect(error.stderr.toString()).not.toContain('Invalid URL provided');
+    }
+  });
+
+  test('deployment-check should save results to assessment_data table', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    execSync(`cd "${testDir}" && node "${cliPath}" analyze deployment-check . --save`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
+    
+    const dbPath = path.join(testDir, 'carbonara.db');
+    expect(fs.existsSync(dbPath)).toBe(true);
+  });
+
+  test('deployment-check saved data should have tool_name deployment-check', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    execSync(`cd "${testDir}" && node "${cliPath}" analyze deployment-check . --save`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
+    
+    const dbPath = path.join(testDir, 'carbonara.db');
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const dbData = fs.readFileSync(dbPath);
+    const db = new SQL.Database(dbData);
+    
+    const result = db.exec('SELECT tool_name FROM assessment_data WHERE tool_name = "deployment-check"');
+    expect(result[0].values.length).toBeGreaterThan(0);
+    db.close();
+  });
+
+  test('deployment-check saved data should have data_type deployment-scan', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    execSync(`cd "${testDir}" && node "${cliPath}" analyze deployment-check . --save`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
+    
+    const dbPath = path.join(testDir, 'carbonara.db');
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const dbData = fs.readFileSync(dbPath);
+    const db = new SQL.Database(dbData);
+    
+    const result = db.exec('SELECT data_type FROM assessment_data WHERE tool_name = "deployment-check"');
+    expect(result[0].values[0][0]).toBe('deployment-scan');
+    db.close();
+  });
+
+  test('deployment-check saved data should contain target field in JSON', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    execSync(`cd "${testDir}" && node "${cliPath}" analyze deployment-check . --save`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
+    
+    const dbPath = path.join(testDir, 'carbonara.db');
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const dbData = fs.readFileSync(dbPath);
+    const db = new SQL.Database(dbData);
+    
+    const result = db.exec('SELECT data FROM assessment_data WHERE tool_name = "deployment-check"');
+    const data = JSON.parse(result[0].values[0][0]);
+    expect(data).toHaveProperty('target');
+    db.close();
+  });
+
+  test('deployment-check saved data should contain stats field in JSON', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    execSync(`cd "${testDir}" && node "${cliPath}" analyze deployment-check . --save`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
+    
+    const dbPath = path.join(testDir, 'carbonara.db');
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const dbData = fs.readFileSync(dbPath);
+    const db = new SQL.Database(dbData);
+    
+    const result = db.exec('SELECT data FROM assessment_data WHERE tool_name = "deployment-check"');
+    const data = JSON.parse(result[0].values[0][0]);
+    expect(data).toHaveProperty('stats');
+    db.close();
+  });
+
+  test('deployment-check saved data stats should have deployment_count', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    execSync(`cd "${testDir}" && node "${cliPath}" analyze deployment-check . --save`, { 
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: 'pipe'
+    });
+    
+    const dbPath = path.join(testDir, 'carbonara.db');
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const dbData = fs.readFileSync(dbPath);
+    const db = new SQL.Database(dbData);
+    
+    const result = db.exec('SELECT data FROM assessment_data WHERE tool_name = "deployment-check"');
+    const data = JSON.parse(result[0].values[0][0]);
+    expect(data.stats).toHaveProperty('deployment_count');
+    db.close();
+  });
+});

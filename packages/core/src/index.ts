@@ -42,6 +42,17 @@ export {
   type CarbonRecommendation
 } from './services/carbonIntensityService.js';
 
+// Deployment check service exports
+export {
+  DeploymentCheckService,
+  createDeploymentCheckService,
+  type DeploymentCheckResult,
+  type DeploymentCheckOptions
+} from './services/deploymentCheckService.js';
+
+// Base analyzer export
+export { BaseAnalyzer } from './services/baseAnalyzer.js';
+
 // Factory functions for easy setup
 export const createDataService = (config?: { dbPath?: string }) => new DataService(config);
 export const createSchemaService = () => new SchemaService();

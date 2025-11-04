@@ -10,6 +10,7 @@ export interface AnalysisTool {
   id: string;
   name: string;
   description?: string;
+  inputType?: 'url' | 'path'; // 'url' by default for backward compatibility
   command: {
     executable: string;
     args: string[];

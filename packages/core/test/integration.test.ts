@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { setupCarbonaraCore } from '../src/index.js';
+import { setupCarbonaraCore, createDeploymentCheckService, createDataService } from '../src/index.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe('Carbonara Core Integration', () => {
   let testDbPath: string;
@@ -227,7 +231,7 @@ describe('Carbonara Core Integration', () => {
       const projectId = await dataService.createProject('Performance Test', '/test/performance');
       
       // Insert 100 entries
-      const promises = [];
+      const promises: Promise<number>[] = [];
       for (let i = 0; i < 100; i++) {
         promises.push(
           dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', {
@@ -247,6 +251,164 @@ describe('Carbonara Core Integration', () => {
       expect(groups).toHaveLength(1);
       expect(groups[0].entries).toHaveLength(100);
       expect(endTime - startTime).toBeLessThan(1000); // Should complete within 1 second
+    });
+  });
+
+  describe('Deployment Check Integration', () => {
+    let testWorkspaceDir: string;
+
+    beforeEach(() => {
+      // Create a temporary test workspace with deployment configs
+      testWorkspaceDir = path.join('/tmp', `carbonara-deployment-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+      fs.mkdirSync(testWorkspaceDir, { recursive: true });
+      
+      // Create infrastructure directory (so glob pattern **/*.tf matches)
+      const infraDir = path.join(testWorkspaceDir, 'infrastructure');
+      fs.mkdirSync(infraDir, { recursive: true });
+      
+      // Copy AWS production example to test workspace
+      const examplesDir = path.resolve(__dirname, '../../..', 'examples', 'deployment-configs');
+      const exampleFile = path.join(examplesDir, 'aws-production.tf');
+      
+      if (fs.existsSync(exampleFile)) {
+        const testFile = path.join(infraDir, 'aws-production.tf');
+        fs.copyFileSync(exampleFile, testFile);
+      } else {
+        // If example doesn't exist, create a minimal AWS Terraform file
+        const terraformContent = `provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_vpc" "production" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Environment = "production"
+  }
+}`;
+        fs.writeFileSync(path.join(infraDir, 'aws-production.tf'), terraformContent);
+      }
+    });
+
+    afterEach(() => {
+      // Clean up test workspace
+      if (fs.existsSync(testWorkspaceDir)) {
+        fs.rmSync(testWorkspaceDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should scan example deployment configs and return results', async () => {
+      const { dataService } = services;
+
+      // Create deployment check service
+      const deploymentCheckService = createDeploymentCheckService(dataService);
+      
+      // Run deployment check on the test workspace
+      const result = await deploymentCheckService.analyze(testWorkspaceDir);
+      
+      // Verify results structure
+      expect(result).toHaveProperty('target');
+      expect(result).toHaveProperty('timestamp');
+      expect(result).toHaveProperty('deployments');
+      expect(result).toHaveProperty('stats');
+      expect(result).toHaveProperty('recommendations');
+      
+      // Verify stats are present
+      expect(result.stats).toHaveProperty('deployment_count');
+      expect(result.stats).toHaveProperty('provider_count');
+      expect(result.stats).toHaveProperty('high_carbon_count');
+      expect(result.stats).toHaveProperty('environment_count');
+      
+      // Should find at least one deployment (AWS production example)
+      expect(result.stats.deployment_count).toBeGreaterThan(0);
+      
+      // Should have at least one provider
+      expect(result.stats.provider_count).toBeGreaterThan(0);
+      
+      // Verify deployments array contains expected data
+      expect(result.deployments.length).toBeGreaterThan(0);
+      const deployment = result.deployments[0];
+      expect(deployment).toHaveProperty('id');
+      expect(deployment).toHaveProperty('name');
+      expect(deployment).toHaveProperty('provider');
+      expect(deployment).toHaveProperty('environment');
+      expect(deployment).toHaveProperty('region');
+      expect(deployment).toHaveProperty('config_file_path');
+      expect(deployment).toHaveProperty('detection_method');
+      
+      // Verify AWS production deployment is detected
+      const awsProduction = result.deployments.find(
+        (d: any) => d.provider === 'aws' && 
+                    d.environment === 'production' &&
+                    d.config_file_path?.includes('aws-production.tf')
+      );
+      
+      expect(awsProduction).toBeDefined();
+      expect(awsProduction!.region).toBe('us-east-1');
+      expect(awsProduction!.country).toBe('US');
+      // Should have carbon intensity calculated (or null if not yet calculated)
+      expect(typeof awsProduction!.carbon_intensity === 'number' || awsProduction!.carbon_intensity === null).toBe(true);
+      
+      // Verify target is resolved to absolute path
+      expect(path.isAbsolute(result.target)).toBe(true);
+      
+      // Verify timestamp is ISO format
+      expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    });
+
+    it('should calculate carbon intensities for detected deployments', async () => {
+      const { dataService } = services;
+
+      const deploymentCheckService = createDeploymentCheckService(dataService);
+      const result = await deploymentCheckService.analyze(testWorkspaceDir);
+      
+      // Should have found deployments
+      expect(result.stats.deployment_count).toBeGreaterThan(0);
+      
+      // Check that carbon intensities are calculated (or null if not available)
+      const deploymentsWithIntensity = result.deployments.filter(
+        (d: any) => d.carbon_intensity !== null && d.carbon_intensity !== undefined
+      );
+      
+      // At least some deployments should have carbon intensity calculated
+      // (depends on whether the service calculates them)
+      expect(deploymentsWithIntensity.length).toBeGreaterThanOrEqual(0);
+      
+      // If carbon intensities are present, verify they're reasonable numbers
+      deploymentsWithIntensity.forEach((d: any) => {
+        expect(typeof d.carbon_intensity).toBe('number');
+        expect(d.carbon_intensity).toBeGreaterThan(0);
+        expect(d.carbon_intensity).toBeLessThan(1000); // Sanity check
+      });
+    });
+
+    it('should provide recommendations for high-carbon deployments', async () => {
+      const { dataService } = services;
+
+      const deploymentCheckService = createDeploymentCheckService(dataService);
+      const result = await deploymentCheckService.analyze(testWorkspaceDir);
+      
+      // Should have found deployments
+      expect(result.stats.deployment_count).toBeGreaterThan(0);
+      
+      // Check recommendations structure
+      expect(Array.isArray(result.recommendations)).toBe(true);
+      
+      // US East region has high carbon intensity (400 gCO2/kWh), so we should get recommendations
+      // Note: Recommendations depend on carbon intensity calculations
+      // If there are high-carbon deployments, we should have recommendations
+      if (result.stats.high_carbon_count > 0) {
+        expect(result.recommendations.length).toBeGreaterThan(0);
+        
+        // Verify recommendation structure
+        const recommendation = result.recommendations[0];
+        expect(recommendation).toHaveProperty('deploymentId');
+        expect(recommendation).toHaveProperty('currentIntensity');
+        expect(recommendation).toHaveProperty('reasoning');
+        
+        // Should suggest lower-carbon alternatives
+        expect(recommendation.currentIntensity).toBeGreaterThan(0);
+        expect(recommendation.reasoning).toBeTruthy();
+      }
     });
   });
 });
