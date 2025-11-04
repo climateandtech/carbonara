@@ -241,54 +241,25 @@ export class CodeScanTreeProvider implements vscode.TreeDataProvider<CodeScanIte
   }
 
   async deleteSemgrepResultsForFiles(items: CodeScanItem[]): Promise<void> {
-    const semgrepDataService = getSemgrepDataService();
-    if (!semgrepDataService) {
-      vscode.window.showErrorMessage("Semgrep database service not available");
-      return;
-    }
-
-    // Extract file paths from selected items
-    const filePaths = items
-      .filter(item => item.type === "file" && item.label)
-      .map(item => {
-        // Convert back to relative path by extracting from absolute path
-        if (item.filePath && this.workspaceFolder) {
-          return vscode.workspace.asRelativePath(item.filePath, false);
-        }
-        return item.label;
-      });
-
-    if (filePaths.length === 0) {
-      vscode.window.showWarningMessage("No Semgrep file results selected");
-      return;
-    }
-
-    const fileList = filePaths.length === 1
-      ? filePaths[0]
-      : `${filePaths.length} files`;
-
-    const answer = await vscode.window.showWarningMessage(
-      `Delete Semgrep results for ${fileList}? This action cannot be undone.`,
-      "Delete",
-      "Cancel"
+    // NOTE: Deletion is currently disabled.
+    // Assessment_data stores runs (not individual file results), so deleting by file path is problematic:
+    // - A run may contain results for multiple files
+    // - Deleting a run would remove results for all files in that run
+    // - We need to decide: delete entire runs containing the file, or filter matches from runs?
+    // 
+    // TODO: Implement proper deletion strategy for assessment_data structure
+    
+    vscode.window.showInformationMessage(
+      "Deletion of Semgrep results is currently disabled. Assessment_data stores runs, not individual file results. Need to implement proper deletion strategy."
     );
-
-    if (answer === "Delete") {
-      try {
-        for (const filePath of filePaths) {
-          await semgrepDataService.deleteSemgrepResultsByFile(filePath);
-        }
-        vscode.window.showInformationMessage(
-          `Deleted Semgrep results for ${fileList}`
-        );
-        // Refresh the tree
-        this.refresh();
-      } catch (error) {
-        vscode.window.showErrorMessage(
-          `Failed to delete Semgrep results: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    }
+    
+    // Disabled deletion code:
+    // const semgrepDataService = getSemgrepDataService();
+    // if (!semgrepDataService) {
+    //   vscode.window.showErrorMessage("Semgrep database service not available");
+    //   return;
+    // }
+    // ... rest of deletion logic
   }
 }
 

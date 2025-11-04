@@ -189,8 +189,14 @@ export class SemgrepService {
         const semgrepResult = JSON.parse(result.stdout) as SemgrepResult;
 
         // Save to database if enabled
-        if (this.saveToDatabase && this.dataService && semgrepResult.matches.length > 0) {
-          await this.dataService.storeSemgrepResults(semgrepResult.matches);
+        if (this.saveToDatabase && this.dataService) {
+          await this.dataService.storeSemgrepRun(
+            semgrepResult.matches,
+            filePath, // target is the file being analyzed
+            semgrepResult.stats,
+            undefined, // projectId not available in service layer
+            'semgrep-service'
+          );
         }
 
         return semgrepResult;
@@ -239,8 +245,14 @@ export class SemgrepService {
         const semgrepResult = JSON.parse(result.stdout) as SemgrepResult;
 
         // Save to database if enabled
-        if (this.saveToDatabase && this.dataService && semgrepResult.matches.length > 0) {
-          await this.dataService.storeSemgrepResults(semgrepResult.matches);
+        if (this.saveToDatabase && this.dataService) {
+          await this.dataService.storeSemgrepRun(
+            semgrepResult.matches,
+            dirPath, // target is the directory being analyzed
+            semgrepResult.stats,
+            undefined, // projectId not available in service layer
+            'semgrep-service'
+          );
         }
 
         return semgrepResult;
@@ -289,8 +301,16 @@ export class SemgrepService {
         const semgrepResult = JSON.parse(result.stdout) as SemgrepResult;
 
         // Save to database if enabled
-        if (this.saveToDatabase && this.dataService && semgrepResult.matches.length > 0) {
-          await this.dataService.storeSemgrepResults(semgrepResult.matches);
+        if (this.saveToDatabase && this.dataService) {
+          // Use first target as the target identifier, or join if multiple
+          const target = targets.length === 1 ? targets[0] : targets.join(', ');
+          await this.dataService.storeSemgrepRun(
+            semgrepResult.matches,
+            target,
+            semgrepResult.stats,
+            undefined, // projectId not available in service layer
+            'semgrep-service'
+          );
         }
 
         return semgrepResult;

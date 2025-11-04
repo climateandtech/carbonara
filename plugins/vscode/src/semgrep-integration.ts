@@ -282,6 +282,93 @@ function writeEditorToTempFile(editor: vscode.TextEditor): string {
 }
 
 /**
+ * Get severity mapping from tool registry, fallback to default if not found
+ */
+function getSeverityMapping(): Record<string, vscode.DiagnosticSeverity> {
+  try {
+    // Try to load from registry
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      // Try workspace tools.json first
+      const workspaceToolsPath = path.join(
+        workspaceFolder.uri.fsPath,
+        "tools.json"
+      );
+      if (fs.existsSync(workspaceToolsPath)) {
+        const toolsData = JSON.parse(fs.readFileSync(workspaceToolsPath, "utf8"));
+        const semgrepTool = toolsData.tools?.find((t: any) => t.id === "semgrep");
+        if (semgrepTool?.severityMapping) {
+          return mapSeverityConfig(semgrepTool.severityMapping);
+        }
+      }
+
+      // Try CLI registry
+      const cliPath = path.join(
+        workspaceFolder.uri.fsPath,
+        "..",
+        "..",
+        "packages",
+        "cli",
+        "src",
+        "registry",
+        "tools.json"
+      );
+      if (fs.existsSync(cliPath)) {
+        const registry = JSON.parse(fs.readFileSync(cliPath, "utf8"));
+        const semgrepTool = registry.tools?.find((t: any) => t.id === "semgrep");
+        if (semgrepTool?.severityMapping) {
+          return mapSeverityConfig(semgrepTool.severityMapping);
+        }
+      }
+    }
+
+    // Try bundled registry
+    const bundledPath = path.join(__dirname, "..", "registry", "tools.json");
+    if (fs.existsSync(bundledPath)) {
+      const registry = JSON.parse(fs.readFileSync(bundledPath, "utf8"));
+      const semgrepTool = registry.tools?.find((t: any) => t.id === "semgrep");
+      if (semgrepTool?.severityMapping) {
+        return mapSeverityConfig(semgrepTool.severityMapping);
+      }
+    }
+  } catch (error) {
+    console.log("Failed to load severity mapping from registry:", error);
+  }
+
+  // Default mapping
+  return {
+    ERROR: vscode.DiagnosticSeverity.Warning,
+    WARNING: vscode.DiagnosticSeverity.Information,
+    INFO: vscode.DiagnosticSeverity.Hint,
+  };
+}
+
+/**
+ * Map severity config object to VSCode DiagnosticSeverity enum
+ */
+function mapSeverityConfig(
+  config: Record<string, string>
+): Record<string, vscode.DiagnosticSeverity> {
+  const mapping: Record<string, vscode.DiagnosticSeverity> = {};
+  for (const [key, value] of Object.entries(config)) {
+    const upperValue = value.toUpperCase();
+    if (upperValue === "ERROR") {
+      mapping[key] = vscode.DiagnosticSeverity.Error;
+    } else if (upperValue === "WARNING") {
+      mapping[key] = vscode.DiagnosticSeverity.Warning;
+    } else if (upperValue === "INFORMATION") {
+      mapping[key] = vscode.DiagnosticSeverity.Information;
+    } else if (upperValue === "HINT") {
+      mapping[key] = vscode.DiagnosticSeverity.Hint;
+    } else {
+      // Default fallback
+      mapping[key] = vscode.DiagnosticSeverity.Information;
+    }
+  }
+  return mapping;
+}
+
+/**
  * Converts Semgrep matches to VSCode diagnostics and applies them to a file.
  * Also tracks which lines have diagnostics for incremental re-analysis.
  */
@@ -289,6 +376,9 @@ function applySemgrepDiagnostics(
   filePath: string,
   matches: SemgrepMatch[]
 ): void {
+  // Get severity mapping from registry or use default
+  const severityMapping = getSeverityMapping();
+
   // Convert Semgrep results to VSCode diagnostics
   const diagnostics: vscode.Diagnostic[] = matches.map((match) => {
     const range = new vscode.Range(
@@ -298,18 +388,9 @@ function applySemgrepDiagnostics(
       Math.max(0, match.end_column - 1)
     );
 
-    // Map Semgrep severity to VSCode diagnostic severity
-    // ERROR (Critical) -> Warning (orange in most themes)
-    // WARNING (Major) -> Information (blue/green in most themes)
-    // INFO (Minor) -> Hint (subtle green in most themes)
-    let severity: vscode.DiagnosticSeverity;
-    if (match.severity === "ERROR") {
-      severity = vscode.DiagnosticSeverity.Warning;
-    } else if (match.severity === "WARNING") {
-      severity = vscode.DiagnosticSeverity.Information;
-    } else {
-      severity = vscode.DiagnosticSeverity.Hint;
-    }
+    // Map Semgrep severity to VSCode diagnostic severity using registry config or default
+    const severity =
+      severityMapping[match.severity] || vscode.DiagnosticSeverity.Information;
 
     const diagnostic = new vscode.Diagnostic(range, match.message, severity);
     // Extract just the rule_id part (after the last dot) from the full path
@@ -463,16 +544,40 @@ async function runSemgrepAnalysis(
           relativeFilePath = vscode.workspace.asRelativePath(filePath, false);
         }
 
-        // Delete old results for this file
-        await dataService.deleteSemgrepResultsByFile(relativeFilePath);
+        // Get or create project for this workspace
+        let projectId: number | undefined;
+        if (workspaceFolder) {
+          try {
+            const project = await dataService.getProject(workspaceFolder.uri.fsPath);
+            if (project) {
+              projectId = project.id;
+            }
+          } catch (error) {
+            console.log("No project found, storing without project_id");
+          }
+        }
 
-        // Save new results
+        // Save new results as a run in assessment_data
         if (result.matches.length > 0) {
-          await dataService.storeSemgrepResults(result.matches, relativeFilePath);
+          await dataService.storeSemgrepRun(
+            result.matches,
+            relativeFilePath, // target is the file path
+            result.stats,
+            projectId,
+            'vscode-extension'
+          );
           console.log(
             `Updated database: ${result.matches.length} Semgrep findings for ${relativeFilePath}`
           );
         } else {
+          // Store empty run to track that file was analyzed with no findings
+          await dataService.storeSemgrepRun(
+            [],
+            relativeFilePath,
+            result.stats,
+            projectId,
+            'vscode-extension'
+          );
           console.log(
             `Updated database: No Semgrep findings for ${relativeFilePath} (all fixed!)`
           );

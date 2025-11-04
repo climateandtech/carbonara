@@ -1,5 +1,8 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 // Mock the @carbonara/core module before importing the module under test
 type SetupResult = { isValid: boolean; errors: string[] };
@@ -70,6 +73,10 @@ suite("Semgrep Integration Unit Tests", () => {
   });
 
   setup(() => {
+    // Create a real temp directory for global storage (since initializeSemgrep tries to create it)
+    const tempDir = path.join(os.tmpdir(), `carbonara-test-${Date.now()}`);
+    fs.mkdirSync(tempDir, { recursive: true });
+
     // Create mock diagnostic collection
     const diagnostics = new Map<string, vscode.Diagnostic[]>();
     mockDiagnosticCollection = {
@@ -146,12 +153,12 @@ suite("Semgrep Integration Unit Tests", () => {
       extensionUri: vscode.Uri.file("/mock/extension/path"),
       environmentVariableCollection: {} as any,
       extensionMode: vscode.ExtensionMode.Test,
-      storageUri: vscode.Uri.file("/mock/storage"),
-      globalStorageUri: vscode.Uri.file("/mock/global-storage"),
-      logUri: vscode.Uri.file("/mock/log"),
-      storagePath: "/mock/storage",
-      globalStoragePath: "/mock/global-storage",
-      logPath: "/mock/log",
+      storageUri: vscode.Uri.file(tempDir),
+      globalStorageUri: vscode.Uri.file(tempDir),
+      logUri: vscode.Uri.file(tempDir),
+      storagePath: tempDir,
+      globalStoragePath: tempDir,
+      logPath: tempDir,
       asAbsolutePath: (relativePath: string) => `/mock/extension/path/${relativePath}`,
       secrets: {} as any,
       extension: {} as any,
@@ -166,17 +173,17 @@ suite("Semgrep Integration Unit Tests", () => {
   });
 
   suite("initializeSemgrep", () => {
-    test("should create and return a diagnostic collection", () => {
-      const diagnosticCollection = initializeSemgrep(mockContext);
+    test("should create and return a diagnostic collection", async () => {
+      const diagnosticCollection = await initializeSemgrep(mockContext);
 
       assert.ok(diagnosticCollection);
       assert.strictEqual(diagnosticCollection.name, "semgrep");
       assert.ok(mockContext.subscriptions.length > 0);
     });
 
-    test("should register event listeners", () => {
+    test("should register event listeners", async () => {
       const initialLength = mockContext.subscriptions.length;
-      initializeSemgrep(mockContext);
+      await initializeSemgrep(mockContext);
 
       // Should register: diagnostic collection + 3 event listeners
       assert.ok(mockContext.subscriptions.length >= initialLength + 4);

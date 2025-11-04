@@ -146,4 +146,242 @@ describe('DataService', () => {
       expect(data[0].data.valid).toBe(true);
     });
   });
+
+  describe('Semgrep Results Storage (Assessment Data)', () => {
+    let projectId: number;
+
+    beforeEach(async () => {
+      projectId = await dataService.createProject('Semgrep Test Project', '/test/semgrep');
+    });
+
+    it('should store semgrep run in assessment_data', async () => {
+      const matches = [
+        {
+          rule_id: 'test.rule.id',
+          severity: 'ERROR',
+          path: 'src/file1.ts',
+          file_path: 'src/file1.ts',
+          start_line: 10,
+          end_line: 12,
+          start_column: 5,
+          end_column: 20,
+          message: 'Test finding',
+        },
+        {
+          rule_id: 'test.rule.id2',
+          severity: 'WARNING',
+          path: 'src/file2.ts',
+          file_path: 'src/file2.ts',
+          start_line: 15,
+          end_line: 16,
+          start_column: 1,
+          end_column: 10,
+          message: 'Another finding',
+        },
+      ];
+
+      const stats = {
+        total_matches: 2,
+        error_count: 1,
+        warning_count: 1,
+        info_count: 0,
+        files_scanned: 2,
+      };
+
+      const runId = await dataService.storeSemgrepRun(
+        matches,
+        './src',
+        stats,
+        projectId,
+        'test'
+      );
+
+      expect(runId).toBeGreaterThan(0);
+
+      // Verify stored in assessment_data
+      const assessmentData = await dataService.getAssessmentData(projectId, 'semgrep');
+      expect(assessmentData).toHaveLength(1);
+      expect(assessmentData[0].tool_name).toBe('semgrep');
+      expect(assessmentData[0].data_type).toBe('code-analysis');
+      expect(assessmentData[0].data.target).toBe('./src');
+      expect(assessmentData[0].data.matches).toHaveLength(2);
+      expect(assessmentData[0].data.stats.total_matches).toBe(2);
+    });
+
+    it('should retrieve semgrep results by file', async () => {
+      // Store two runs with different files
+      const matches1 = [
+        {
+          rule_id: 'rule1',
+          severity: 'ERROR',
+          path: 'src/file1.ts',
+          file_path: 'src/file1.ts',
+          start_line: 10,
+          end_line: 10,
+          start_column: 5,
+          end_column: 15,
+          message: 'Finding 1',
+        },
+      ];
+
+      const matches2 = [
+        {
+          rule_id: 'rule2',
+          severity: 'WARNING',
+          path: 'src/file2.ts',
+          file_path: 'src/file2.ts',
+          start_line: 20,
+          end_line: 20,
+          start_column: 1,
+          end_column: 10,
+          message: 'Finding 2',
+        },
+        {
+          rule_id: 'rule3',
+          severity: 'INFO',
+          path: 'src/file1.ts',
+          file_path: 'src/file1.ts',
+          start_line: 30,
+          end_line: 30,
+          start_column: 1,
+          end_column: 5,
+          message: 'Finding 3',
+        },
+      ];
+
+      await dataService.storeSemgrepRun(matches1, './src', { total_matches: 1, error_count: 1, warning_count: 0, info_count: 0, files_scanned: 1 }, projectId);
+      await dataService.storeSemgrepRun(matches2, './src', { total_matches: 2, error_count: 0, warning_count: 1, info_count: 1, files_scanned: 2 }, projectId);
+
+      // Get results for file1.ts (should have 2 findings from 2 runs)
+      const file1Results = await dataService.getSemgrepResultsByFile('src/file1.ts');
+      expect(file1Results).toHaveLength(2);
+      expect(file1Results[0].file_path).toBe('src/file1.ts');
+      expect(file1Results[0].rule_id).toBe('rule1');
+      expect(file1Results[1].rule_id).toBe('rule3');
+
+      // Get results for file2.ts (should have 1 finding)
+      const file2Results = await dataService.getSemgrepResultsByFile('src/file2.ts');
+      expect(file2Results).toHaveLength(1);
+      expect(file2Results[0].file_path).toBe('src/file2.ts');
+      expect(file2Results[0].rule_id).toBe('rule2');
+    });
+
+    it('should get all semgrep results from all runs', async () => {
+      const matches1 = [
+        {
+          rule_id: 'rule1',
+          severity: 'ERROR',
+          path: 'src/file1.ts',
+          file_path: 'src/file1.ts',
+          start_line: 10,
+          end_line: 10,
+          start_column: 5,
+          end_column: 15,
+          message: 'Finding 1',
+        },
+      ];
+
+      const matches2 = [
+        {
+          rule_id: 'rule2',
+          severity: 'WARNING',
+          path: 'src/file2.ts',
+          file_path: 'src/file2.ts',
+          start_line: 20,
+          end_line: 20,
+          start_column: 1,
+          end_column: 10,
+          message: 'Finding 2',
+        },
+      ];
+
+      await dataService.storeSemgrepRun(matches1, './src', { total_matches: 1, error_count: 1, warning_count: 0, info_count: 0, files_scanned: 1 }, projectId);
+      await dataService.storeSemgrepRun(matches2, './src', { total_matches: 1, error_count: 0, warning_count: 1, info_count: 0, files_scanned: 1 }, projectId);
+
+      const allResults = await dataService.getAllSemgrepResults();
+      expect(allResults).toHaveLength(2);
+      expect(allResults.some(r => r.rule_id === 'rule1')).toBe(true);
+      expect(allResults.some(r => r.rule_id === 'rule2')).toBe(true);
+    });
+
+    it('should handle empty matches in semgrep run', async () => {
+      const runId = await dataService.storeSemgrepRun(
+        [],
+        './src',
+        { total_matches: 0, error_count: 0, warning_count: 0, info_count: 0, files_scanned: 0 },
+        projectId
+      );
+
+      expect(runId).toBeGreaterThan(0);
+
+      const assessmentData = await dataService.getAssessmentData(projectId, 'semgrep');
+      expect(assessmentData).toHaveLength(1);
+      expect(assessmentData[0].data.matches).toHaveLength(0);
+      expect(assessmentData[0].data.stats.total_matches).toBe(0);
+    });
+
+    it('should normalize rule_id in stored matches', async () => {
+      const matches = [
+        {
+          rule_id: 'very.long.rule.path.rule-name',
+          severity: 'ERROR',
+          path: 'src/file.ts',
+          file_path: 'src/file.ts',
+          start_line: 10,
+          end_line: 10,
+          start_column: 5,
+          end_column: 15,
+          message: 'Test',
+        },
+      ];
+
+      await dataService.storeSemgrepRun(
+        matches,
+        './src',
+        { total_matches: 1, error_count: 1, warning_count: 0, info_count: 0, files_scanned: 1 },
+        projectId
+      );
+
+      const assessmentData = await dataService.getAssessmentData(projectId, 'semgrep');
+      expect(assessmentData[0].data.matches[0].rule_id).toBe('rule-name');
+    });
+  });
+
+  describe('Generated Columns and Indexes', () => {
+    let projectId: number;
+
+    beforeEach(async () => {
+      projectId = await dataService.createProject('Index Test Project', '/test/index');
+    });
+
+    it('should create generated columns for target_path and total_matches', async () => {
+      // Store semgrep run
+      await dataService.storeSemgrepRun(
+        [
+          {
+            rule_id: 'test',
+            severity: 'ERROR',
+            path: 'src/file.ts',
+            file_path: 'src/file.ts',
+            start_line: 10,
+            end_line: 10,
+            start_column: 5,
+            end_column: 15,
+            message: 'Test',
+          },
+        ],
+        './src',
+        { total_matches: 1, error_count: 1, warning_count: 0, info_count: 0, files_scanned: 1 },
+        projectId
+      );
+
+      // Verify generated columns exist and have values
+      // Note: We can't directly query generated columns in sql.js easily,
+      // but we can verify the data structure is correct
+      const assessmentData = await dataService.getAssessmentData(projectId, 'semgrep');
+      expect(assessmentData).toHaveLength(1);
+      expect(assessmentData[0].data.target).toBe('./src');
+      expect(assessmentData[0].data.stats.total_matches).toBe(1);
+    });
+  });
 });

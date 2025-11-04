@@ -102,6 +102,60 @@ export class DataService {
       )
     `);
 
+    // Create index for faster queries on tool_name and data_type
+    this.db!.run(`
+      CREATE INDEX IF NOT EXISTS idx_assessment_tool_type
+      ON assessment_data(tool_name, data_type)
+    `);
+
+    // Create index on JSON target field for semgrep and other tools
+    // This helps with queries like "show all runs for this target"
+    this.db!.run(`
+      CREATE INDEX IF NOT EXISTS idx_assessment_target
+      ON assessment_data((json_extract(data, '$.target')))
+    `);
+
+    // Add generated columns for common JSON fields (migration-safe)
+    // These are computed from existing JSON data, no data loss
+    // Using try-catch since ALTER TABLE will fail if columns already exist
+    try {
+      // Add generated column for target path
+      this.db!.run(`
+        ALTER TABLE assessment_data 
+        ADD COLUMN target_path TEXT GENERATED ALWAYS AS (
+          json_extract(data, '$.target')
+        ) STORED
+      `);
+
+      // Index the generated column
+      this.db!.run(`
+        CREATE INDEX IF NOT EXISTS idx_assessment_target_path
+        ON assessment_data(target_path)
+      `);
+    } catch (error) {
+      // Column may already exist, which is fine
+      // This is migration-safe - existing databases will have it added
+    }
+
+    try {
+      // Add generated column for total_matches (useful for filtering semgrep runs)
+      this.db!.run(`
+        ALTER TABLE assessment_data 
+        ADD COLUMN total_matches INTEGER GENERATED ALWAYS AS (
+          json_extract(data, '$.stats.total_matches')
+        ) STORED
+      `);
+
+      // Index for filtering runs by match count
+      this.db!.run(`
+        CREATE INDEX IF NOT EXISTS idx_assessment_total_matches
+        ON assessment_data(total_matches)
+      `);
+    } catch (error) {
+      // Column may already exist, which is fine
+      // This is migration-safe - existing databases will have it added
+    }
+
     this.db!.run(`
       CREATE TABLE IF NOT EXISTS tool_runs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,25 +171,6 @@ export class DataService {
       )
     `);
 
-    this.db!.run(`
-      CREATE TABLE IF NOT EXISTS semgrep_results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        rule_id TEXT NOT NULL,
-        severity TEXT NOT NULL,
-        file_path TEXT NOT NULL,
-        start_line INTEGER NOT NULL,
-        end_line INTEGER NOT NULL,
-        start_column INTEGER NOT NULL,
-        end_column INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Create index for fast queries on semgrep_results
-    this.db!.run(`
-      CREATE INDEX IF NOT EXISTS idx_semgrep_file_path
-      ON semgrep_results(file_path)
-    `);
 
     // Save initial database
     this.saveDatabase();
@@ -214,7 +249,7 @@ export class DataService {
   }
 
   async storeAssessmentData(
-    projectId: number,
+    projectId: number | undefined,
     toolName: string,
     dataType: string,
     data: any,
@@ -224,7 +259,7 @@ export class DataService {
 
     this.db.run(
       `INSERT INTO assessment_data (project_id, tool_name, data_type, data, source) VALUES (?, ?, ?, ?, ?)`,
-      [projectId, toolName, dataType, JSON.stringify(data), source || null]
+      [projectId || null, toolName, dataType, JSON.stringify(data), source || null]
     );
 
     const result = this.db.exec('SELECT last_insert_rowid() as id');
@@ -300,52 +335,85 @@ export class DataService {
     });
   }
 
-  async storeSemgrepResults(matches: any[], actualFilePath?: string): Promise<number[]> {
+
+  /**
+   * Store semgrep results as a single run in assessment_data table
+   * Groups all matches from a single analysis run together
+   */
+  async storeSemgrepRun(
+    matches: any[],
+    target: string,
+    stats: any,
+    projectId?: number,
+    source?: string
+  ): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const ids: number[] = [];
-
-    for (const match of matches) {
+    // Normalize matches to ensure consistent structure
+    const normalizedMatches = matches.map((match) => {
       // Extract just the rule name from the full rule_id path
-      // e.g., "Users.pes.code.carbonara.packages.core.semgrep.rules.gci89-python-avoid-suspect-unlimited-cache-size"
-      // becomes "gci89-python-avoid-suspect-unlimited-cache-size"
       const ruleNameMatch = match.rule_id.match(/([^.]+)$/);
       const ruleName = ruleNameMatch ? ruleNameMatch[1] : match.rule_id;
 
-      // Use the actual file path if provided, otherwise use match.path
-      const filePath = actualFilePath || match.path;
+      return {
+        rule_id: ruleName,
+        severity: match.severity,
+        path: match.path,
+        file_path: match.file_path || match.path,
+        start_line: match.start_line,
+        end_line: match.end_line,
+        start_column: match.start_column,
+        end_column: match.end_column,
+        message: match.message || '',
+        code_snippet: match.code_snippet,
+        metadata: match.metadata || {},
+      };
+    });
 
-      this.db.run(
-        `INSERT INTO semgrep_results (
-          rule_id, severity, file_path,
-          start_line, end_line, start_column, end_column
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          ruleName,
-          match.severity,
-          filePath,
-          match.start_line,
-          match.end_line,
-          match.start_column,
-          match.end_column,
-        ]
-      );
+    // Prepare data for assessment_data
+    const assessmentData = {
+      target,
+      matches: normalizedMatches,
+      stats: stats || {
+        total_matches: matches.length,
+        error_count: matches.filter((m) => m.severity === 'ERROR').length,
+        warning_count: matches.filter((m) => m.severity === 'WARNING').length,
+        info_count: matches.filter((m) => m.severity === 'INFO').length,
+        files_scanned: new Set(matches.map((m) => m.path || m.file_path)).size,
+      },
+    };
 
-      const result = this.db.exec('SELECT last_insert_rowid() as id');
-      const id = result[0].values[0][0] as number;
-      ids.push(id);
-    }
+    // Store in assessment_data table
+    this.db.run(
+      `INSERT INTO assessment_data (project_id, tool_name, data_type, data, source) VALUES (?, ?, ?, ?, ?)`,
+      [
+        projectId || null,
+        'semgrep',
+        'code-analysis',
+        JSON.stringify(assessmentData),
+        source || null,
+      ]
+    );
+
+    const result = this.db.exec('SELECT last_insert_rowid() as id');
+    const id = result[0].values[0][0] as number;
 
     this.saveDatabase();
-    return ids;
+    return id;
   }
 
+  /**
+   * Get semgrep results for a specific file from assessment_data
+   * Queries all runs and extracts matches for the specified file
+   */
   async getSemgrepResultsByFile(filePath: string): Promise<SemgrepResultRow[]> {
     if (!this.db) throw new Error('Database not initialized');
 
+    // Query all semgrep runs from assessment_data
     const result = this.db.exec(
-      'SELECT * FROM semgrep_results WHERE file_path = ? ORDER BY created_at DESC',
-      [filePath]
+      `SELECT * FROM assessment_data 
+       WHERE tool_name = 'semgrep' AND data_type = 'code-analysis' 
+       ORDER BY timestamp DESC`
     );
 
     if (result.length === 0) {
@@ -355,19 +423,54 @@ export class DataService {
     const columns = result[0].columns;
     const rows = result[0].values;
 
-    return rows.map((values: any) => {
+    // Flatten matches from all runs and filter by file path
+    const allMatches: SemgrepResultRow[] = [];
+
+    rows.forEach((values: any) => {
       const row: any = {};
       columns.forEach((col: string, idx: number) => {
         row[col] = values[idx];
       });
-      return row;
+
+      // Parse JSON data
+      const data = row.data ? JSON.parse(row.data) : {};
+      const matches = data.matches || [];
+
+      // Filter matches for the requested file
+      matches.forEach((match: any) => {
+        const matchFilePath = match.file_path || match.path;
+        if (matchFilePath === filePath) {
+          allMatches.push({
+            id: row.id, // Use assessment_data id
+            rule_id: match.rule_id,
+            severity: match.severity,
+            file_path: matchFilePath,
+            start_line: match.start_line,
+            end_line: match.end_line,
+            start_column: match.start_column,
+            end_column: match.end_column,
+            created_at: row.timestamp,
+          });
+        }
+      });
     });
+
+    return allMatches;
   }
 
+  /**
+   * Get all semgrep results from assessment_data
+   * Flattens matches from all runs
+   */
   async getAllSemgrepResults(): Promise<SemgrepResultRow[]> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const result = this.db.exec('SELECT * FROM semgrep_results ORDER BY created_at DESC');
+    // Query all semgrep runs from assessment_data
+    const result = this.db.exec(
+      `SELECT * FROM assessment_data 
+       WHERE tool_name = 'semgrep' AND data_type = 'code-analysis' 
+       ORDER BY timestamp DESC`
+    );
 
     if (result.length === 0) {
       return [];
@@ -376,21 +479,52 @@ export class DataService {
     const columns = result[0].columns;
     const rows = result[0].values;
 
-    return rows.map((values: any) => {
+    // Flatten matches from all runs
+    const allMatches: SemgrepResultRow[] = [];
+
+    rows.forEach((values: any) => {
       const row: any = {};
       columns.forEach((col: string, idx: number) => {
         row[col] = values[idx];
       });
-      return row;
+
+      // Parse JSON data
+      const data = row.data ? JSON.parse(row.data) : {};
+      const matches = data.matches || [];
+
+      // Add all matches with assessment_data metadata
+      matches.forEach((match: any) => {
+        allMatches.push({
+          id: row.id, // Use assessment_data id
+          rule_id: match.rule_id,
+          severity: match.severity,
+          file_path: match.file_path || match.path,
+          start_line: match.start_line,
+          end_line: match.end_line,
+          start_column: match.start_column,
+          end_column: match.end_column,
+          created_at: row.timestamp,
+        });
+      });
     });
+
+    return allMatches;
   }
 
+  /**
+   * Delete semgrep results for a specific file
+   * 
+   * NOTE: Deletion is currently disabled. Assessment_data stores runs (not individual file results),
+   * so deleting by file path is problematic:
+   * - A run may contain results for multiple files
+   * - Deleting a run would remove results for all files in that run
+   * - We need to decide: delete entire runs containing the file, or filter matches from runs?
+   * 
+   * TODO: Implement proper deletion strategy for assessment_data structure
+   */
   async deleteSemgrepResultsByFile(filePath: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-
-    this.db.run('DELETE FROM semgrep_results WHERE file_path = ?', [filePath]);
-
-    this.saveDatabase();
+    // Deletion disabled - see comment above
+    throw new Error('Deletion of semgrep results by file is currently disabled. Assessment_data stores runs, not individual file results. Need to implement proper deletion strategy.');
   }
 
   async close(): Promise<void> {

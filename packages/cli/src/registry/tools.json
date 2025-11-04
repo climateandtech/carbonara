@@ -455,7 +455,12 @@
           "description": "List available rules",
           "type": "boolean"
         }
-      ]
+      ],
+      "severityMapping": {
+        "ERROR": "Warning",
+        "WARNING": "Information",
+        "INFO": "Hint"
+      }
     }
   ]
 }
