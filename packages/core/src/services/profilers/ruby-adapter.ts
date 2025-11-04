@@ -77,7 +77,7 @@ export class RubyProfilerAdapter extends BaseProfilerAdapter {
 
       // Run rbspy to record
       const rbspyCommand = `rbspy record --pid ${pid} --duration ${duration} --format speedscope -o ${outputFile}`;
-      await this.executeCommand(rbspyCommand);
+      await this.executeCommand(rbspyCommand, undefined, duration + 10);
 
       // Parse speedscope JSON (same format as py-spy)
       const profileData = await this.readJsonFile(outputFile);
@@ -113,11 +113,11 @@ export class RubyProfilerAdapter extends BaseProfilerAdapter {
       
       // Run with timeout
       const timeoutCommand = `timeout ${duration} ${stackprofCommand} || true`;
-      await this.executeCommand(timeoutCommand, options?.cwd);
+      await this.executeCommand(timeoutCommand, options?.cwd, duration + 10);
 
       // Generate text report with line information
       const reportCommand = `stackprof ${outputFile} --text --line > ${textFile}`;
-      await this.executeCommand(reportCommand);
+      await this.executeCommand(reportCommand, undefined, 60);
 
       // Parse text output
       const content = await fs.promises.readFile(textFile, 'utf-8');

@@ -85,7 +85,7 @@ export class PythonProfilerAdapter extends BaseProfilerAdapter {
 
       // Run py-spy to record
       const pySpyCommand = `py-spy record --pid ${pid} --duration ${duration} --rate ${rate} ${nonblocking ? '--nonblocking' : ''} -o ${outputFile}`;
-      await this.executeCommand(pySpyCommand);
+      await this.executeCommand(pySpyCommand, undefined, duration + 10);
 
       // Parse speedscope JSON
       const profileData = await this.readJsonFile(outputFile);
@@ -116,7 +116,7 @@ export class PythonProfilerAdapter extends BaseProfilerAdapter {
     try {
       // Run Scalene with profiling
       const scaleneCommand = `scalene --profile-only --cpu-only --outfile ${outputFile} ${command}`;
-      await this.executeCommand(scaleneCommand);
+      await this.executeCommand(scaleneCommand, undefined, duration + 10);
 
       // Parse Scalene text output
       const content = await fs.promises.readFile(outputFile, 'utf-8');

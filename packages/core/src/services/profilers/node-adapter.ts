@@ -48,7 +48,7 @@ export class NodeProfilerAdapter extends BaseProfilerAdapter {
       // 4. Parse the .cpuprofile file
       
       // For now, let's assume the command will run for the duration
-      await this.executeCommand(timeoutCommand, options?.cwd);
+      await this.executeCommand(timeoutCommand, options?.cwd, duration + 10);
 
       // Find the generated .cpuprofile file
       const files = await fs.promises.readdir(outputDir);

@@ -34,9 +34,9 @@ export abstract class BaseProfilerAdapter implements ProfilerAdapter {
   /**
    * Execute a command and return stdout
    */
-  protected async executeCommand(command: string, cwd?: string): Promise<string> {
+  protected async executeCommand(command: string, cwd?: string, timeoutSeconds: number = 30): Promise<string> {
     try {
-      const { stdout } = await execAsync(command, { cwd, timeout: (duration || 30) * 1000 + 10000 });
+      const { stdout } = await execAsync(command, { cwd, timeout: timeoutSeconds * 1000 + 10000 });
       return stdout.trim();
     } catch (error: any) {
       throw new Error(`Command failed: ${error.message}`);

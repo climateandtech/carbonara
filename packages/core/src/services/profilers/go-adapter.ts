@@ -101,7 +101,7 @@ export class GoProfilerAdapter extends BaseProfilerAdapter {
     
     try {
       const command = `go tool pprof -top -lines ${pprofFile} > ${textFile}`;
-      await this.executeCommand(command);
+      await this.executeCommand(command, undefined, 60);
       
       const content = await fs.promises.readFile(textFile, 'utf-8');
       const lines = this.parsePprofTextOutput(content);
