@@ -245,6 +245,256 @@
           ],
           "default": "websocket",
           "description": "Transport method for server communication"
+        },
+        "carbonara.assessment.projectInfo.expectedUsers": {
+          "type": "number",
+          "scope": "resource",
+          "description": "Expected number of users",
+          "order": 10
+        },
+        "carbonara.assessment.projectInfo.expectedTraffic": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "very-high"
+          ],
+          "enumDescriptions": [
+            "Low (< 1K visits/month)",
+            "Medium (1K-10K visits/month)",
+            "High (10K-100K visits/month)",
+            "Very High (> 100K visits/month)"
+          ],
+          "description": "Expected traffic level",
+          "order": 11
+        },
+        "carbonara.assessment.projectInfo.targetAudience": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "local",
+            "national",
+            "global"
+          ],
+          "enumDescriptions": [
+            "Local (same city/region)",
+            "National (same country)",
+            "Global (worldwide)"
+          ],
+          "description": "Target audience geographic scope",
+          "order": 12
+        },
+        "carbonara.assessment.projectInfo.projectLifespan": {
+          "type": "number",
+          "scope": "resource",
+          "description": "Project lifespan in months",
+          "order": 13
+        },
+        "carbonara.assessment.infrastructure.hostingType": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "shared",
+            "vps",
+            "dedicated",
+            "cloud",
+            "hybrid"
+          ],
+          "enumDescriptions": [
+            "Shared hosting",
+            "Virtual Private Server (VPS)",
+            "Dedicated server",
+            "Cloud (AWS/Azure/GCP)",
+            "Hybrid setup"
+          ],
+          "description": "Hosting type",
+          "order": 20
+        },
+        "carbonara.assessment.infrastructure.cloudProvider": {
+          "type": "string",
+          "scope": "resource",
+          "description": "Cloud provider name (if applicable)",
+          "order": 21
+        },
+        "carbonara.assessment.infrastructure.serverLocation": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "same-continent",
+            "different-continent",
+            "global-cdn"
+          ],
+          "enumDescriptions": [
+            "Same continent",
+            "Different continent",
+            "Global CDN"
+          ],
+          "description": "Server location relative to users",
+          "order": 22
+        },
+        "carbonara.assessment.infrastructure.dataStorage": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "minimal",
+            "moderate",
+            "heavy",
+            "massive"
+          ],
+          "enumDescriptions": [
+            "Minimal (< 1GB)",
+            "Moderate (1-10GB)",
+            "Heavy (10-100GB)",
+            "Massive (> 100GB)"
+          ],
+          "description": "Data storage requirements",
+          "order": 23
+        },
+        "carbonara.assessment.infrastructure.backupStrategy": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "none",
+            "weekly",
+            "daily",
+            "real-time"
+          ],
+          "enumDescriptions": [
+            "No backups",
+            "Weekly backups",
+            "Daily backups",
+            "Real-time backups"
+          ],
+          "description": "Backup strategy",
+          "order": 24
+        },
+        "carbonara.assessment.development.teamSize": {
+          "type": "number",
+          "scope": "resource",
+          "description": "Development team size",
+          "order": 30
+        },
+        "carbonara.assessment.development.developmentDuration": {
+          "type": "number",
+          "scope": "resource",
+          "description": "Development duration in months",
+          "order": 31
+        },
+        "carbonara.assessment.development.cicdPipeline": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Has CI/CD Pipeline",
+          "order": 32
+        },
+        "carbonara.assessment.development.testingStrategy": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "minimal",
+            "moderate",
+            "comprehensive"
+          ],
+          "enumDescriptions": [
+            "Minimal testing",
+            "Moderate testing",
+            "Comprehensive testing"
+          ],
+          "description": "Testing strategy",
+          "order": 33
+        },
+        "carbonara.assessment.development.codeQuality": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "basic",
+            "good",
+            "excellent"
+          ],
+          "enumDescriptions": [
+            "Basic",
+            "Good",
+            "Excellent"
+          ],
+          "description": "Code quality standards",
+          "order": 34
+        },
+        "carbonara.assessment.features.realTimeFeatures": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Has real-time features (WebSockets, SSE, etc.)",
+          "order": 40
+        },
+        "carbonara.assessment.features.mediaProcessing": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Has media processing (image/video/audio)",
+          "order": 41
+        },
+        "carbonara.assessment.features.aiMlFeatures": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Has AI/ML features",
+          "order": 42
+        },
+        "carbonara.assessment.features.blockchainIntegration": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Has blockchain integration",
+          "order": 43
+        },
+        "carbonara.assessment.features.iotIntegration": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Has IoT integration",
+          "order": 44
+        },
+        "carbonara.assessment.sustainability.carbonNeutralityTarget": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Has carbon neutrality target",
+          "order": 50
+        },
+        "carbonara.assessment.sustainability.greenHostingRequired": {
+          "type": "boolean",
+          "scope": "resource",
+          "description": "Requires green hosting",
+          "order": 51
+        },
+        "carbonara.assessment.sustainability.optimizationPriority": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "performance",
+            "sustainability",
+            "balanced"
+          ],
+          "enumDescriptions": [
+            "Performance first",
+            "Sustainability first",
+            "Balanced approach"
+          ],
+          "description": "Optimization priority",
+          "order": 52
+        },
+        "carbonara.assessment.sustainability.budgetForGreenTech": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "none",
+            "low",
+            "medium",
+            "high"
+          ],
+          "enumDescriptions": [
+            "No budget",
+            "Low budget",
+            "Medium budget",
+            "High budget"
+          ],
+          "description": "Budget allocated for green technology",
+          "order": 53
         }
       }
     },

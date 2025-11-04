@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { DataService } from '@carbonara/core';
+import { AssessmentSettingsHandler } from './assessment-settings-handler';
 
 export interface AssessmentSection {
     id: string;
@@ -19,6 +20,7 @@ export interface AssessmentField {
     required: boolean;
     options?: { label: string; value: string }[];
     value?: any;
+    settingKey?: string;
 }
 
 export class AssessmentTreeProvider implements vscode.TreeDataProvider<AssessmentItem> {
@@ -27,10 +29,19 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
 
     private assessmentData: AssessmentSection[] = [];
     private workspaceFolder: vscode.WorkspaceFolder | undefined;
+    private settingsHandler: AssessmentSettingsHandler;
 
-    constructor() {
+    constructor(settingsHandler: AssessmentSettingsHandler) {
         this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        this.settingsHandler = settingsHandler;
         this.initializeAssessmentData();
+
+        // Listen for configuration changes to update the tree
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('carbonara.assessment')) {
+                this.refresh();
+            }
+        });
     }
 
     private getCurrentProjectPath(): string {
@@ -56,7 +67,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
     }
 
     refresh(): void {
-        this.loadAssessmentProgress();
+        this.loadSettingsValues();
         this._onDidChangeTreeData.fire();
     }
 
@@ -136,8 +147,8 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                 description: 'Basic project details',
                 status: 'pending',
                 fields: [
-                    { id: 'expectedUsers', label: 'Expected Users', type: 'number', required: true },
-                    { id: 'expectedTraffic', label: 'Expected Traffic', type: 'select', required: true, 
+                    { id: 'expectedUsers', label: 'Expected Users', type: 'number', required: true, settingKey: 'projectInfo.expectedUsers' },
+                    { id: 'expectedTraffic', label: 'Expected Traffic', type: 'select', required: true, settingKey: 'projectInfo.expectedTraffic',
                       options: [
                         { label: 'Low (< 1K visits/month)', value: 'low' },
                         { label: 'Medium (1K-10K visits/month)', value: 'medium' },
@@ -145,14 +156,14 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                         { label: 'Very High (> 100K visits/month)', value: 'very-high' }
                       ]
                     },
-                    { id: 'targetAudience', label: 'Target Audience', type: 'select', required: true,
+                    { id: 'targetAudience', label: 'Target Audience', type: 'select', required: true, settingKey: 'projectInfo.targetAudience',
                       options: [
                         { label: 'Local (same city/region)', value: 'local' },
                         { label: 'National (same country)', value: 'national' },
                         { label: 'Global (worldwide)', value: 'global' }
                       ]
                     },
-                    { id: 'projectLifespan', label: 'Project Lifespan (months)', type: 'number', required: true }
+                    { id: 'projectLifespan', label: 'Project Lifespan (months)', type: 'number', required: true, settingKey: 'projectInfo.projectLifespan' }
                 ]
             },
             {
@@ -161,7 +172,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                 description: 'Hosting and infrastructure details',
                 status: 'pending',
                 fields: [
-                    { id: 'hostingType', label: 'Hosting Type', type: 'select', required: true,
+                    { id: 'hostingType', label: 'Hosting Type', type: 'select', required: true, settingKey: 'infrastructure.hostingType',
                       options: [
                         { label: 'Shared hosting', value: 'shared' },
                         { label: 'Virtual Private Server (VPS)', value: 'vps' },
@@ -170,15 +181,15 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                         { label: 'Hybrid setup', value: 'hybrid' }
                       ]
                     },
-                    { id: 'cloudProvider', label: 'Cloud Provider', type: 'input', required: false },
-                    { id: 'serverLocation', label: 'Server Location', type: 'select', required: true,
+                    { id: 'cloudProvider', label: 'Cloud Provider', type: 'input', required: false, settingKey: 'infrastructure.cloudProvider' },
+                    { id: 'serverLocation', label: 'Server Location', type: 'select', required: true, settingKey: 'infrastructure.serverLocation',
                       options: [
                         { label: 'Same continent', value: 'same-continent' },
                         { label: 'Different continent', value: 'different-continent' },
                         { label: 'Global CDN', value: 'global-cdn' }
                       ]
                     },
-                    { id: 'dataStorage', label: 'Data Storage', type: 'select', required: true,
+                    { id: 'dataStorage', label: 'Data Storage', type: 'select', required: true, settingKey: 'infrastructure.dataStorage',
                       options: [
                         { label: 'Minimal (< 1GB)', value: 'minimal' },
                         { label: 'Moderate (1-10GB)', value: 'moderate' },
@@ -186,7 +197,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                         { label: 'Massive (> 100GB)', value: 'massive' }
                       ]
                     },
-                    { id: 'backupStrategy', label: 'Backup Strategy', type: 'select', required: true,
+                    { id: 'backupStrategy', label: 'Backup Strategy', type: 'select', required: true, settingKey: 'infrastructure.backupStrategy',
                       options: [
                         { label: 'No backups', value: 'none' },
                         { label: 'Weekly backups', value: 'weekly' },
@@ -202,17 +213,17 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                 description: 'Development practices and team',
                 status: 'pending',
                 fields: [
-                    { id: 'teamSize', label: 'Team Size', type: 'number', required: true },
-                    { id: 'developmentDuration', label: 'Development Duration (months)', type: 'number', required: true },
-                    { id: 'cicdPipeline', label: 'CI/CD Pipeline', type: 'boolean', required: true },
-                    { id: 'testingStrategy', label: 'Testing Strategy', type: 'select', required: true,
+                    { id: 'teamSize', label: 'Team Size', type: 'number', required: true, settingKey: 'development.teamSize' },
+                    { id: 'developmentDuration', label: 'Development Duration (months)', type: 'number', required: true, settingKey: 'development.developmentDuration' },
+                    { id: 'cicdPipeline', label: 'CI/CD Pipeline', type: 'boolean', required: true, settingKey: 'development.cicdPipeline' },
+                    { id: 'testingStrategy', label: 'Testing Strategy', type: 'select', required: true, settingKey: 'development.testingStrategy',
                       options: [
                         { label: 'Minimal testing', value: 'minimal' },
                         { label: 'Moderate testing', value: 'moderate' },
                         { label: 'Comprehensive testing', value: 'comprehensive' }
                       ]
                     },
-                    { id: 'codeQuality', label: 'Code Quality', type: 'select', required: true,
+                    { id: 'codeQuality', label: 'Code Quality', type: 'select', required: true, settingKey: 'development.codeQuality',
                       options: [
                         { label: 'Basic', value: 'basic' },
                         { label: 'Good', value: 'good' },
@@ -227,11 +238,11 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                 description: 'Application features and capabilities',
                 status: 'pending',
                 fields: [
-                    { id: 'realTimeFeatures', label: 'Real-time Features', type: 'boolean', required: true },
-                    { id: 'mediaProcessing', label: 'Media Processing', type: 'boolean', required: true },
-                    { id: 'aiMlFeatures', label: 'AI/ML Features', type: 'boolean', required: true },
-                    { id: 'blockchainIntegration', label: 'Blockchain Integration', type: 'boolean', required: true },
-                    { id: 'iotIntegration', label: 'IoT Integration', type: 'boolean', required: true }
+                    { id: 'realTimeFeatures', label: 'Real-time Features', type: 'boolean', required: true, settingKey: 'features.realTimeFeatures' },
+                    { id: 'mediaProcessing', label: 'Media Processing', type: 'boolean', required: true, settingKey: 'features.mediaProcessing' },
+                    { id: 'aiMlFeatures', label: 'AI/ML Features', type: 'boolean', required: true, settingKey: 'features.aiMlFeatures' },
+                    { id: 'blockchainIntegration', label: 'Blockchain Integration', type: 'boolean', required: true, settingKey: 'features.blockchainIntegration' },
+                    { id: 'iotIntegration', label: 'IoT Integration', type: 'boolean', required: true, settingKey: 'features.iotIntegration' }
                 ]
             },
             {
@@ -240,16 +251,16 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                 description: 'Environmental and sustainability targets',
                 status: 'pending',
                 fields: [
-                    { id: 'carbonNeutralityTarget', label: 'Carbon Neutrality Target', type: 'boolean', required: true },
-                    { id: 'greenHostingRequired', label: 'Green Hosting Required', type: 'boolean', required: true },
-                    { id: 'optimizationPriority', label: 'Optimization Priority', type: 'select', required: true,
+                    { id: 'carbonNeutralityTarget', label: 'Carbon Neutrality Target', type: 'boolean', required: true, settingKey: 'sustainability.carbonNeutralityTarget' },
+                    { id: 'greenHostingRequired', label: 'Green Hosting Required', type: 'boolean', required: true, settingKey: 'sustainability.greenHostingRequired' },
+                    { id: 'optimizationPriority', label: 'Optimization Priority', type: 'select', required: true, settingKey: 'sustainability.optimizationPriority',
                       options: [
                         { label: 'Performance first', value: 'performance' },
                         { label: 'Sustainability first', value: 'sustainability' },
                         { label: 'Balanced approach', value: 'balanced' }
                       ]
                     },
-                    { id: 'budgetForGreenTech', label: 'Budget for Green Tech', type: 'select', required: true,
+                    { id: 'budgetForGreenTech', label: 'Budget for Green Tech', type: 'select', required: true, settingKey: 'sustainability.budgetForGreenTech',
                       options: [
                         { label: 'No budget', value: 'none' },
                         { label: 'Low budget', value: 'low' },
@@ -261,207 +272,77 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             }
         ];
 
-        this.loadAssessmentProgress();
+        this.loadSettingsValues();
     }
 
-    private loadAssessmentProgress(): void {
-        if (!this.workspaceFolder) {
-            return;
-        }
+    private loadSettingsValues(): void {
+        const config = vscode.workspace.getConfiguration('carbonara.assessment');
 
-        const projectPath = this.getCurrentProjectPath();
-        const progressFile = path.join(projectPath, '.carbonara-progress.json');
-        if (fs.existsSync(progressFile)) {
-            try {
-                const progress = JSON.parse(fs.readFileSync(progressFile, 'utf-8'));
-                this.mergeProgress(progress);
-            } catch (error) {
-                console.error('Failed to load assessment progress:', error);
-            }
-        }
-    }
-
-    private mergeProgress(progress: any): void {
+        // Load values from settings for each section
         for (const section of this.assessmentData) {
-            if (progress[section.id]) {
-                section.data = progress[section.id];
-                section.status = 'completed';
-                
-                // Update field values
-                for (const field of section.fields) {
-                    if (progress[section.id][field.id] !== undefined) {
-                        field.value = progress[section.id][field.id];
+            section.data = {};
+            let allFieldsFilled = true;
+            let anyFieldFilled = false;
+
+            for (const field of section.fields) {
+                if (field.settingKey) {
+                    const value = config.get(field.settingKey);
+                    field.value = value;
+                    section.data[field.id] = value;
+
+                    if (value !== undefined && value !== null) {
+                        anyFieldFilled = true;
+                    } else if (field.required) {
+                        allFieldsFilled = false;
                     }
                 }
+            }
+
+            // Update section status based on fields
+            if (allFieldsFilled && anyFieldFilled) {
+                section.status = 'completed';
+            } else if (anyFieldFilled) {
+                section.status = 'in-progress';
+            } else {
+                section.status = 'pending';
             }
         }
     }
 
     public async editSection(sectionId: string): Promise<void> {
-        const section = this.assessmentData.find(s => s.id === sectionId);
-        if (!section) {
-            return;
-        }
-
-        section.status = 'in-progress';
-        this.refresh();
-
-        const sectionData: any = {};
-        
-        for (const field of section.fields) {
-            let value = await this.editField(field);
-            if (value !== undefined) {
-                sectionData[field.id] = value;
-                field.value = value;
-            } else if (field.required) {
-                // User cancelled, revert status
-                section.status = section.data ? 'completed' : 'pending';
-                this.refresh();
-                return;
-            }
-        }
-
-        section.data = sectionData;
-        section.status = 'completed';
-        
-        await this.saveProgress();
-        this.refresh();
-        
-        vscode.window.showInformationMessage(`✅ ${section.label} completed!`);
-    }
-
-    private async editField(field: AssessmentField): Promise<any> {
-        switch (field.type) {
-            case 'input':
-                return await vscode.window.showInputBox({
-                    prompt: field.label,
-                    value: field.value?.toString() || '',
-                    validateInput: field.required ? (value) => value.length > 0 ? undefined : 'This field is required' : undefined
-                });
-
-            case 'number':
-                const numberInput = await vscode.window.showInputBox({
-                    prompt: field.label,
-                    value: field.value?.toString() || '',
-                    validateInput: (value) => {
-                        if (field.required && !value) {
-                            return 'This field is required';
-                        }
-                        if (value && isNaN(Number(value))) {
-                            return 'Please enter a valid number';
-                        }
-                        return undefined;
-                    }
-                });
-                return numberInput ? Number(numberInput) : undefined;
-
-            case 'select':
-                const selected = await vscode.window.showQuickPick(
-                    field.options || [],
-                    { placeHolder: field.label }
-                );
-                return selected?.value;
-
-            case 'boolean':
-                const booleanResult = await vscode.window.showQuickPick(
-                    [
-                        { label: 'Yes', value: true },
-                        { label: 'No', value: false }
-                    ],
-                    { placeHolder: field.label }
-                );
-                return booleanResult?.value;
-
-            default:
-                return undefined;
-        }
-    }
-
-    private async saveProgress(): Promise<void> {
-        if (!this.workspaceFolder) {
-            return;
-        }
-
-        const progress: any = {};
-        for (const section of this.assessmentData) {
-            if (section.data) {
-                progress[section.id] = section.data;
-            }
-        }
-
-        const projectPath = this.getCurrentProjectPath();
-        const progressFile = path.join(projectPath, '.carbonara-progress.json');
-        fs.writeFileSync(progressFile, JSON.stringify(progress, null, 2));
+        // Open settings instead of prompting for input
+        vscode.commands.executeCommand('workbench.action.openSettings', '@ext:carbonara.carbonara-vscode assessment');
     }
 
     public async completeAssessment(): Promise<void> {
-        const incompleteSections = this.assessmentData.filter(s => s.status !== 'completed');
-        if (incompleteSections.length > 0) {
-            const message = `Complete these sections first: ${incompleteSections.map(s => s.label).join(', ')}`;
-            vscode.window.showWarningMessage(message);
+        // Check if all sections are complete
+        if (!this.settingsHandler.isComplete()) {
+            const incompleteSections = this.assessmentData.filter(s => s.status !== 'completed');
+            const message = `Please complete all required fields in Settings. Incomplete sections: ${incompleteSections.map(s => s.label).join(', ')}`;
+
+            const action = await vscode.window.showWarningMessage(
+                message,
+                'Open Settings'
+            );
+
+            if (action === 'Open Settings') {
+                vscode.commands.executeCommand('workbench.action.openSettings', '@ext:carbonara.carbonara-vscode assessment');
+            }
             return;
         }
 
-        // Compile all data
-        const assessmentData: any = {
-            projectInfo: this.assessmentData.find(s => s.id === 'project-info')?.data || {},
-            infrastructure: this.assessmentData.find(s => s.id === 'infrastructure')?.data || {},
-            development: this.assessmentData.find(s => s.id === 'development')?.data || {},
-            features: this.assessmentData.find(s => s.id === 'features')?.data || {},
-            sustainabilityGoals: this.assessmentData.find(s => s.id === 'sustainability')?.data || {}
-        };
-
-        // Save assessment data file (for reference)
-        const projectPath = this.getCurrentProjectPath();
-        const assessmentFile = path.join(projectPath, 'carbonara-assessment.json');
-        fs.writeFileSync(assessmentFile, JSON.stringify(assessmentData, null, 2));
-
-        // Store assessment data using core DataService
+        // Save to database using the settings handler
         try {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: 'Saving CO2 Assessment...',
                 cancellable: false
             }, async () => {
-                const dataService = new DataService({
-                    dbPath: path.join(projectPath, '.carbonara', 'carbonara.db')
-                });
-
-                await dataService.initialize();
-
-                // Get or create project
-                let project = await dataService.getProject(projectPath);
-                if (!project) {
-                    const configPath = path.join(projectPath, 'carbonara.config.json');
-                    let projectName = 'Carbonara Project';
-                    if (fs.existsSync(configPath)) {
-                        try {
-                            const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-                            projectName = config.name || projectName;
-                        } catch {}
-                    }
-                    const projectId = await dataService.createProject(projectName, projectPath, {});
-                    project = await dataService.getProject(projectPath);
-                }
-
-                if (project) {
-                    // Store assessment data
-                    await dataService.storeAssessmentData(
-                        project.id,
-                        'co2-assessment',
-                        'assessment',
-                        assessmentData,
-                        'vscode-extension'
-                    );
-
-                    // Update project CO2 variables
-                    await dataService.updateProjectCO2Variables(project.id, assessmentData);
-                }
-
-                await dataService.close();
+                await this.settingsHandler.saveNow();
             });
 
             vscode.window.showInformationMessage('🎉 CO2 Assessment completed and saved successfully!');
+            this.refresh();
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Assessment error: ${errorMessage}`);

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawn } from "child_process";
 import { AssessmentTreeProvider } from "./assessment-tree-provider";
+import { AssessmentSettingsHandler } from "./assessment-settings-handler";
 import { DataTreeProvider } from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import {
@@ -13,6 +14,7 @@ import {
 } from "./semgrep-integration";
 
 let carbonaraStatusBar: vscode.StatusBarItem;
+let assessmentSettingsHandler: AssessmentSettingsHandler;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
@@ -42,8 +44,12 @@ export function activate(context: vscode.ExtensionContext) {
   carbonaraStatusBar.command = "carbonara.showMenu";
   carbonaraStatusBar.show();
 
+  // Create settings handler for assessment
+  assessmentSettingsHandler = new AssessmentSettingsHandler();
+  context.subscriptions.push(assessmentSettingsHandler);
+
   // Create and register tree views
-  assessmentTreeProvider = new AssessmentTreeProvider();
+  assessmentTreeProvider = new AssessmentTreeProvider(assessmentSettingsHandler);
   dataTreeProvider = new DataTreeProvider();
   console.log("🔧 Creating ToolsTreeProvider...");
   toolsTreeProvider = new ToolsTreeProvider();
