@@ -11,6 +11,11 @@ import {
   runSemgrepOnFile,
   clearSemgrepResults,
 } from "./semgrep-integration";
+import {
+  initializeCpuProfiler,
+  loadCpuProfilesFromDatabase,
+  clearCpuProfiles,
+} from "./cpu-profiler-integration";
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
@@ -27,6 +32,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Initialize Semgrep integration
   initializeSemgrep(context);
+
+  // Initialize CPU profiler integration
+  initializeCpuProfiler(context);
 
   // Create status bar item
   carbonaraStatusBar = vscode.window.createStatusBarItem(
@@ -111,6 +119,14 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "carbonara.clearSemgrepResults",
       clearSemgrepResults
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.loadCpuProfiles",
+      loadCpuProfilesFromDatabase
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.clearCpuProfiles",
+      clearCpuProfiles
     ),
   ];
 

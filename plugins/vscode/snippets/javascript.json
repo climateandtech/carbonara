@@ -1,0 +1,33 @@
+{
+  "Carbonara Node CPU Profile": {
+    "prefix": "carbonara-node-profile",
+    "body": [
+      "// Profile with V8 CPU profiler",
+      "// Run: node --cpu-prof --cpu-prof-dir=/tmp app.js",
+      "",
+      "const v8 = require('v8');",
+      "",
+      "// Start profiling",
+      "v8.setFlagsFromString('--cpu-prof');",
+      "",
+      "${1:// Your code here}",
+      "",
+      "// Stop profiling after duration",
+      "setTimeout(() => {",
+      "  v8.stopProfiling();",
+      "  process.exit(0);",
+      "}, ${2:30000});"
+    ],
+    "description": "Add V8 CPU profiler setup to Node.js code"
+  },
+  "Carbonara Node CPU Profile Stop": {
+    "prefix": "carbonara-node-profile-stop",
+    "body": [
+      "// Stop CPU profiling",
+      "const v8 = require('v8');",
+      "v8.stopProfiling();"
+    ],
+    "description": "Stop V8 CPU profiler"
+  }
+}
+

@@ -217,3 +217,6 @@ carbonara-export-*.json
 !test/fixtures/**/carbonara-export-*.json
 
 test/*.cursor/
+
+# Test results
+test-results/

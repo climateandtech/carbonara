@@ -1,0 +1,31 @@
+{
+  "Carbonara Python Py-Spy Profile": {
+    "prefix": "carbonara-python-profile",
+    "body": [
+      "# Profile with py-spy",
+      "# Run: py-spy record --pid <PID> --duration 30 --rate 99 --nonblocking -o profile.speedscope.json",
+      "import os",
+      "import time",
+      "",
+      "# Your code here",
+      "${1:print('Running...')}",
+      "",
+      "# Keep process running for profiling",
+      "time.sleep(${2:30})"
+    ],
+    "description": "Add py-spy profiling setup to Python code"
+  },
+  "Carbonara Python Scalene Profile": {
+    "prefix": "carbonara-python-scalene",
+    "body": [
+      "# Profile with Scalene",
+      "# Run: scalene --profile-only --cpu-only --outfile profile.txt your_script.py",
+      "import scalene",
+      "",
+      "${1:# Your code here}",
+      ""
+    ],
+    "description": "Add Scalene profiling wrapper to Python code"
+  }
+}
+

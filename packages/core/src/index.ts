@@ -25,6 +25,21 @@ export {
   SemgrepSeverity 
 } from './services/semgrepService.js';
 
+// CPU Profiler service exports
+export {
+  type CpuProfileLine,
+  type CpuProfileResult,
+  type ProfilerAdapter
+} from './services/cpu-profiler-service.js';
+
+export {
+  BaseProfilerAdapter,
+  PythonProfilerAdapter,
+  NodeProfilerAdapter,
+  RubyProfilerAdapter,
+  GoProfilerAdapter
+} from './services/profilers/index.js';
+
 // Factory functions for easy setup
 export const createDataService = (config?: { dbPath?: string }) => new DataService(config);
 export const createSchemaService = () => new SchemaService();
