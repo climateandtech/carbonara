@@ -63,7 +63,7 @@ export async function initCommand(options: InitOptions) {
           gitRoot
         );
         finalProjectPath = gitRoot;
-        dbPath = path.join(gitRoot, "carbonara.db");
+        dbPath = path.join(gitRoot, ".carbonara", "carbonara.db");
       } else {
         console.log(
           chalk.yellow("⚠️  Warning: Could not determine git repository root.")
@@ -72,7 +72,7 @@ export async function initCommand(options: InitOptions) {
           chalk.yellow("   Using current directory instead:"),
           projectPath
         );
-        dbPath = path.join(projectPath, "carbonara.db");
+        dbPath = path.join(projectPath, ".carbonara", "carbonara.db");
       }
     } else {
       console.log(chalk.yellow("⚠️  Warning: No git repository found."));
@@ -82,14 +82,14 @@ export async function initCommand(options: InitOptions) {
         chalk.yellow("first.")
       );
       console.log(chalk.gray("   Using current directory:"), projectPath);
-      dbPath = path.join(projectPath, "carbonara.db");
+      dbPath = path.join(projectPath, ".carbonara", "carbonara.db");
     }
 
     // Check if carbonara.db already exists
     const dbExists = fs.existsSync(dbPath);
 
     if (dbExists) {
-      console.log(chalk.yellow("⚠️  Database already exists:"), "carbonara.db");
+      console.log(chalk.yellow("⚠️  Database already exists:"), ".carbonara/carbonara.db");
     } else {
       console.log(chalk.gray("Creating new database at:"), dbPath);
     }
@@ -155,13 +155,13 @@ export async function initCommand(options: InitOptions) {
     };
 
     // Ensure .carbonara directory exists
-    const carbonaraDir = path.join(projectPath, ".carbonara");
+    const carbonaraDir = path.join(finalProjectPath, ".carbonara");
     if (!fs.existsSync(carbonaraDir)) {
       fs.mkdirSync(carbonaraDir, { recursive: true });
     }
 
     fs.writeFileSync(
-      path.join(finalProjectPath, "carbonara.config.json"),
+      path.join(carbonaraDir, "carbonara.config.json"),
       JSON.stringify(config, null, 2)
     );
 
