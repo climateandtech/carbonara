@@ -8,6 +8,7 @@ import { dataCommand } from "./commands/data.js";
 import { analyzeCommand } from "./commands/analyze.js";
 import { toolsCommand } from "./commands/tools.js";
 import { semgrepCommand } from "./commands/semgrep.js";
+import { profileCommand } from "./commands/profile.js";
 
 import packageJson from "../package.json" with { type: "json" };
 
@@ -95,6 +96,18 @@ program
   .option("--setup", "Setup bundled Semgrep environment")
   .option("--list-rules", "List available rules")
   .action(semgrepCommand);
+
+program
+  .command("profile")
+  .description("Profile CPU usage for test scenarios")
+  .option("--url <url>", "Profile a URL")
+  .option("--test <command>", "Profile a test command")
+  .option("--server <command>", "Profile a server command")
+  .option("--lang <language>", "Language (python|node|ruby|go)", "auto")
+  .option("-d, --duration <seconds>", "Profiling duration in seconds", "30")
+  .option("-s, --save", "Save results to database")
+  .option("-o, --output <format>", "Output format (json|table)", "table")
+  .action(profileCommand);
 
 program.on("command:*", () => {
   console.error(

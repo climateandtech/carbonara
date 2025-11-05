@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest run"
+    "test": "npm run build && vitest run",
+    "test:only": "vitest run"
   },
   "dependencies": {
     "sql.js": "1.13.0"

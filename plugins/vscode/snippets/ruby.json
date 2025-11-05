@@ -1,0 +1,22 @@
+{
+  "Carbonara Ruby Stackprof": {
+    "prefix": "carbonara-ruby-stackprof",
+    "body": [
+      "# Profile with stackprof",
+      "# Run: STACKPROF=cpu STACKPROF_OUT=stackprof.dump ruby app.rb",
+      "",
+      "require 'stackprof'",
+      "",
+      "# Start profiling",
+      "StackProf.start(mode: :cpu)",
+      "",
+      "${1:# Your code here}",
+      "",
+      "# Stop profiling",
+      "StackProf.stop",
+      "StackProf.results('stackprof.dump')"
+    ],
+    "description": "Add stackprof setup to Ruby code"
+  }
+}
+

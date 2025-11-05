@@ -1,0 +1,42 @@
+{
+  "Carbonara Go PProf": {
+    "prefix": "carbonara-go-pprof",
+    "body": [
+      "package main",
+      "",
+      "import (",
+      "\t\"os\"",
+      "\t\"runtime/pprof\"",
+      "\t\"time\"",
+      ")",
+      "",
+      "func main() {",
+      "\t// Start CPU profiling",
+      "\tf, err := os.Create(\"cpu.pprof\")",
+      "\tif err != nil {",
+      "\t\tpanic(err)",
+      "\t}",
+      "\tdefer f.Close()",
+      "\t",
+      "\tif err := pprof.StartCPUProfile(f); err != nil {",
+      "\t\tpanic(err)",
+      "\t}",
+      "\tdefer pprof.StopCPUProfile()",
+      "",
+      "\t${1:// Your code here}",
+      "",
+      "\t// Keep profiling for duration",
+      "\ttime.Sleep(${2:30} * time.Second)",
+      "}"
+    ],
+    "description": "Add pprof CPU profiling setup to Go code"
+  },
+  "Carbonara Go PProf Stop": {
+    "prefix": "carbonara-go-pprof-stop",
+    "body": [
+      "pprof.StopCPUProfile()"
+    ],
+    "description": "Stop pprof CPU profiling"
+  }
+}
+

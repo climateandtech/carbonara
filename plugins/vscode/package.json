@@ -124,6 +124,15 @@
       {
         "command": "carbonara.clearSemgrepResults",
         "title": "Clear Semgrep Results"
+      },
+      {
+        "command": "carbonara.loadCpuProfiles",
+        "title": "Load CPU Profiles",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "carbonara.clearCpuProfiles",
+        "title": "Clear CPU Profiles"
       }
     ],
     "viewsContainers": {
@@ -219,6 +228,28 @@
         }
       ]
     },
+    "snippets": [
+      {
+        "language": "python",
+        "path": "./snippets/python.json"
+      },
+      {
+        "language": "javascript",
+        "path": "./snippets/javascript.json"
+      },
+      {
+        "language": "typescript",
+        "path": "./snippets/typescript.json"
+      },
+      {
+        "language": "go",
+        "path": "./snippets/go.json"
+      },
+      {
+        "language": "ruby",
+        "path": "./snippets/ruby.json"
+      }
+    ],
     "configuration": {
       "title": "Carbonara",
       "properties": {
