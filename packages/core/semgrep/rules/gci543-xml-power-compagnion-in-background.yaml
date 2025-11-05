@@ -2,7 +2,10 @@ rules:
   - id: gci543-xml-power-compagnion-in-background
     languages:
       - xml
-    severity: INFO
-    message: "Avoid requesting REQUEST_COMPANION_RUN_IN_BACKGROUND permission. This can negatively affect battery life."
+    severity: WARNING
+    message: Avoid requesting REQUEST_COMPANION_RUN_IN_BACKGROUND permission. This
+      can negatively affect battery life.
     patterns:
-      - pattern: <uses-permission android:name="android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND" ...>
+      - pattern: <uses-permission
+          android:name="android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND"
+          ...>

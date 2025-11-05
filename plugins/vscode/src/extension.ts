@@ -4,12 +4,13 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawn } from "child_process";
 import { AssessmentTreeProvider } from "./assessment-tree-provider";
-import { DataTreeProvider } from "./data-tree-provider";
+import { DataTreeProvider, SemgrepFindingDecorationProvider } from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import {
   initializeSemgrep,
   runSemgrepOnFile,
   clearSemgrepResults,
+  setOnDatabaseUpdateCallback,
 } from "./semgrep-integration";
 
 let carbonaraStatusBar: vscode.StatusBarItem;
@@ -22,11 +23,11 @@ let currentProjectPath: string | null = null;
 // Diagnostics collection for Semgrep results
 let semgrepDiagnostics: vscode.DiagnosticCollection;
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   console.log("Carbonara extension is now active!");
 
-  // Initialize Semgrep integration
-  initializeSemgrep(context);
+  // Initialize Semgrep integration (now async)
+  await initializeSemgrep(context);
 
   // Create status bar item
   carbonaraStatusBar = vscode.window.createStatusBarItem(
@@ -61,6 +62,18 @@ export function activate(context: vscode.ExtensionContext) {
     toolsTreeProvider
   );
   console.log("✅ All tree providers registered");
+
+  // Register decoration provider for Semgrep findings
+  const semgrepDecorationProvider = new SemgrepFindingDecorationProvider();
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(semgrepDecorationProvider)
+  );
+  console.log("✅ Semgrep decoration provider registered");
+
+  // Set up Semgrep to refresh Data & Results when database updates
+  setOnDatabaseUpdateCallback(() => {
+    dataTreeProvider.refresh();
+  });
 
   // Register commands
   const commands = [
@@ -111,6 +124,23 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "carbonara.clearSemgrepResults",
       clearSemgrepResults
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.openSemgrepFile",
+      openSemgrepFile
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.openSemgrepFinding",
+      openSemgrepFinding
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.deleteSemgrepResultsForFile",
+      (item: any, items: any[]) => {
+        // If multiple items selected, items will be an array
+        // Otherwise, single item selection
+        const selectedItems = items && items.length > 0 ? items : [item];
+        dataTreeProvider.deleteSemgrepResultsForFiles(selectedItems);
+      }
     ),
   ];
 
@@ -716,5 +746,37 @@ function checkProjectStatus() {
     carbonaraStatusBar.tooltip = "Click to initialize Carbonara project";
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+  }
+}
+
+async function openSemgrepFile(filePath: string) {
+  try {
+    const uri = vscode.Uri.file(filePath);
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to open file: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+async function openSemgrepFinding(filePath: string, line: number, column: number) {
+  try {
+    const uri = vscode.Uri.file(filePath);
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document);
+
+    // Jump to the specific line and column
+    const position = new vscode.Position(line - 1, Math.max(0, column - 1));
+    editor.selection = new vscode.Selection(position, position);
+    editor.revealRange(
+      new vscode.Range(position, position),
+      vscode.TextEditorRevealType.InCenter
+    );
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to open finding: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

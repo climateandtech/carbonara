@@ -6,11 +6,32 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import {
   createSemgrepService,
+  DataService,
   type SemgrepMatch,
   type SemgrepResult,
 } from "@carbonara/core";
 
 const execAsync = promisify(exec);
+
+// Database service instance for persisting Semgrep results
+let dataService: DataService | null = null;
+
+// Callback to refresh the Data & Results tree when Semgrep database updates
+let onDatabaseUpdateCallback: (() => void) | null = null;
+
+/**
+ * Get the shared DataService instance used by Semgrep
+ */
+export function getSemgrepDataService(): DataService | null {
+  return dataService;
+}
+
+/**
+ * Set a callback to be invoked when Semgrep database is updated
+ */
+export function setOnDatabaseUpdateCallback(callback: () => void): void {
+  onDatabaseUpdateCallback = callback;
+}
 
 // File size threshold for interactive linting (1MB)
 // Files larger than this will only be linted on save
@@ -160,9 +181,37 @@ async function runSemgrepViaCLI(
 /**
  * Initialize the Semgrep integration
  */
-export function initializeSemgrep(
+export async function initializeSemgrep(
   context: vscode.ExtensionContext
-): vscode.DiagnosticCollection {
+): Promise<vscode.DiagnosticCollection> {
+  // Initialize database service for saving Semgrep results
+  try {
+    // Use workspace folder if available, otherwise use extension's global storage
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    let dbPath: string;
+
+    if (workspaceFolder) {
+      // Store in workspace root
+      dbPath = path.join(workspaceFolder.uri.fsPath, "carbonara.db");
+    } else {
+      // No workspace open, use extension's global storage
+      dbPath = path.join(context.globalStorageUri.fsPath, "carbonara.db");
+      // Ensure directory exists
+      if (!fs.existsSync(context.globalStorageUri.fsPath)) {
+        fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
+      }
+    }
+
+    dataService = new DataService({ dbPath });
+    await dataService.initialize();
+    console.log(`Database service initialized for Semgrep results at: ${dbPath}`);
+  } catch (error) {
+    console.error("Failed to initialize database service:", error);
+    vscode.window.showWarningMessage(
+      "Failed to initialize Semgrep database. Results will not be persisted."
+    );
+  }
+
   // Create diagnostics collection for Semgrep
   semgrepDiagnostics = vscode.languages.createDiagnosticCollection("semgrep");
   context.subscriptions.push(semgrepDiagnostics);
@@ -202,6 +251,16 @@ export function initializeSemgrep(
     runSemgrepOnFileChange(vscode.window.activeTextEditor);
   }
 
+  // Clean up database connection when extension deactivates
+  context.subscriptions.push({
+    dispose: async () => {
+      if (dataService) {
+        await dataService.close();
+        console.log("Database service closed");
+      }
+    },
+  });
+
   return semgrepDiagnostics;
 }
 
@@ -239,19 +298,27 @@ function applySemgrepDiagnostics(
       Math.max(0, match.end_column - 1)
     );
 
-    // Map severity
+    // Map Semgrep severity to VSCode diagnostic severity
+    // ERROR (Critical) -> Warning (orange in most themes)
+    // WARNING (Major) -> Information (blue/green in most themes)
+    // INFO (Minor) -> Hint (subtle green in most themes)
     let severity: vscode.DiagnosticSeverity;
     if (match.severity === "ERROR") {
-      severity = vscode.DiagnosticSeverity.Error;
-    } else if (match.severity === "WARNING") {
       severity = vscode.DiagnosticSeverity.Warning;
-    } else {
+    } else if (match.severity === "WARNING") {
       severity = vscode.DiagnosticSeverity.Information;
+    } else {
+      severity = vscode.DiagnosticSeverity.Hint;
     }
 
+    // Extract just the rule name from the full rule_id path
+    // e.g., "File.path.on.my.development.machine.rule-number-and-code" -> "rule-number-and-code"
+    const ruleNameMatch = match.rule_id.match(/([^.]+)$/);
+    const ruleName = ruleNameMatch ? ruleNameMatch[1] : match.rule_id;
+
     const diagnostic = new vscode.Diagnostic(range, match.message, severity);
-    diagnostic.source = "semgrep";
-    diagnostic.code = match.rule_id;
+    diagnostic.source = "Carbonara Code Scan";
+    diagnostic.code = ruleName;
 
     return diagnostic;
   });
@@ -284,9 +351,10 @@ async function runSemgrepAnalysis(
     showUI?: boolean;
     outputChannel?: vscode.OutputChannel;
     useTempFile?: boolean;
+    saveToDatabase?: boolean;
   } = {}
 ): Promise<SemgrepResult | null> {
-  const { showUI = false, outputChannel = null, useTempFile = true } = options;
+  const { showUI = false, outputChannel = null, useTempFile = true, saveToDatabase = false } = options;
   const filePath = editor.document.uri.fsPath;
   let tempFile: string | null = null;
 
@@ -388,6 +456,47 @@ async function runSemgrepAnalysis(
     // Apply diagnostics to the document
     applySemgrepDiagnostics(filePath, result.matches);
 
+    // Update database if saveToDatabase option is set
+    if (dataService && saveToDatabase) {
+      try {
+        // Convert file path to be relative to workspace if possible
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        let relativeFilePath = filePath;
+        if (workspaceFolder) {
+          relativeFilePath = vscode.workspace.asRelativePath(filePath, false);
+        }
+
+        // Delete old results for this file before inserting new ones
+        await dataService.deleteSemgrepResultsByFile(relativeFilePath);
+
+        // Store new results (even if there are no matches, to record that the file was analyzed)
+        await dataService.storeSemgrepRun(
+          result.matches,
+          relativeFilePath,
+          result.stats,
+          undefined,
+          "vscode"
+        );
+
+        if (result.matches.length > 0) {
+          console.log(
+            `Saved to database: ${result.matches.length} Semgrep findings for ${relativeFilePath}`
+          );
+        } else {
+          console.log(
+            `Saved to database: No Semgrep findings for ${relativeFilePath} (all clean!)`
+          );
+        }
+
+        // Trigger Data & Results tree refresh
+        if (onDatabaseUpdateCallback) {
+          onDatabaseUpdateCallback();
+        }
+      } catch (error) {
+        console.error("Failed to save Semgrep results to database:", error);
+      }
+    }
+
     // Display results
     if (outputChannel) {
       outputChannel.appendLine(
@@ -485,7 +594,8 @@ export async function runSemgrepOnFile() {
       await runSemgrepAnalysis(editor, {
         showUI: true,
         outputChannel: output,
-        useTempFile: true,
+        useTempFile: false,
+        saveToDatabase: true, // Manual runs should save to database
       });
     }
   );
@@ -502,7 +612,7 @@ export function clearSemgrepResults() {
 /**
  * Handle document change events for incremental analysis
  */
-function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
+async function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
   const filePath = event.document.uri.fsPath;
 
   // Only analyze files with supported extensions
@@ -521,6 +631,7 @@ function handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
     console.log(
       `Code changed in ${path.basename(filePath)}, triggering Semgrep re-analysis`
     );
+    // Re-run analysis with temp file (won't update database)
     runSemgrepOnFileChange(editor);
   }
 }
@@ -558,19 +669,36 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
 
   // Debounce the analysis by 500ms to avoid running too frequently
   semgrepAnalysisTimer = setTimeout(async () => {
-    console.log(
-      `Running automatic Semgrep analysis on ${path.basename(filePath)}`
-    );
-    await runSemgrepAnalysis(editor, {
-      showUI: false,
-      useTempFile: true,
-    });
+    // Check if file has unsaved changes
+    const hasUnsavedChanges = editor.document.isDirty;
+
+    if (hasUnsavedChanges) {
+      // File has unsaved changes - only show highlights, don't save to DB
+      console.log(
+        `Running Semgrep on unsaved changes for ${path.basename(filePath)} (highlights only)`
+      );
+      await runSemgrepAnalysis(editor, {
+        showUI: false,
+        useTempFile: true,
+        saveToDatabase: false,
+      });
+    } else {
+      // File was just opened or focus changed - save to database
+      console.log(
+        `Running Semgrep on opened file ${path.basename(filePath)} (saving to DB)`
+      );
+      await runSemgrepAnalysis(editor, {
+        showUI: false,
+        useTempFile: false,
+        saveToDatabase: true,
+      });
+    }
   }, 500);
 }
 
 /**
  * Runs Semgrep analysis when a file is saved.
- * Only analyzes large files that are skipped by interactive linting.
+ * Always saves results to database.
  */
 async function runSemgrepOnFileSave(editor: vscode.TextEditor) {
   // Only analyze files with supported extensions
@@ -581,26 +709,11 @@ async function runSemgrepOnFileSave(editor: vscode.TextEditor) {
     return;
   }
 
-  // Check file size - only analyze large files on save
-  try {
-    const stats = fs.statSync(filePath);
-    if (stats.size <= MAX_FILE_SIZE_FOR_INTERACTIVE_LINT) {
-      // Small files are handled by interactive linting
-      return;
-    }
-
-    console.log(
-      `File ${path.basename(filePath)} is large (${stats.size} bytes), running Semgrep on save`
-    );
-  } catch (error) {
-    console.error("Failed to check file size:", error);
-    return;
-  }
-
-  // Run analysis (file is already saved, so we can analyze it directly)
-  console.log(`Running Semgrep on save for ${path.basename(filePath)}`);
+  // Always run analysis on save and update database
+  console.log(`Running Semgrep on save for ${path.basename(filePath)} (saving to DB)`);
   await runSemgrepAnalysis(editor, {
     showUI: false,
     useTempFile: false,
+    saveToDatabase: true, // Save to database when file is saved
   });
 }

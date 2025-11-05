@@ -2,8 +2,9 @@ rules:
   - id: gci512-java-leakage-camera-leak
     languages:
       - java
-    severity: INFO
-    message: "Release Camera resources to avoid battery drain. Ensure every Camera.open() call has a corresponding Camera.release()."
+    severity: ERROR
+    message: Release Camera resources to avoid battery drain. Ensure every
+      Camera.open() call has a corresponding Camera.release().
     patterns:
       - pattern: Camera $CAMERA = Camera.open();
       - pattern-not-inside: |

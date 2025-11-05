@@ -2,8 +2,9 @@ rules:
   - id: gci89-python-avoid-suspect-unlimited-cache-size
     languages:
       - python
-    severity: INFO
-    message: "Avoid suspect unlimited cache size. Use @lru_cache with a defined maxsize to prevent memory leaks."
+    severity: WARNING
+    message: Avoid suspect unlimited cache size. Use @lru_cache with a defined
+      maxsize to prevent memory leaks.
     patterns:
       - pattern-either:
           - pattern: "@cache"

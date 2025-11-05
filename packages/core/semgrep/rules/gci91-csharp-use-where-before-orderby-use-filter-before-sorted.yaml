@@ -2,8 +2,9 @@ rules:
   - id: gci91-csharp-use-where-before-orderby-use-filter-before-sorted
     languages:
       - csharp
-    severity: INFO
-    message: "Use Where() before OrderBy() in LINQ queries for better performance. Filter first, then sort."
+    severity: WARNING
+    message: Use Where() before OrderBy() in LINQ queries for better performance.
+      Filter first, then sort.
     patterns:
       - pattern-either:
           - pattern: $COLLECTION.OrderBy(...).Where(...)

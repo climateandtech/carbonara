@@ -2,7 +2,8 @@ rules:
   - id: gci507-xml-idleness-keep-cpu-on
     languages:
       - xml
-    severity: INFO
-    message: "Avoid keeping the CPU on unnecessarily. This drains battery. Remove WAKE_LOCK permission if not absolutely needed."
+    severity: WARNING
+    message: Avoid keeping the CPU on unnecessarily. This drains battery. Remove
+      WAKE_LOCK permission if not absolutely needed.
     patterns:
       - pattern: <uses-permission android:name="android.permission.WAKE_LOCK" .../>

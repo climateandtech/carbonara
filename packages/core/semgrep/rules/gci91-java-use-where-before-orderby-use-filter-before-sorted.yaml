@@ -2,7 +2,8 @@ rules:
   - id: gci91-java-use-where-before-orderby-use-filter-before-sorted
     languages:
       - java
-    severity: INFO
-    message: "Use filter() before sorted() in Java streams for better performance. Filter first, then sort."
+    severity: WARNING
+    message: Use filter() before sorted() in Java streams for better performance.
+      Filter first, then sort.
     patterns:
       - pattern: $COLLECTION.stream().sorted().filter($PREDICATE).collect(...);

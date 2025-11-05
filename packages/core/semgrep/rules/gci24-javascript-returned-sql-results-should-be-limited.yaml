@@ -3,9 +3,10 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: INFO
-    message: "Returned SQL results should be limited. Add a LIMIT or FETCH FIRST clause to your SQL queries."
+    severity: WARNING
+    message: Returned SQL results should be limited. Add a LIMIT or FETCH FIRST
+      clause to your SQL queries.
     patterns:
-      - pattern-regex: "SELECT .* FROM .*"
-      - pattern-not-regex: "SELECT .* FROM .* LIMIT .*"
-      - pattern-not-regex: "SELECT .* FROM .* FETCH FIRST .* ROWS ONLY"
+      - pattern-regex: SELECT .* FROM .*
+      - pattern-not-regex: SELECT .* FROM .* LIMIT .*
+      - pattern-not-regex: SELECT .* FROM .* FETCH FIRST .* ROWS ONLY

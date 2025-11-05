@@ -2,8 +2,10 @@ rules:
   - id: gci540-xml-batch-service-boot-time
     languages:
       - xml
-    severity: INFO
-    message: "Avoid starting services on boot. This can lead to excessive battery depletion. Do not use BOOT_COMPLETED action in Broadcast Receiver intent-filters."
+    severity: WARNING
+    message: Avoid starting services on boot. This can lead to excessive battery
+      depletion. Do not use BOOT_COMPLETED action in Broadcast Receiver
+      intent-filters.
     patterns:
       - pattern: |
           <receiver ...>

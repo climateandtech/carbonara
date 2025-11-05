@@ -2,8 +2,9 @@ rules:
   - id: gci547-xml-sobriety-dark-ui-bright-colors
     languages:
       - xml
-    severity: INFO
-    message: "Avoid bright colors in UI for better battery life, especially on OLED screens. Consider using darker themes."
+    severity: WARNING
+    message: Avoid bright colors in UI for better battery life, especially on OLED
+      screens. Consider using darker themes.
     patterns:
       - pattern-either:
           - pattern: <... android:foreground="#FFFFFF" ...>
