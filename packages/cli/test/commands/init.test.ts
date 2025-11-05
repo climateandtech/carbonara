@@ -121,14 +121,16 @@ describe('Carbonara CLI - init command', () => {
       initGitRepo(testDir);
 
       // Create an existing database file
-      const dbPath = path.join(testDir, 'carbonara.db');
+      const carbonaraDir = path.join(testDir, '.carbonara');
+      fs.mkdirSync(carbonaraDir, { recursive: true });
+      const dbPath = path.join(carbonaraDir, 'carbonara.db');
       fs.writeFileSync(dbPath, 'dummy content');
 
       const result = runInitCommand(testDir, 'Test Project\\n\\n\\n');
 
       // Should detect existing database
       expect(result.stdout).toContain('Database already exists');
-      expect(result.stdout).toContain('carbonara.db');
+      expect(result.stdout).toContain('.carbonara/carbonara.db');
     });
   });
 

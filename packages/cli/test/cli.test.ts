@@ -44,24 +44,28 @@ describe('Carbonara CLI - Tests', () => {
 
 
   test('data command should show help when no options provided', () => {
-    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
+    const carbonaraDir = path.join(testDir, '.carbonara');
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify({
       name: 'Test Project',
       projectType: 'web',
       projectId: 'test-123'
     }));
-    
+
     const result = execSync(`cd "${testDir}" && node "${cliPath}" data`, { encoding: 'utf8' });
     expect(result).toContain('Data Lake Management');
     expect(result).toContain('--list');
   });
 
   test('data --list should handle missing database gracefully', () => {
-    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
+    const carbonaraDir = path.join(testDir, '.carbonara');
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify({
       name: 'Test Project',
       projectType: 'web',
       projectId: 'test-123'
     }));
-    
+
     try {
       const result = execSync(`cd "${testDir}" && node "${cliPath}" data --list`, { encoding: 'utf8' });
       expect(result).toContain('No data found');
@@ -173,12 +177,14 @@ describe('Carbonara CLI - Tests', () => {
   });
 
   test('data --json should output valid JSON', () => {
-    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify({
+    const carbonaraDir = path.join(testDir, '.carbonara');
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify({
       name: 'Test Project',
       projectType: 'web',
       projectId: 'test-123'
     }));
-    
+
     try {
       const result = execSync(`cd "${testDir}" && node "${cliPath}" data --json`, { encoding: 'utf8' });
       // Should output valid JSON array (empty array for no data)
@@ -218,22 +224,24 @@ describe('CLI analyze command with project management', () => {
       version: "1.0.0",
       created: "2025-01-01T00:00:00.000Z"
     };
-    
-    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
-    
+
+    const carbonaraDir = path.join(testDir, '.carbonara');
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
+
     // Run analyze command with --save
-    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, { 
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, {
       encoding: 'utf8',
       stdio: 'pipe',
       timeout: 15000
     });
-    
+
     // Should succeed and show results saved
     expect(result).toContain('analysis completed');
     expect(result).toContain('Results saved to project database');
-    
+
     // Should have created a database with project
-    const dbPath = path.join(testDir, 'carbonara.db');
+    const dbPath = path.join(carbonaraDir, 'carbonara.db');
     expect(fs.existsSync(dbPath)).toBe(true);
     
     // Check that project was created in database
@@ -270,11 +278,13 @@ describe('CLI analyze command with project management', () => {
       version: "1.0.0",
       created: "2025-01-01T00:00:00.000Z"
     };
-    
-    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
-    
+
+    const carbonaraDir = path.join(testDir, '.carbonara');
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
+
     // Create database with existing project
-    const dbPath = path.join(testDir, 'carbonara.db');
+    const dbPath = path.join(carbonaraDir, 'carbonara.db');
     const initSqlJs = require('sql.js');
     const SQL = await initSqlJs();
     const db = new SQL.Database();

@@ -74,7 +74,7 @@ Access commands via:
   - Check CLI availability and database status
 
 - **Open Configuration** (`carbonara.openConfig`)
-  - Quick access to `carbonara.config.json`
+  - Quick access to `.carbonara/carbonara.config.json`
 
 ### Status Bar Integration
 
@@ -89,9 +89,11 @@ After initialization, your project will contain:
 
 ```
 your-project/
-├── carbonara.config.json    # Project configuration
-├── carbonara.db            # SQLite database
-└── schemas/                # JSON schema files
+├── .carbonara/
+│   ├── carbonara.config.json    # Project configuration
+│   ├── carbonara.db            # SQLite database
+│   └── ...                     # Other Carbonara files
+└── schemas/                    # JSON schema files (optional)
 ```
 
 ## Configuration
@@ -145,13 +147,13 @@ If commands show "No project found":
 
 1. Run **Initialize Project** first
 2. Ensure you're in a workspace folder
-3. Check that `carbonara.config.json` exists
+3. Check that `.carbonara/carbonara.config.json` exists
 
 ### Database Errors
 
 If you see database-related errors:
 
-1. Check that `carbonara.db` exists in your project
+1. Check that `.carbonara/carbonara.db` exists in your project
 2. Try re-initializing the project
 3. Ensure proper file permissions
 
