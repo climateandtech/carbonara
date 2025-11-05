@@ -311,9 +311,14 @@ function applySemgrepDiagnostics(
       severity = vscode.DiagnosticSeverity.Hint;
     }
 
+    // Extract just the rule name from the full rule_id path
+    // e.g., "File.path.on.my.development.machine.rule-number-and-code" -> "rule-number-and-code"
+    const ruleNameMatch = match.rule_id.match(/([^.]+)$/);
+    const ruleName = ruleNameMatch ? ruleNameMatch[1] : match.rule_id;
+
     const diagnostic = new vscode.Diagnostic(range, match.message, severity);
-    diagnostic.source = "semgrep";
-    diagnostic.code = match.rule_id;
+    diagnostic.source = "Carbonara Code Scan";
+    diagnostic.code = ruleName;
 
     return diagnostic;
   });
@@ -346,9 +351,10 @@ async function runSemgrepAnalysis(
     showUI?: boolean;
     outputChannel?: vscode.OutputChannel;
     useTempFile?: boolean;
+    saveToDatabase?: boolean;
   } = {}
 ): Promise<SemgrepResult | null> {
-  const { showUI = false, outputChannel = null, useTempFile = true } = options;
+  const { showUI = false, outputChannel = null, useTempFile = true, saveToDatabase = false } = options;
   const filePath = editor.document.uri.fsPath;
   let tempFile: string | null = null;
 
@@ -450,8 +456,8 @@ async function runSemgrepAnalysis(
     // Apply diagnostics to the document
     applySemgrepDiagnostics(filePath, result.matches);
 
-    // Update database if this is a saved file analysis (not temp file)
-    if (dataService && !useTempFile) {
+    // Update database if saveToDatabase option is set
+    if (dataService && saveToDatabase) {
       try {
         // Convert file path to be relative to workspace if possible
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -460,18 +466,25 @@ async function runSemgrepAnalysis(
           relativeFilePath = vscode.workspace.asRelativePath(filePath, false);
         }
 
-        // Delete old results for this file
+        // Delete old results for this file before inserting new ones
         await dataService.deleteSemgrepResultsByFile(relativeFilePath);
 
-        // Save new results
+        // Store new results (even if there are no matches, to record that the file was analyzed)
+        await dataService.storeSemgrepRun(
+          result.matches,
+          relativeFilePath,
+          result.stats,
+          undefined,
+          "vscode"
+        );
+
         if (result.matches.length > 0) {
-          await dataService.storeSemgrepResults(result.matches, relativeFilePath);
           console.log(
-            `Updated database: ${result.matches.length} Semgrep findings for ${relativeFilePath}`
+            `Saved to database: ${result.matches.length} Semgrep findings for ${relativeFilePath}`
           );
         } else {
           console.log(
-            `Updated database: No Semgrep findings for ${relativeFilePath} (all fixed!)`
+            `Saved to database: No Semgrep findings for ${relativeFilePath} (all clean!)`
           );
         }
 
@@ -480,7 +493,7 @@ async function runSemgrepAnalysis(
           onDatabaseUpdateCallback();
         }
       } catch (error) {
-        console.error("Failed to update Semgrep results in database:", error);
+        console.error("Failed to save Semgrep results to database:", error);
       }
     }
 
@@ -581,7 +594,8 @@ export async function runSemgrepOnFile() {
       await runSemgrepAnalysis(editor, {
         showUI: true,
         outputChannel: output,
-        useTempFile: true,
+        useTempFile: false,
+        saveToDatabase: true, // Manual runs should save to database
       });
     }
   );
@@ -655,22 +669,36 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
 
   // Debounce the analysis by 500ms to avoid running too frequently
   semgrepAnalysisTimer = setTimeout(async () => {
-    console.log(
-      `Running automatic Semgrep analysis on ${path.basename(filePath)}`
-    );
     // Check if file has unsaved changes
     const hasUnsavedChanges = editor.document.isDirty;
 
-    await runSemgrepAnalysis(editor, {
-      showUI: false,
-      useTempFile: hasUnsavedChanges, // Use temp file only if there are unsaved changes
-    });
+    if (hasUnsavedChanges) {
+      // File has unsaved changes - only show highlights, don't save to DB
+      console.log(
+        `Running Semgrep on unsaved changes for ${path.basename(filePath)} (highlights only)`
+      );
+      await runSemgrepAnalysis(editor, {
+        showUI: false,
+        useTempFile: true,
+        saveToDatabase: false,
+      });
+    } else {
+      // File was just opened or focus changed - save to database
+      console.log(
+        `Running Semgrep on opened file ${path.basename(filePath)} (saving to DB)`
+      );
+      await runSemgrepAnalysis(editor, {
+        showUI: false,
+        useTempFile: false,
+        saveToDatabase: true,
+      });
+    }
   }, 500);
 }
 
 /**
  * Runs Semgrep analysis when a file is saved.
- * Only analyzes large files that are skipped by interactive linting.
+ * Always saves results to database.
  */
 async function runSemgrepOnFileSave(editor: vscode.TextEditor) {
   // Only analyze files with supported extensions
@@ -681,10 +709,11 @@ async function runSemgrepOnFileSave(editor: vscode.TextEditor) {
     return;
   }
 
-  // Always run analysis on save to update database
-  console.log(`Running Semgrep on save for ${path.basename(filePath)}`);
+  // Always run analysis on save and update database
+  console.log(`Running Semgrep on save for ${path.basename(filePath)} (saving to DB)`);
   await runSemgrepAnalysis(editor, {
     showUI: false,
-    useTempFile: false, // Analyze saved file and update database
+    useTempFile: false,
+    saveToDatabase: true, // Save to database when file is saved
   });
 }

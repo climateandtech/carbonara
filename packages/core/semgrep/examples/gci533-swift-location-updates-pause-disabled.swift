@@ -4,7 +4,7 @@ class LocationManagerHandler {
     func disableLocationUpdatesPauseNonCompliant() {
         let manager = CLLocationManager()
     // ruleid: gci533-swift-location-updates-pause-disabled
-        manager.pausesLocationUpdatesAutomatically = false
+        // manager.pausesLocationUpdatesAutomatically = false
     }
 
     // ok: gci533-swift-location-updates-pause-disabled

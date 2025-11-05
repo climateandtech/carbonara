@@ -135,9 +135,29 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   }
 
   async refresh(): Promise<void> {
-    // Clear cached data to force reload from database
-    this.cachedItems = null;
-    this._onDidChangeTreeData.fire();
+    // Load new data in background without clearing cache
+    // This prevents showing "Loading..." message during refresh
+    if (this.coreServices && this.workspaceFolder) {
+      try {
+        const newItems = await this.loadRootItemsAsync();
+        // Only update cache and fire event if data actually changed
+        const hasChanged =
+          !this.cachedItems ||
+          JSON.stringify(newItems.map((i) => i.label)) !==
+            JSON.stringify(this.cachedItems.map((i) => i.label));
+
+        if (hasChanged) {
+          this.cachedItems = newItems;
+          this._onDidChangeTreeData.fire();
+        }
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+      }
+    } else {
+      // If services aren't ready, fall back to old behavior
+      this.cachedItems = null;
+      this._onDidChangeTreeData.fire();
+    }
   }
 
   getTreeItem(element: DataItem): vscode.TreeItem {
@@ -229,7 +249,10 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     }
 
     if (element) {
-      // Handle child elements - for now return empty
+      // Return children if the element has them
+      if (element.children) {
+        return element.children;
+      }
       return [];
     } else {
       // Load root items with real data
@@ -249,12 +272,12 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       ];
     }
 
-    // If we have cached data, return it
+    // If we have cached data, return it immediately (no loading message)
     if (this.cachedItems) {
       return this.cachedItems;
     }
 
-    // Start async data loading in background and return loading message
+    // Only on first load (no cache): start async data loading and show loading message
     this.loadRootItemsAsync()
       .then((items) => {
         this.cachedItems = items;
@@ -274,6 +297,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         this._onDidChangeTreeData.fire();
       });
 
+    // Show loading message only on first load
     return [
       new DataItem(
         UI_TEXT.DATA_TREE.LOADING,
@@ -282,6 +306,152 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         "info"
       ),
     ];
+  }
+
+  /**
+   * Build a folder tree structure from file paths
+   */
+  private buildFolderTree(
+    resultsByFile: Map<string, any[]>,
+    projectPath: string
+  ): DataItem[] {
+    // Create a tree structure
+    interface TreeNode {
+      name: string;
+      path: string;
+      children: Map<string, TreeNode>;
+      results?: any[];
+      isFile: boolean;
+    }
+
+    const root: TreeNode = {
+      name: "",
+      path: "",
+      children: new Map(),
+      isFile: false,
+    };
+
+    // Build tree structure
+    resultsByFile.forEach((results, filePath) => {
+      // Ensure the path is relative to the project root
+      let relativePath = filePath;
+
+      // If the path is absolute, make it relative to the project
+      if (path.isAbsolute(filePath)) {
+        relativePath = path.relative(projectPath, filePath);
+      }
+
+      // Normalize path separators and split into parts
+      const parts = relativePath.replace(/\\/g, '/').split("/").filter(part => part.length > 0);
+      let currentNode = root;
+
+      parts.forEach((part, index) => {
+        const isLastPart = index === parts.length - 1;
+
+        if (!currentNode.children.has(part)) {
+          const nodePath = parts.slice(0, index + 1).join("/");
+          currentNode.children.set(part, {
+            name: part,
+            path: nodePath,
+            children: new Map(),
+            isFile: isLastPart,
+            results: isLastPart ? results : undefined,
+          });
+        }
+
+        if (isLastPart) {
+          currentNode.children.get(part)!.results = results;
+        }
+
+        currentNode = currentNode.children.get(part)!;
+      });
+    });
+
+    // Convert tree to DataItems
+    const convertNodeToItems = (
+      node: TreeNode,
+      level: number = 0
+    ): DataItem[] => {
+      const items: DataItem[] = [];
+
+      // Sort: folders first, then files
+      const entries = Array.from(node.children.entries()).sort((a, b) => {
+        const [, nodeA] = a;
+        const [, nodeB] = b;
+        if (nodeA.isFile && !nodeB.isFile) return 1;
+        if (!nodeA.isFile && nodeB.isFile) return -1;
+        return nodeA.name.localeCompare(nodeB.name);
+      });
+
+      entries.forEach(([, childNode]) => {
+        if (childNode.isFile && childNode.results) {
+          // File node with results
+          const errorCount = childNode.results.filter(
+            (r) => r.severity === "ERROR"
+          ).length;
+          const warningCount = childNode.results.filter(
+            (r) => r.severity === "WARNING"
+          ).length;
+          const infoCount = childNode.results.filter(
+            (r) => r.severity === "INFO"
+          ).length;
+
+          let severityBadge = "";
+          if (errorCount > 0) severityBadge = `🚨 ${errorCount}`;
+          else if (warningCount > 0) severityBadge = `⚠️ ${warningCount}`;
+          else severityBadge = `ℹ️ ${infoCount}`;
+
+          const absolutePath = path.isAbsolute(childNode.path)
+            ? childNode.path
+            : path.join(projectPath, childNode.path);
+
+          const fileItem = new DataItem(
+            childNode.name,
+            `${childNode.results.length} findings: ${severityBadge}`,
+            vscode.TreeItemCollapsibleState.Collapsed,
+            "file",
+            "semgrep",
+            undefined,
+            absolutePath
+          );
+
+          // Add individual findings as children
+          fileItem.children = childNode.results.map((result) => {
+            const findingItem = new DataItem(
+              `Line ${result.start_line}: ${result.rule_id}`,
+              result.message,
+              vscode.TreeItemCollapsibleState.None,
+              "finding",
+              "semgrep",
+              undefined,
+              absolutePath,
+              result
+            );
+            return findingItem;
+          });
+
+          items.push(fileItem);
+        } else if (!childNode.isFile && childNode.children.size > 0) {
+          // Folder node
+          const folderItem = new DataItem(
+            childNode.name,
+            "",
+            vscode.TreeItemCollapsibleState.Collapsed,
+            "folder",
+            "semgrep"
+          );
+
+          // Recursively add children
+          folderItem.children = convertNodeToItems(childNode, level + 1);
+
+          items.push(folderItem);
+        }
+      });
+
+      return items;
+    };
+
+    return convertNodeToItems(root);
   }
 
   private async loadRootItemsAsync(): Promise<DataItem[]> {
@@ -309,59 +479,36 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
           console.log("Semgrep DataService not initialized yet");
           // Continue without Semgrep results
         } else {
-          const semgrepResults = await semgrepDataService.getAllSemgrepResults();
+          const semgrepResults =
+            await semgrepDataService.getAllSemgrepResults();
 
-        if (semgrepResults.length > 0) {
-          // Group by file
-          const resultsByFile = new Map<string, typeof semgrepResults>();
-          semgrepResults.forEach(result => {
-            if (!resultsByFile.has(result.file_path)) {
-              resultsByFile.set(result.file_path, []);
-            }
-            resultsByFile.get(result.file_path)!.push(result);
-          });
+          if (semgrepResults.length > 0) {
+            // Group by file
+            const resultsByFile = new Map<string, typeof semgrepResults>();
+            semgrepResults.forEach((result) => {
+              if (!resultsByFile.has(result.file_path)) {
+                resultsByFile.set(result.file_path, []);
+              }
+              resultsByFile.get(result.file_path)!.push(result);
+            });
 
-          // Add Semgrep group
-          items.push(
-            new DataItem(
-              `🔍 Semgrep Results (${semgrepResults.length})`,
+            // Add Code Scan group
+            const codeScanGroup = new DataItem(
+              `Code Scan (${semgrepResults.length})`,
               `Found in ${resultsByFile.size} files`,
               vscode.TreeItemCollapsibleState.Expanded,
               "group",
               "semgrep"
-            )
-          );
-
-          // Add file entries
-          resultsByFile.forEach((results, filePath) => {
-            const errorCount = results.filter(r => r.severity === 'ERROR').length;
-            const warningCount = results.filter(r => r.severity === 'WARNING').length;
-            const infoCount = results.filter(r => r.severity === 'INFO').length;
-
-            let severityBadge = '';
-            if (errorCount > 0) severityBadge = `🚨 ${errorCount} errors`;
-            else if (warningCount > 0) severityBadge = `⚠️ ${warningCount} warnings`;
-            else severityBadge = `ℹ️ ${infoCount} info`;
-
-            // Create absolute file path
-            const absolutePath = path.isAbsolute(filePath)
-              ? filePath
-              : path.join(projectPath, filePath);
-
-            const item = new DataItem(
-              filePath,
-              `${results.length} findings: ${severityBadge}`,
-              vscode.TreeItemCollapsibleState.None,
-              "entry",
-              "semgrep",
-              undefined,
-              absolutePath
             );
-            // Override context value for Semgrep files to show delete option
-            item.contextValue = "carbonara-semgrep-file";
-            items.push(item);
-          });
-        }
+
+            // Build folder tree structure
+            codeScanGroup.children = this.buildFolderTree(
+              resultsByFile,
+              projectPath
+            );
+
+            items.push(codeScanGroup);
+          }
         }
       } catch (error) {
         console.error("Error loading Semgrep results:", error);
@@ -374,7 +521,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       if (assessmentData.length > 0) {
         // Create grouped items for assessment data
         const groups =
-          await this.coreServices!.vscodeProvider.createGroupedItems(projectPath);
+          await this.coreServices!.vscodeProvider.createGroupedItems(
+            projectPath
+          );
 
         groups.forEach((group, groupIndex) => {
           // Add group header
@@ -614,17 +763,16 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
     // Extract file paths from selected items
     const filePaths = items
-      .filter(item => item.toolName === "semgrep" && item.label)
-      .map(item => item.label);
+      .filter((item) => item.toolName === "semgrep" && item.label)
+      .map((item) => item.label);
 
     if (filePaths.length === 0) {
       vscode.window.showWarningMessage("No Semgrep file results selected");
       return;
     }
 
-    const fileList = filePaths.length === 1
-      ? filePaths[0]
-      : `${filePaths.length} files`;
+    const fileList =
+      filePaths.length === 1 ? filePaths[0] : `${filePaths.length} files`;
 
     const answer = await vscode.window.showWarningMessage(
       `Delete Semgrep results for ${fileList}? This action cannot be undone.`,
@@ -652,14 +800,25 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 }
 
 export class DataItem extends vscode.TreeItem {
+  public children?: DataItem[];
+
   constructor(
     public readonly label: string,
     public readonly description: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly type: "group" | "entry" | "detail" | "info" | "error",
+    public readonly type:
+      | "group"
+      | "entry"
+      | "detail"
+      | "info"
+      | "error"
+      | "folder"
+      | "file"
+      | "finding",
     public readonly toolName?: string,
     public readonly entryId?: number,
-    public readonly filePath?: string
+    public readonly filePath?: string,
+    public readonly resultData?: any
   ) {
     super(label, collapsibleState);
     this.tooltip = description;
@@ -676,6 +835,15 @@ export class DataItem extends vscode.TreeItem {
       case "detail":
         this.contextValue = "carbonara-data-detail";
         break;
+      case "folder":
+        this.contextValue = "carbonara-data-folder";
+        break;
+      case "file":
+        this.contextValue = "carbonara-semgrep-file";
+        break;
+      case "finding":
+        this.contextValue = "carbonara-semgrep-finding";
+        break;
       default:
         this.contextValue = "carbonara-data-item";
     }
@@ -684,6 +852,28 @@ export class DataItem extends vscode.TreeItem {
     switch (type) {
       case "group":
         this.iconPath = new vscode.ThemeIcon("folder");
+        break;
+      case "folder":
+        this.iconPath = new vscode.ThemeIcon("folder");
+        break;
+      case "file":
+        this.iconPath = new vscode.ThemeIcon("file");
+        break;
+      case "finding":
+        // Use different icons based on severity
+        if (this.resultData?.severity === "ERROR") {
+          this.iconPath = new vscode.ThemeIcon(
+            "warning",
+            new vscode.ThemeColor("problemsWarningIcon.foreground")
+          );
+        } else if (this.resultData?.severity === "WARNING") {
+          this.iconPath = new vscode.ThemeIcon(
+            "info",
+            new vscode.ThemeColor("problemsInfoIcon.foreground")
+          );
+        } else {
+          this.iconPath = new vscode.ThemeIcon("lightbulb");
+        }
         break;
       case "entry":
         this.iconPath = new vscode.ThemeIcon("file");
@@ -700,12 +890,26 @@ export class DataItem extends vscode.TreeItem {
     }
 
     // Add command to open file when clicked (for Semgrep results)
-    if (this.toolName === "semgrep" && this.filePath && this.type === "entry") {
-      this.command = {
-        command: "carbonara.openSemgrepFile",
-        title: "Open File",
-        arguments: [this.filePath]
-      };
+    if (this.toolName === "semgrep" && this.filePath) {
+      if (this.type === "file" || this.type === "entry") {
+        // Open file without jumping to specific line
+        this.command = {
+          command: "carbonara.openSemgrepFile",
+          title: "Open File",
+          arguments: [this.filePath],
+        };
+      } else if (this.type === "finding" && this.resultData) {
+        // Open file and jump to the specific line
+        this.command = {
+          command: "carbonara.openSemgrepFinding",
+          title: "Open Finding",
+          arguments: [
+            this.filePath,
+            this.resultData.start_line,
+            this.resultData.start_column,
+          ],
+        };
+      }
     }
   }
 }
