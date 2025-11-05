@@ -12,6 +12,62 @@ import {
 import { UI_TEXT } from "./constants/ui-text";
 import { getSemgrepDataService } from "./semgrep-integration";
 
+/**
+ * Decoration provider for Semgrep findings
+ * Adds colored badges on the right side of findings based on severity
+ */
+export class SemgrepFindingDecorationProvider
+  implements vscode.FileDecorationProvider
+{
+  private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<
+    vscode.Uri | vscode.Uri[] | undefined
+  >();
+  readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
+
+  provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
+    // Only decorate carbonara-finding URIs
+    if (uri.scheme !== "carbonara-finding") {
+      return undefined;
+    }
+
+    // Extract severity from query parameters
+    const params = new URLSearchParams(uri.query);
+    const severity = params.get("severity");
+
+    if (!severity) {
+      return undefined;
+    }
+
+    // Return decoration based on severity
+    switch (severity) {
+      case "ERROR":
+        return {
+          badge: "○",
+          color: new vscode.ThemeColor("problemsErrorIcon.foreground"),
+          tooltip: "Error severity",
+        };
+      case "WARNING":
+        return {
+          badge: "○",
+          color: new vscode.ThemeColor("problemsWarningIcon.foreground"),
+          tooltip: "Warning severity",
+        };
+      case "INFO":
+        return {
+          badge: "○",
+          color: new vscode.ThemeColor("problemsInfoIcon.foreground"),
+          tooltip: "Info severity",
+        };
+      default:
+        return undefined;
+    }
+  }
+
+  refresh(): void {
+    this._onDidChangeFileDecorations.fire(undefined);
+  }
+}
+
 export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<
     DataItem | undefined | null | void
@@ -342,7 +398,10 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       }
 
       // Normalize path separators and split into parts
-      const parts = relativePath.replace(/\\/g, '/').split("/").filter(part => part.length > 0);
+      const parts = relativePath
+        .replace(/\\/g, "/")
+        .split("/")
+        .filter((part) => part.length > 0);
       let currentNode = root;
 
       parts.forEach((part, index) => {
@@ -386,20 +445,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       entries.forEach(([, childNode]) => {
         if (childNode.isFile && childNode.results) {
           // File node with results
-          const errorCount = childNode.results.filter(
-            (r) => r.severity === "ERROR"
-          ).length;
-          const warningCount = childNode.results.filter(
-            (r) => r.severity === "WARNING"
-          ).length;
-          const infoCount = childNode.results.filter(
-            (r) => r.severity === "INFO"
-          ).length;
-
-          let severityBadge = "";
-          if (errorCount > 0) severityBadge = `🚨 ${errorCount}`;
-          else if (warningCount > 0) severityBadge = `⚠️ ${warningCount}`;
-          else severityBadge = `ℹ️ ${infoCount}`;
+          const totalFindings = childNode.results.length;
 
           const absolutePath = path.isAbsolute(childNode.path)
             ? childNode.path
@@ -407,7 +453,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
           const fileItem = new DataItem(
             childNode.name,
-            `${childNode.results.length} findings: ${severityBadge}`,
+            `${totalFindings} ${totalFindings === 1 ? "finding" : "findings"}`,
             vscode.TreeItemCollapsibleState.Collapsed,
             "file",
             "semgrep",
@@ -416,7 +462,12 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
           );
 
           // Add individual findings as children
-          fileItem.children = childNode.results.map((result) => {
+          fileItem.children = childNode.results.map((result, index) => {
+            // Create a unique resource URI for this finding to enable decorations
+            const findingUri = vscode.Uri.parse(
+              `carbonara-finding://${absolutePath}?line=${result.start_line}&severity=${result.severity}&index=${index}`
+            );
+
             const findingItem = new DataItem(
               `Line ${result.start_line}: ${result.rule_id}`,
               result.message,
@@ -427,6 +478,10 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
               absolutePath,
               result
             );
+
+            // Set resource URI to enable decorations
+            findingItem.resourceUri = findingUri;
+
             return findingItem;
           });
 
@@ -438,7 +493,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             "",
             vscode.TreeItemCollapsibleState.Collapsed,
             "folder",
-            "semgrep"
+            "semgrep",
+            undefined,
+            childNode.path // Pass the full path for stable ID generation
           );
 
           // Recursively add children
@@ -514,44 +571,48 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         console.error("Error loading Semgrep results:", error);
       }
 
-      // Load assessment data
-      const assessmentData =
-        await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
+      // Note: Other assessment data is intentionally not shown here
+      // Only properly categorized tool data (like Semgrep) is displayed
+      // Uncomment this section when other tools have proper tree layouts
 
-      if (assessmentData.length > 0) {
-        // Create grouped items for assessment data
-        const groups =
-          await this.coreServices!.vscodeProvider.createGroupedItems(
-            projectPath
-          );
-
-        groups.forEach((group, groupIndex) => {
-          // Add group header
-          items.push(
-            new DataItem(
-              group.displayName,
-              group.toolName,
-              vscode.TreeItemCollapsibleState.Expanded,
-              "group",
-              group.toolName
-            )
-          );
-
-          // Add entries
-          group.entries.forEach((entry) => {
-            items.push(
-              new DataItem(
-                entry.label,
-                entry.description,
-                vscode.TreeItemCollapsibleState.Collapsed,
-                "entry",
-                entry.toolName,
-                entry.id
-              )
-            );
-          });
-        });
-      }
+      // // Load assessment data
+      // const assessmentData =
+      //   await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
+      //
+      // if (assessmentData.length > 0) {
+      //   // Create grouped items for assessment data
+      //   const groups =
+      //     await this.coreServices!.vscodeProvider.createGroupedItems(
+      //       projectPath
+      //     );
+      //
+      //   groups.forEach((group, groupIndex) => {
+      //     // Add group header
+      //     items.push(
+      //       new DataItem(
+      //         group.displayName,
+      //         group.toolName,
+      //         vscode.TreeItemCollapsibleState.Expanded,
+      //         "group",
+      //         group.toolName
+      //       )
+      //     );
+      //
+      //     // Add entries
+      //     group.entries.forEach((entry) => {
+      //       items.push(
+      //         new DataItem(
+      //           entry.label,
+      //           entry.description,
+      //           vscode.TreeItemCollapsibleState.Collapsed,
+      //           "entry",
+      //           entry.toolName,
+      //           entry.id
+      //         )
+      //       );
+      //     });
+      //   });
+      // }
 
       if (items.length === 0) {
         return [
@@ -824,6 +885,21 @@ export class DataItem extends vscode.TreeItem {
     this.tooltip = description;
     this.description = description;
 
+    // Set stable ID to preserve tree state across refreshes
+    // This allows VSCode to remember which items are expanded/collapsed
+    if (type === "group" && toolName) {
+      this.id = `carbonara-group-${toolName}`;
+    } else if (type === "folder" && filePath) {
+      // Use full path for folders to ensure uniqueness
+      this.id = `carbonara-folder-${filePath}`;
+    } else if (type === "file" && filePath) {
+      this.id = `carbonara-file-${filePath}`;
+    } else if (type === "finding" && filePath && resultData) {
+      this.id = `carbonara-finding-${filePath}-${resultData.start_line}-${resultData.rule_id}`;
+    } else if (entryId) {
+      this.id = `carbonara-entry-${entryId}`;
+    }
+
     // Set context value for menu contributions
     switch (type) {
       case "group":
@@ -851,29 +927,17 @@ export class DataItem extends vscode.TreeItem {
     // Set icons
     switch (type) {
       case "group":
-        this.iconPath = new vscode.ThemeIcon("folder");
+        // No icon for group
         break;
       case "folder":
-        this.iconPath = new vscode.ThemeIcon("folder");
+        // No icon for folders
         break;
       case "file":
         this.iconPath = new vscode.ThemeIcon("file");
         break;
       case "finding":
-        // Use different icons based on severity
-        if (this.resultData?.severity === "ERROR") {
-          this.iconPath = new vscode.ThemeIcon(
-            "warning",
-            new vscode.ThemeColor("problemsWarningIcon.foreground")
-          );
-        } else if (this.resultData?.severity === "WARNING") {
-          this.iconPath = new vscode.ThemeIcon(
-            "info",
-            new vscode.ThemeColor("problemsInfoIcon.foreground")
-          );
-        } else {
-          this.iconPath = new vscode.ThemeIcon("lightbulb");
-        }
+        // Always use curly brackets icon for findings
+        this.iconPath = new vscode.ThemeIcon("symbol-namespace");
         break;
       case "entry":
         this.iconPath = new vscode.ThemeIcon("file");

@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawn } from "child_process";
 import { AssessmentTreeProvider } from "./assessment-tree-provider";
-import { DataTreeProvider } from "./data-tree-provider";
+import { DataTreeProvider, SemgrepFindingDecorationProvider } from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import {
   initializeSemgrep,
@@ -62,6 +62,13 @@ export async function activate(context: vscode.ExtensionContext) {
     toolsTreeProvider
   );
   console.log("✅ All tree providers registered");
+
+  // Register decoration provider for Semgrep findings
+  const semgrepDecorationProvider = new SemgrepFindingDecorationProvider();
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(semgrepDecorationProvider)
+  );
+  console.log("✅ Semgrep decoration provider registered");
 
   // Set up Semgrep to refresh Data & Results when database updates
   setOnDatabaseUpdateCallback(() => {
