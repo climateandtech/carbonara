@@ -933,11 +933,10 @@ export class DataItem extends vscode.TreeItem {
         // No icon for folders
         break;
       case "file":
-        this.iconPath = new vscode.ThemeIcon("file");
+        this.iconPath = new vscode.ThemeIcon("symbol-namespace");
         break;
       case "finding":
-        // Always use curly brackets icon for findings
-        this.iconPath = new vscode.ThemeIcon("symbol-namespace");
+        // No icon for findings
         break;
       case "entry":
         this.iconPath = new vscode.ThemeIcon("file");
