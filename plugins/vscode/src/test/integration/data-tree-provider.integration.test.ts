@@ -163,14 +163,14 @@ suite("DataTreeProvider Integration Tests", () => {
   });
 
   suite("Data Operations", () => {
-    test("should refresh tree data when refresh() is called", () => {
+    test("should refresh tree data when refresh() is called", async () => {
       let refreshFired = false;
 
       const disposable = provider.onDidChangeTreeData(() => {
         refreshFired = true;
       });
 
-      provider.refresh();
+      await provider.refresh();
 
       assert.strictEqual(refreshFired, true);
       disposable.dispose();
@@ -323,8 +323,10 @@ suite("DataTreeProvider Integration Tests", () => {
         // Context value
         assert.ok(treeItem.contextValue?.startsWith("carbonara-data-"));
 
-        // Icon
-        assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
+        // Icon (skip for group and folder types as they don't have icons)
+        if (item.type !== "group" && item.type !== "folder") {
+          assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
+        }
       });
     });
 
