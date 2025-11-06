@@ -12,8 +12,8 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "types": ["vscode", "mocha", "node"]
+    "types": ["vscode", "mocha", "node", "@playwright/test"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", ".vscode-test", "dist"]
+  "exclude": ["node_modules", ".vscode-test", "dist", "src/test/e2e"]
 } 

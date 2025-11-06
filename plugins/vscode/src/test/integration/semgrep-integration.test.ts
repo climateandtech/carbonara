@@ -166,8 +166,8 @@ suite("Semgrep Integration Unit Tests", () => {
   });
 
   suite("initializeSemgrep", () => {
-    test("should create and return a diagnostic collection", () => {
-      const diagnosticCollection = initializeSemgrep(mockContext);
+    test("should create and return a diagnostic collection", async () => {
+      const diagnosticCollection = await initializeSemgrep(mockContext);
 
       assert.ok(diagnosticCollection);
       assert.strictEqual(diagnosticCollection.name, "semgrep");

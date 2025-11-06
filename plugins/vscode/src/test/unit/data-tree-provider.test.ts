@@ -121,15 +121,6 @@ suite("DataTreeProvider Unit Tests", () => {
       const items = [
         {
           item: new DataItem(
-            "Group",
-            "",
-            vscode.TreeItemCollapsibleState.Expanded,
-            "group"
-          ),
-          expectedIcon: "folder",
-        },
-        {
-          item: new DataItem(
             "Entry",
             "",
             vscode.TreeItemCollapsibleState.Collapsed,

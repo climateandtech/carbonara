@@ -180,6 +180,14 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
   private async loadTools(): Promise<void> {
     try {
+      // HIGHEST PRIORITY: Check if CARBONARA_REGISTRY_PATH is set (for testing/override)
+      if (process.env.CARBONARA_REGISTRY_PATH) {
+        if (await this.loadFromRegistryPath(process.env.CARBONARA_REGISTRY_PATH)) {
+          this._onDidChangeTreeData.fire();
+          return;
+        }
+      }
+
       // ALWAYS try workspace tools.json first
       if (await this.loadWorkspaceTools()) {
         this._onDidChangeTreeData.fire();
@@ -251,6 +259,43 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return true;
     } catch (error) {
       console.error("❌ Failed to load bundled registry:", error);
+      return false;
+    }
+  }
+
+  private async loadFromRegistryPath(registryPath: string): Promise<boolean> {
+    try {
+      if (!fs.existsSync(registryPath)) {
+        return false;
+      }
+
+      const registryContent = fs.readFileSync(registryPath, "utf8");
+      const registry = JSON.parse(registryContent);
+
+      // Transform and load tools
+      this.tools = await Promise.all(
+        registry.tools.map(async (tool: any) => {
+          const isBuiltIn = tool.installation?.type === "built-in";
+          const isInstalled = isBuiltIn
+            ? true
+            : await this.detectToolInstallation(tool);
+          return {
+            id: tool.id,
+            name: tool.name,
+            description: tool.description,
+            type: isBuiltIn ? "built-in" : "external",
+            command: tool.command?.executable || tool.command,
+            vscodeCommand: tool.vscodeCommand,
+            installation: tool.installation,
+            detection: tool.detection,
+            isInstalled,
+          };
+        })
+      );
+
+      return true;
+    } catch (error) {
+      console.error("❌ Failed to load registry from path:", error);
       return false;
     }
   }
