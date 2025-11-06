@@ -63,33 +63,6 @@ if (fs.existsSync(dbPath)) {
     VALUES (1, 'Test Project with Analysis Data', '${__dirname}', '{}', '{}')
   `);
 
-  // Insert greenframe analysis data (updated to match old API format)
-  db.run(`
-    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
-    VALUES (1, 'greenframe', 'web-analysis', ?, 'test', '2025-01-15T10:30:00.000Z')
-  `, [JSON.stringify({
-    url: 'https://example.com',
-    results: {
-      carbon: {
-        total: '0.245',
-        breakdown: {
-          'Data Transfer': '0.098',
-          'Server Processing': '0.074',
-          'Device Usage': '0.049',
-          'Network Infrastructure': '0.024'
-        }
-      },
-      performance: {
-        loadTime: 1250,
-        pageSize: 512,
-        requests: 25
-      },
-      score: 75,
-      grade: 'B'
-    },
-    analyzedAt: '2025-01-15T10:30:00.000Z'
-  })]);
-
   // Insert CO2 assessment data
   db.run(`
     INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
@@ -110,20 +83,26 @@ if (fs.existsSync(dbPath)) {
     }
   })]);
 
-  // Insert GreenFrame analysis data
+  // Insert carbonara-swd analysis data
   db.run(`
     INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
-    VALUES (1, 'greenframe', 'web-analysis', ?, 'test', '2025-01-15T11:45:00.000Z')
+    VALUES (1, 'carbonara-swd', 'web-analysis', ?, 'test', '2025-01-15T11:45:00.000Z')
   `, [JSON.stringify({
     url: 'https://test-site.com',
     results: {
       carbon: {
-        total: 1.85
+        total: 1.85,
+        breakdown: {
+          dataTransfer: 0.98,
+          processing: 0.54,
+          device: 0.33
+        }
       },
-      score: 68,
+      bytes: {
+        total: 890000
+      },
       performance: {
-        loadTime: 2100,
-        pageSize: 890
+        loadTime: 2100
       }
     }
   })]);

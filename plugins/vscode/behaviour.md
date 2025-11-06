@@ -74,12 +74,12 @@ And when the assessment is run using the CLI
 Then I see progress notification "Running CO2 Assessment..."
 And when complete, I see "🎉 CO2 Assessment completed successfully!"
 
-As a user  
+As a user
 I can click "$(globe) Analyze Website" from the status bar menu
 And I can enter a URL in the input dialog
-And when the website assessment is performed using Greenframe
+And when the website assessment is performed using an analysis tool
 Then I see in the "Data & Results" panel:
-  - A group "🌱 Greenframe Analysis (X)" 
+  - A group for the analysis tool (e.g., "🌱 Carbonara SWD Analysis (X)")
   - Individual analysis entries like "🔬 [URL] - [Date]" with carbon footprint data
 And I can expand entries to see detailed carbon analysis results
 

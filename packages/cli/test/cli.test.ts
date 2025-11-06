@@ -130,7 +130,7 @@ describe('Carbonara CLI - Tests', () => {
 
   test('analyze command with tool but no URL should show help', () => {
     try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer`, {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze carbonara-swd`, {
         encoding: 'utf8',
         stdio: 'pipe'
       });
@@ -140,9 +140,9 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('analyze test-analyzer should handle invalid URL gracefully', () => {
+  test('analyze carbonara-swd should handle invalid URL gracefully', () => {
     try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer invalid-url --output json`, { 
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze carbonara-swd invalid-url --output json`, {
         encoding: 'utf8',
         stdio: 'pipe',
         timeout: 10000
@@ -155,16 +155,16 @@ describe('Carbonara CLI - Tests', () => {
     }
   });
 
-  test('tools --list should show test-analyzer', () => {
+  test('tools --list should show carbonara-swd', () => {
     try {
-      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, { 
+      const result = execSync(`cd "${testDir}" && node "${cliPath}" tools --list`, {
         encoding: 'utf8',
         timeout: 10000,
         stdio: 'pipe'
       });
       expect(result).toContain('Analysis Tools Registry');
-      expect(result).toContain('test-analyzer'); // Should show our test analyzer
-      expect(result).toContain('Test Analyzer');
+      expect(result).toContain('carbonara-swd');
+      expect(result).toContain('Carbonara SWD Analyzer');
     } catch (error: any) {
       // If registry loading fails, check that it's trying to load tools
       if (error.stderr) {
@@ -230,7 +230,7 @@ describe('CLI analyze command with project management', () => {
     fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
 
     // Run analyze command with --save
-    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, {
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze carbonara-swd https://test.example.com --save`, {
       encoding: 'utf8',
       stdio: 'pipe',
       timeout: 15000
@@ -318,7 +318,7 @@ describe('CLI analyze command with project management', () => {
     db.close();
 
     // Run analyze command
-    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, {
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze carbonara-swd https://test.example.com --save`, {
       encoding: 'utf8',
       stdio: 'pipe',
       timeout: 15000
@@ -332,7 +332,7 @@ describe('CLI analyze command with project management', () => {
     const db2 = new SQL.Database(dbData);
 
     try {
-      const queryResult = db2.exec('SELECT project_id FROM assessment_data WHERE tool_name = "test-analyzer"');
+      const queryResult = db2.exec('SELECT project_id FROM assessment_data WHERE tool_name = "carbonara-swd"');
       expect(queryResult[0].values[0][0]).toBe(42);
       db2.close();
     } catch (err) {

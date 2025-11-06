@@ -83,12 +83,10 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     }
 
     spinner.text = `Analyzing with ${tool.name}...`;
-    
+
     let results: any;
-    
-    if (toolId === 'test-analyzer') {
-      results = await runTestAnalyzer(url, options, tool);
-    } else if (toolId === 'carbonara-swd') {
+
+    if (toolId === 'carbonara-swd') {
       results = await runCarbonaraSWD(url, options, tool);
     } else if (toolId.startsWith('if-')) {
       results = await runImpactFramework(url, options, tool);
@@ -140,32 +138,6 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
   } else {
     return { output: result.stdout };
   }
-}
-
-async function runTestAnalyzer(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
-  // Built-in test analyzer that returns predictable hardcoded results for E2E testing
-  // Simulate a brief analysis delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Return predictable test results
-  return {
-    url: url,
-    timestamp: new Date().toISOString(),
-    tool: 'test-analyzer',
-    result: 'success',
-    data: {
-      testScore: 85,
-      testMetric: 'A+',
-      testValue: 42,
-      analysisTime: '0.5s',
-      testSite: new URL(url).hostname
-    },
-    summary: {
-      status: 'completed',
-      message: 'Test analysis completed successfully',
-      details: `Analyzed ${url} with test analyzer`
-    }
-  };
 }
 
 async function runImpactFramework(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
@@ -257,8 +229,6 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
     console.log(analyzer.formatResults(results));
   } else if (tool.id.startsWith('if-')) {
     displayImpactFrameworkResults(results, tool);
-  } else if (tool.id === 'greenframe') {
-    displayGreenframeResults(results);
   } else {
     // Generic display
     console.log(JSON.stringify(results, null, 2));
@@ -397,20 +367,6 @@ function formatFieldValue(value: any, type: string, format?: string): string {
   }
 
   return String(value);
-}
-
-function displayGreenframeResults(results: any) {
-  // Display Greenframe-specific results
-  if (results.carbonFootprint) {
-    console.log(chalk.green('\n📊 Carbon Footprint:'));
-    console.log(`  Total: ${chalk.white(results.carbonFootprint)} g CO2e`);
-  }
-  
-  if (results.energyConsumption) {
-    console.log(`  Energy: ${chalk.white(results.energyConsumption)} Wh`);
-  }
-  
-  // Add more Greenframe-specific display logic as needed
 }
 
 async function saveToDatabase(toolId: string, url: string, results: any) {

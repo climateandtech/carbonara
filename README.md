@@ -65,11 +65,10 @@ carbonara assess
 carbonara tools --list
 
 # Analyze with built-in tool
-carbonara analyze greenframe https://example.com --save
+carbonara analyze carbonara-swd https://example.com --save
 
 # Install and use external tools
-carbonara tools --install greenframe
-carbonara analyze greenframe https://example.com --save
+carbonara analyze impact-framework https://example.com --save
 ```
 
 ### VS Code Extension
@@ -99,7 +98,7 @@ npm test
 |---------|-------------|---------|
 | `init` | Initialize new project | `carbonara init` |
 | `assess` | Run CO2 assessment questionnaire | `carbonara assess` |
-| `analyze <tool> <url>` | Run analysis with registered tool | `carbonara analyze greenframe https://example.com --save` |
+| `analyze <tool> <url>` | Run analysis with registered tool | `carbonara analyze carbonara-swd https://example.com --save` |
 | `tools` | Manage analysis tools | `carbonara tools --list` |
 | `data` | Manage stored assessment data | `carbonara data --list` |
 | `import` | Import data from files/databases | `carbonara import --file data.json` |
@@ -142,10 +141,11 @@ carbonara import --database <path>       # Import from another Carbonara databas
 ### Analysis Tools
 
 #### Built-in Tools
-- **greenframe**: Website carbon footprint analysis
+- **carbonara-swd**: Sustainable Web Design analysis based on methodology from sustainablewebdesign.org
+- **co2-assessment**: Interactive questionnaire for project carbon impact estimation
+- **semgrep**: Static code analysis for security and sustainability patterns
 
 #### External Tools
-- **greenframe**: Website carbon footprint (`@marmelab/greenframe-cli`)
 - **if-webpage-scan**: Impact Framework webpage analysis with CO2 estimation
 - **if-green-hosting**: Check if website is hosted on green energy
 - **if-cpu-metrics**: Monitor local CPU utilization and energy consumption during analysis
@@ -154,7 +154,6 @@ carbonara import --database <path>       # Import from another Carbonara databas
 #### Tool Management
 ```bash
 carbonara tools --list                    # List all tools and status
-carbonara tools --install greenframe      # Install external tool
 carbonara tools --refresh                 # Refresh installation status
 ```
 

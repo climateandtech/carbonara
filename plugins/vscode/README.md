@@ -6,7 +6,7 @@ A VS Code extension for CO2 assessment and web sustainability analysis, integrat
 
 - **Project Initialization**: Set up Carbonara projects directly from VS Code
 - **CO2 Assessment**: Run comprehensive sustainability questionnaires
-- **Website Analysis**: Analyze website carbon footprints using Greenframe
+- **Website Analysis**: Analyze website carbon footprints using various analysis tools
 - **Data Management**: View, export, and manage assessment data
 - **Status Monitoring**: Real-time project status in the status bar
 - **Configuration Management**: Easy access to project settings
@@ -62,7 +62,7 @@ Access commands via:
   - Get CO2 impact scoring based on project characteristics
 
 - **Analyze Website** (`carbonara.analyzeWebsite`)
-  - Run Greenframe analysis on any URL
+  - Run analysis on any URL using available tools
   - Option to save results to data lake
 
 - **View Data** (`carbonara.viewData`)
@@ -173,4 +173,3 @@ ISC License - see LICENSE file for details.
 
 - [Carbonara CLI Documentation](../../packages/cli/README.md)
 - [VS Code Extension API](https://code.visualstudio.com/api)
-- [Greenframe Documentation](https://greenframe.io)

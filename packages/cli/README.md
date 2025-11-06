@@ -33,12 +33,8 @@ carbonara import --database /path/to/carbonara.db
 # List available analysis tools
 carbonara tools --list
 
-# Install external tools
-carbonara tools --install greenframe
-
 # Run analysis with any registered tool
-carbonara analyze greenframe https://example.com --save
-carbonara analyze greenframe https://example.com --save
+carbonara analyze carbonara-swd https://example.com --save
 carbonara analyze impact-framework https://example.com --save
 ```
 
@@ -53,11 +49,12 @@ carbonara assess
 
 ### Built-in Tools
 
-- **greenframe**: Measures the carbon footprint of web applications
+- **carbonara-swd**: Sustainable Web Design analysis based on methodology from sustainablewebdesign.org
+- **co2-assessment**: Interactive questionnaire for project carbon impact estimation
+- **semgrep**: Static code analysis for security and sustainability patterns
 
 ### External Tools
 
-- **greenframe**: Website carbon footprint analysis (`npm install -g @marmelab/greenframe-cli`)
 - **impact-framework**: Green Software Foundation's measurement framework (`npm install -g @grnsft/if @tngtech/if-webpage-plugins`)
 
 ## Project Structure
@@ -118,7 +115,7 @@ Run interactive CO2 assessment questionnaire.
 Run analysis with a registered tool.
 
 **Arguments:**
-- `<tool-id>` - ID of the analysis tool (e.g., "greenframe", "impact-framework")
+- `<tool-id>` - ID of the analysis tool (e.g., "carbonara-swd", "impact-framework")
 - `<url>` - URL to analyze
 
 **Options:**
@@ -128,8 +125,8 @@ Run analysis with a registered tool.
 
 **Examples:**
 ```bash
-carbonara analyze greenframe https://example.com --save
-carbonara analyze greenframe https://example.com --output json
+carbonara analyze carbonara-swd https://example.com --save
+carbonara analyze carbonara-swd https://example.com --output json
 carbonara analyze impact-framework https://example.com --scroll-to-bottom --save
 ```
 
@@ -144,7 +141,6 @@ Manage analysis tools.
 **Examples:**
 ```bash
 carbonara tools --list                    # Show all available tools
-carbonara tools --install greenframe      # Install Greenframe CLI
 carbonara tools --refresh                 # Update installation status
 ```
 

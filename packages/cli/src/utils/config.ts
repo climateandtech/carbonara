@@ -9,9 +9,10 @@ export interface ProjectConfig {
   database: {
     path: string;
   };
-  tools: {
-    greenframe: {
-      enabled: boolean;
+  tools?: {
+    [toolName: string]: {
+      enabled?: boolean;
+      [key: string]: any;
     };
   };
 }
