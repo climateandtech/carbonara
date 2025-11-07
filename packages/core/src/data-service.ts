@@ -240,6 +240,31 @@ export class DataService {
     return row;
   }
 
+  async getProjectById(projectId: number): Promise<Project | null> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    const result = this.db.exec("SELECT * FROM projects WHERE id = ?", [
+      projectId,
+    ]);
+
+    if (result.length === 0 || result[0].values.length === 0) {
+      return null;
+    }
+
+    const columns = result[0].columns;
+    const values = result[0].values[0];
+    const row: any = {};
+
+    columns.forEach((col: string, idx: number) => {
+      row[col] = values[idx];
+    });
+
+    row.metadata = row.metadata ? JSON.parse(row.metadata) : {};
+    row.co2_variables = row.co2_variables ? JSON.parse(row.co2_variables) : {};
+
+    return row;
+  }
+
   async getAllProjects(): Promise<Project[]> {
     if (!this.db) throw new Error("Database not initialized");
 

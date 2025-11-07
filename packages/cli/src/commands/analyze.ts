@@ -139,25 +139,35 @@ async function runDeploymentScan(dirPath: string, options: AnalyzeOptions, tool:
   const dataService = createDataLake(config?.database ? { dbPath: config.database.path } : undefined);
   await dataService.initialize();
 
+  // If no path provided (dirPath is '.'), use the project root from the database
+  let scanPath = dirPath;
+  if (dirPath === '.' && config?.projectId) {
+    const project = await dataService.getProjectById(config.projectId);
+    if (project) {
+      scanPath = project.path;
+    }
+  }
+
   // Create deployment service
   const deploymentService = createDeploymentService(dataService);
 
   // Scan directory for deployment configurations
-  const detections = await deploymentService.scanDirectory(path.resolve(dirPath));
+  const resolvedPath = path.resolve(scanPath);
+  const detections = await deploymentService.scanDirectory(resolvedPath);
 
   // Save to database if requested
   if (options.save && detections.length > 0) {
     await deploymentService.saveDeployments(
       detections,
       config?.projectId,
-      path.resolve(dirPath)
+      resolvedPath
     );
   }
 
   return {
     timestamp: new Date().toISOString(),
     tool: 'deployment-scan',
-    path: dirPath,
+    path: scanPath,
     deployments: detections,
     count: detections.length
   };

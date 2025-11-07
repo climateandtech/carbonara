@@ -42,7 +42,14 @@ async function listTools() {
       if (tool.description) {
         console.log(`    ${chalk.gray(tool.description)}`);
       }
-      console.log(`    ${chalk.dim('Usage:')} carbonara analyze ${tool.id} <url>`);
+      // Use the first parameter name from the tool's parameters, or default to 'url'
+      let paramDisplay = '<url>';
+      if (tool.parameters && tool.parameters.length > 0) {
+        const param = tool.parameters[0];
+        // Show optional parameters in brackets [param] and required in angle brackets <param>
+        paramDisplay = param.required ? `<${param.name}>` : `[${param.name}]`;
+      }
+      console.log(`    ${chalk.dim('Usage:')} carbonara analyze ${tool.id} ${paramDisplay}`);
     });
   }
   
