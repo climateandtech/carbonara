@@ -34,8 +34,8 @@
     "greenframe",
     "sustainability"
   ],
-  "author": "",
-  "license": "To be clarified - All rights reserved",
+  "author": "Carbonara team",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",
