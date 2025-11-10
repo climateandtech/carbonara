@@ -2,7 +2,7 @@ rules:
   - id: gci24-java-returned-sql-results-should-be-limited
     languages:
       - java
-    severity: WARNING
+    severity: INFO
     message: Returned SQL results should be limited. Add a LIMIT or FETCH FIRST
       clause to your SQL queries.
     patterns:
