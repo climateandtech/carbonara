@@ -22,6 +22,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',
+    launchOptions: {
+      // Disable debugging features that VSCode Electron doesn't support
+      args: ['--disable-dev-shm-usage'],
+    },
   },
 
   projects: [

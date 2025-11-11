@@ -682,6 +682,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
   private runCommand(command: string, args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
       const process = spawn(command, args, {
+        cwd: this.workspaceFolder?.uri.fsPath,
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
       });

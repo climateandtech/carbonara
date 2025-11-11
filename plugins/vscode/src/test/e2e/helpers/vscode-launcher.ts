@@ -174,8 +174,12 @@ export class VSCodeLauncher {
       const vscode = this.detectVSCodePath();
 
       // Launch VSCode with better isolation to prevent multiple windows
+      // Set NODE_OPTIONS to disable inspector to prevent Playwright from adding --inspect
+      process.env.NODE_OPTIONS = '--no-warnings';
+      
       const app = await electron.launch({
         executablePath: vscode.executablePath,
+        timeout: 30000,
         args: [
           vscode.appPath,
           "--extensionDevelopmentPath=" + extensionDevelopmentPath,

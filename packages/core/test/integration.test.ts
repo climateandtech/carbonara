@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setupCarbonaraCore } from '../src/index.js';
-import fs from 'fs';
+import fs, { mkdtempSync } from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
+import os, { tmpdir } from 'os';
 
 describe('Carbonara Core Integration', () => {
   let testDbPath: string;
@@ -247,6 +249,107 @@ describe('Carbonara Core Integration', () => {
       expect(groups).toHaveLength(1);
       expect(groups[0].entries).toHaveLength(100);
       expect(endTime - startTime).toBeLessThan(1000); // Should complete within 1 second
+    });
+  });
+
+  describe('CLI Integration with test-analyzer', () => {
+    it('should handle CLI flow: test-analyzer → database → display', async () => {
+      // This test verifies the full flow using the test-analyzer stub tool
+      // It ensures that data saved via CLI can be properly displayed in VSCode
+      
+      // Create a temporary test directory
+      const testDir = mkdtempSync(path.join(os.tmpdir(), 'carbonara-core-cli-test-'));
+      const carbonaraDir = path.join(testDir, '.carbonara');
+      fs.mkdirSync(carbonaraDir, { recursive: true });
+      
+      // Create a minimal config
+      const config = {
+        name: 'CLI Integration Test',
+        description: 'Test project for CLI flow',
+        projectType: 'web',
+        version: '1.0.0',
+        created: new Date().toISOString()
+      };
+      fs.writeFileSync(
+        path.join(carbonaraDir, 'carbonara.config.json'),
+        JSON.stringify(config, null, 2)
+      );
+      
+      // Find the CLI path (assuming we're in packages/core, CLI is in packages/cli)
+      const cliPath = path.resolve(__dirname, '..', '..', 'cli', 'dist', 'index.js');
+      
+      try {
+        // Run test-analyzer via CLI with --save
+        const result = execSync(
+          `cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`,
+          {
+            encoding: 'utf8',
+            stdio: 'pipe',
+            timeout: 15000
+          }
+        );
+        
+        // Verify CLI succeeded
+        expect(result).toContain('analysis completed');
+        expect(result).toMatch(/Results saved|Created project|Found existing project/i);
+        
+        // Verify database was created
+        const dbPath = path.join(carbonaraDir, 'carbonara.db');
+        expect(fs.existsSync(dbPath)).toBe(true);
+        
+        // Now test that the data can be loaded and displayed
+        const cliServices = await setupCarbonaraCore({ dbPath });
+        
+        try {
+          // Get all projects
+          const allProjects = await cliServices.dataService.getAllProjects();
+          expect(allProjects.length).toBeGreaterThan(0);
+          
+          // Find the project (handle path normalization on macOS)
+          const normalizedTestDir = path.resolve(testDir);
+          const project = allProjects.find((p: any) => {
+            const normalizedProjectPath = path.resolve(p.path);
+            return normalizedProjectPath === normalizedTestDir;
+          }) || allProjects[0];
+          
+          expect(project).toBeDefined();
+          
+          // Load data for the project
+          const assessmentData = await cliServices.vscodeProvider.loadDataForProject(project.path);
+          expect(assessmentData.length).toBeGreaterThan(0);
+          
+          // Find test-analyzer data
+          const testAnalyzerData = assessmentData.find((d: any) => d.tool_name === 'test-analyzer');
+          expect(testAnalyzerData).toBeDefined();
+          
+          // Verify the data structure matches what test-analyzer returns
+          const rawData = testAnalyzerData!.data;
+          expect(rawData.url || rawData.data?.url).toBe('https://test.example.com');
+          expect(rawData.data?.testScore).toBe(85);
+          expect(rawData.data?.testMetric).toBe('A+');
+          
+          // Test grouped items (how VSCode extension displays data)
+          const groups = await cliServices.vscodeProvider.createGroupedItems(project.path);
+          expect(groups.length).toBeGreaterThan(0);
+          
+          // Find test-analyzer group
+          const testGroup = groups.find((g: any) => g.toolName === 'test-analyzer');
+          expect(testGroup).toBeDefined();
+          expect(testGroup!.entries.length).toBe(1);
+          
+          // Test data details extraction
+          const details = await cliServices.vscodeProvider.createDataDetails(testAnalyzerData!);
+          expect(details.length).toBeGreaterThan(0);
+          
+        } finally {
+          await cliServices.dataService.close();
+        }
+      } finally {
+        // Clean up test directory
+        if (fs.existsSync(testDir)) {
+          fs.rmSync(testDir, { recursive: true, force: true });
+        }
+      }
     });
   });
 });

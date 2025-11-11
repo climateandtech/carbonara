@@ -220,7 +220,36 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         }
       } catch (error) {}
 
-      // Step 6: Test passes if we can interact with the data panel
+      // Step 6: Assert that test-analyzer data from fixture database is displayed
+      const allTrees = vscode.window.locator(
+        '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
+      );
+      
+      // Find the data tree (not tools tree, not questionnaire tree)
+      let foundAnalysisData = false;
+      const treeCount = await allTrees.count();
+      
+      for (let i = 0; i < treeCount; i++) {
+        const tree = allTrees.nth(i);
+        const treeRows = tree.locator(".monaco-list-row");
+        const rowTexts = await treeRows.allTextContents();
+        
+        // Check if this tree has test-analyzer data (from the fixture database)
+        const hasTestAnalyzerData = rowTexts.some((text) =>
+          text.toLowerCase().includes("test") && 
+          (text.toLowerCase().includes("analy") || text.toLowerCase().includes("test-analyzer"))
+        );
+        
+        if (hasTestAnalyzerData) {
+          foundAnalysisData = true;
+          break;
+        }
+      }
+      
+      // ASSERT: The fixture database has test-analyzer data, it should be displayed
+      expect(foundAnalysisData).toBe(true);
+      
+      // Also verify the panel is interactive
       const panelInteractionWorks = await dataPanel.isVisible();
       expect(panelInteractionWorks).toBe(true);
     } finally {
@@ -277,7 +306,6 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       await VSCodeLauncher.waitForExtension(vscode.window);
 
       // Step 1: Open the Carbonara sidebar
-
       await VSCodeLauncher.openSidebar(vscode.window);
 
       // Step 2: Assert Analysis Tools section is visible
@@ -450,6 +478,176 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         await vscode.window.waitForTimeout(3000);
       }
 
+      // Wait additional time for data to be saved to database after analysis completes
+      await vscode.window.waitForTimeout(5000);
+
+      // ASSERTION: Analysis Tools section must be visible
+      await expect(toolsSection).toBeVisible({ timeout: 10000 });
+
+      // Step 3: Check Analysis Tools state and ensure it's expanded
+
+      // Look for the chevron icon to determine current state
+      const chevronRight = toolsSection.locator(".codicon-chevron-right"); // Collapsed
+      const chevronDown = toolsSection.locator(".codicon-chevron-down"); // Expanded
+
+      const isCollapsed = await chevronRight.isVisible({ timeout: 1000 });
+      const isExpanded = await chevronDown.isVisible({ timeout: 1000 });
+
+      if (isExpanded) {
+      } else if (isCollapsed) {
+        // Click the chevron icon directly to expand
+        await chevronRight.click();
+        await vscode.window.waitForTimeout(2000);
+
+        // Verify it expanded
+        const nowExpanded = await chevronDown.isVisible({ timeout: 3000 });
+      } else {
+        // Don't click anything - might already be in the right state
+      }
+
+      // Step 4: After clicking, wait for tree content to appear
+      await vscode.window.waitForTimeout(1000);
+
+      // Debug: Check what sections are visible now
+      const allSections = vscode.window.locator(".pane-header");
+      const sectionCount = await allSections.count();
+
+      if (sectionCount > 0) {
+        const sectionTexts = await allSections.allTextContents();
+      }
+
+      // Get tools tree using deterministic selector (no fallbacks!)
+
+      const toolsTree = vscode.window
+        .locator(
+          '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
+        )
+        .last();
+
+      await expect(toolsTree).toBeVisible();
+
+      const allRows = toolsTree.locator(".monaco-list-row");
+
+      // Debug: Check what we find in the Analysis Tools section
+      const rowCount = await allRows.count();
+
+      if (rowCount > 0) {
+        const rowTexts = await allRows.allTextContents();
+
+        // Now we should see either tools or our informative "No analysis tools available" message
+        // This helps differentiate between collapsed (no content) vs expanded but no tools
+      } else {
+      }
+
+      // Step 6: Verify installed tools (from registry: 1 built-in tool)
+
+      const installedTools = toolsTree
+        .locator(".monaco-list-row")
+        .filter({ hasText: "Built-in" });
+
+      // ASSERTION: Must have exactly 1 installed tool (Test Analyzer in test environment)
+      await expect(installedTools).toHaveCount(1, { timeout: 5000 });
+
+      const installedTexts = await installedTools.allTextContents();
+
+      // ASSERTION: Must be Test Analyzer (test-only tool)
+      expect(installedTexts[0]).toContain("Test Analyzer");
+
+      // Step 7: Verify uninstalled tools (from registry: 2 external tools)
+
+      const uninstalledTools = toolsTree
+        .locator(".monaco-list-row")
+        .filter({ hasText: "Not installed" });
+
+      // ASSERTION: Must have exactly 2 uninstalled tools (GreenFrame + Impact Framework)
+      await expect(uninstalledTools).toHaveCount(2, { timeout: 5000 });
+
+      const uninstalledTexts = await uninstalledTools.allTextContents();
+
+      // ASSERTION: Must contain GreenFrame tool
+      const hasGreenFrame = uninstalledTexts.some((text) =>
+        text.includes("GreenFrame")
+      );
+      expect(hasGreenFrame).toBe(true);
+
+      // ASSERTION: Must contain Impact Framework tool
+      const hasImpactFramework = uninstalledTexts.some((text) =>
+        text.includes("Impact Framework")
+      );
+      expect(hasImpactFramework).toBe(true);
+
+      // Step 8: Verify total matches registry (1 + 2 = 3 tools)
+      const totalTools = await toolsTree.locator(".monaco-list-row").count();
+
+      // ASSERTION: Total must be exactly 3 tools from registry
+      expect(totalTools).toBe(3);
+
+      // Step 9: Test the Test Analyzer functionality
+
+      // Click on the Test Analyzer tool to execute it
+      const testAnalyzerRow = toolsTree
+        .locator(".monaco-list-row")
+        .filter({ hasText: "Test Analyzer" });
+      await expect(testAnalyzerRow).toBeVisible();
+
+      // Click the Test Analyzer row to trigger analysis
+      await testAnalyzerRow.click();
+
+      // Wait for URL input dialog to appear
+      await vscode.window.waitForTimeout(1000);
+
+      // Look for the input box and enter a test URL
+      const inputBox = vscode.window.locator(
+        'input[placeholder*="https://example.com"], .quick-input-box input'
+      );
+      await expect(inputBox).toBeVisible({ timeout: 5000 });
+
+      const testUrl = "https://test-site.example.com";
+      await inputBox.fill(testUrl);
+
+      // Press Enter to confirm
+      await inputBox.press("Enter");
+
+      // Wait for analysis completion notification
+
+      // Look for the completion notification or wait longer for CLI to finish
+      try {
+        // Wait for either success or failure notification using UI constants
+        const successNotification = vscode.window
+          .locator(SELECTORS.NOTIFICATIONS.TOAST)
+          .filter({ hasText: "analysis completed" });
+        const failureNotification = vscode.window
+          .locator(SELECTORS.NOTIFICATIONS.TOAST)
+          .filter({ hasText: UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED });
+
+        // Wait up to 10 seconds for one of these notifications
+        await Promise.race([
+          successNotification.waitFor({ timeout: 10000 }),
+          failureNotification.waitFor({ timeout: 10000 }),
+        ]);
+
+        // Check which notification appeared
+        const hasSuccess = await successNotification.isVisible();
+        const hasFailure = await failureNotification.isVisible();
+
+        if (hasSuccess) {
+        } else if (hasFailure) {
+          // FAIL THE TEST: Analysis should succeed for test analyzer
+          expect(hasFailure).toBe(false);
+          return; // Exit early since analysis failed
+        } else {
+        }
+
+        // ASSERTION: Analysis must succeed (no failure notification should be visible)
+        expect(hasFailure).toBe(false);
+      } catch (error) {
+        // Fallback: wait additional time for CLI process to complete
+        await vscode.window.waitForTimeout(3000);
+      }
+
+      // Wait additional time for data to be saved to database after analysis completes
+      await vscode.window.waitForTimeout(5000);
+
       // Step 10: Verify analysis results appear in Data Tree
 
       // Look for the Data & Results section
@@ -473,7 +671,7 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       await vscode.window.keyboard.press("Enter");
 
       // Wait for refresh to complete and data to load
-      await vscode.window.waitForTimeout(3000);
+      await vscode.window.waitForTimeout(5000);
 
       // Step 12: Check the data tree content for our test analyzer results
 
@@ -604,11 +802,11 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
 
           const errorMessage = `Expected to find test analysis results in Data & Results tab.
 
-  // Expected one of:
-  // ${expected.map((e) => `  - ${e}`).join("\n")}
+Expected one of:
+${expected.map((e) => `  - ${e}`).join("\n")}
 
-  // Found actual:
-  // ${dataTexts.map((text, i) => `  [${i}] "${text}"`).join("\n")}`;
+Found actual:
+${dataTexts.map((text, i) => `  [${i}] "${text}"`).join("\n")}`;
 
           throw new Error(errorMessage);
         }

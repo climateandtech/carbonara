@@ -4,6 +4,7 @@ import path from 'path';
 import os, { tmpdir } from 'os';
 import { describe, test, beforeEach, afterEach, expect, vi } from 'vitest';
 import { getToolRegistry, AnalysisTool } from '../src/registry/index.js';
+import { setupCarbonaraCore } from '@carbonara/core';
 
 describe('External Tools - Integration Tests', () => {
   let testDir: string;
@@ -476,5 +477,95 @@ describe('External Tools - Integration Tests', () => {
         expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
       }
     });
+  });
+
+  test('test-analyzer should save data and display correctly in VSCode provider', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    // Run test-analyzer (built-in stub that returns predictable results)
+    const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze test-analyzer https://test.example.com --save`, {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 15000
+    });
+    
+    // Should succeed
+    expect(result).toContain('analysis completed');
+    // Note: Results should be saved (either with existing project or auto-created)
+    // The test-analyzer should always succeed since it's built-in
+    expect(result).toMatch(/Results saved|Created project|Found existing project/i);
+    
+    // Verify database was created at correct path
+    const dbPath = path.join(testDir, '.carbonara', 'carbonara.db');
+    expect(fs.existsSync(dbPath)).toBe(true);
+    
+    // Now test that the data can be loaded and displayed by VSCode provider
+    const services = await setupCarbonaraCore({ dbPath });
+    
+    try {
+      // First, verify the project exists in the database
+      const allProjects = await services.dataService.getAllProjects();
+      expect(allProjects.length).toBeGreaterThan(0);
+      
+      // Find the project that matches our test directory
+      // On macOS, /var is a symlink to /private/var, so we need to resolve both paths
+      const normalizedTestDir = path.resolve(testDir);
+      const project = allProjects.find((p: any) => {
+        const normalizedProjectPath = path.resolve(p.path);
+        const matches = normalizedProjectPath === normalizedTestDir;
+        if (!matches) {
+          console.log(`Path mismatch: stored="${p.path}" (resolved="${normalizedProjectPath}") vs testDir="${testDir}" (resolved="${normalizedTestDir}")`);
+        }
+        return matches;
+      });
+      
+      // If not found, just use the first project (should be the one we created)
+      const projectToUse = project || allProjects[0];
+      expect(projectToUse).toBeDefined();
+      
+      // Load data for the project (using the project path from database)
+      // Use the actual stored path, not testDir, since VSCode provider looks up by exact path
+      const assessmentData = await services.vscodeProvider.loadDataForProject(projectToUse!.path);
+      expect(assessmentData.length).toBeGreaterThan(0);
+      
+      // Find test-analyzer data
+      const testAnalyzerData = assessmentData.find((d: any) => d.tool_name === 'test-analyzer');
+      expect(testAnalyzerData).toBeDefined();
+      
+      // Verify the data structure matches what test-analyzer returns
+      expect(testAnalyzerData!.data.url).toBe('https://test.example.com');
+      expect(testAnalyzerData!.data.result).toBe('success');
+      expect(testAnalyzerData!.data.data.testScore).toBe(85);
+      expect(testAnalyzerData!.data.data.testMetric).toBe('A+');
+      
+      // Test grouped items (how VSCode extension displays data)
+      const groups = await services.vscodeProvider.createGroupedItems(projectToUse!.path);
+      expect(groups.length).toBeGreaterThan(0);
+      
+      // Find test-analyzer group
+      const testGroup = groups.find((g: any) => g.toolName === 'test-analyzer');
+      expect(testGroup).toBeDefined();
+      expect(testGroup!.entries.length).toBe(1);
+      
+      // Test data details extraction
+      const details = await services.vscodeProvider.createDataDetails(testAnalyzerData!);
+      expect(details.length).toBeGreaterThan(0);
+      
+      // Verify specific fields from test-analyzer are displayed
+      // The details format depends on the schema, so we check that details exist
+      // and that the data we saved is accessible
+      expect(details.length).toBeGreaterThan(0);
+      
+      // Verify the raw data contains our test values
+      const rawData = testAnalyzerData!.data;
+      expect(rawData.url || rawData.data?.url).toBe('https://test.example.com');
+      expect(rawData.data?.testScore).toBe(85);
+      expect(rawData.data?.testMetric).toBe('A+');
+      
+    } finally {
+      await services.dataService.close();
+    }
   });
 });

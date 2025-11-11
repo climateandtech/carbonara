@@ -262,9 +262,11 @@ export async function initializeSemgrep(
     // Don't show warning to user - this is expected when no project is initialized
   }
 
-  // Create diagnostics collection for Semgrep
-  semgrepDiagnostics = vscode.languages.createDiagnosticCollection("semgrep");
-  context.subscriptions.push(semgrepDiagnostics);
+  // Create diagnostics collection for Semgrep (if not already created)
+  if (!semgrepDiagnostics) {
+    semgrepDiagnostics = vscode.languages.createDiagnosticCollection("semgrep");
+    context.subscriptions.push(semgrepDiagnostics);
+  }
 
   // Set up automatic Semgrep analysis on file focus change
   context.subscriptions.push(
