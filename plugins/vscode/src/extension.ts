@@ -17,6 +17,31 @@ import {
   clearSemgrepResults,
   setOnDatabaseUpdateCallback,
 } from "./semgrep-integration";
+import { exportProjectInfoCommand } from "./commands/export-project-info.js";
+import { ProjectDetector } from "./detection/project-detector.js";
+
+async function detectProjectCommand(): Promise<void> {
+  try {
+    const detector = new ProjectDetector();
+    const projectInfo = await detector.detectProject();
+
+    // Show project info in a message
+    const message =
+      `Project detected: ${projectInfo.primaryLanguage} (${projectInfo.projectType})\n` +
+      `Languages: ${projectInfo.supportedLanguages.join(", ")}\n` +
+      `Files: ${Object.entries(projectInfo.languages)
+        .map(([lang, count]) => `${lang}: ${count}`)
+        .join(", ")}`;
+
+    vscode.window.showInformationMessage(message);
+
+    // Also log to console for debugging
+    console.log("Project Detection Result:", projectInfo);
+  } catch (error) {
+    console.error("Failed to detect project:", error);
+    vscode.window.showErrorMessage(`Failed to detect project: ${error}`);
+  }
+}
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
@@ -147,6 +172,8 @@ export async function activate(context: vscode.ExtensionContext) {
         dataTreeProvider.deleteSemgrepResultsForFiles(selectedItems);
       }
     ),
+    vscode.commands.registerCommand("carbonara.detectProject", detectProjectCommand),
+    vscode.commands.registerCommand("carbonara.exportProjectInfo", exportProjectInfoCommand),
   ];
 
   context.subscriptions.push(carbonaraStatusBar, ...commands);

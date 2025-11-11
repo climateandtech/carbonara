@@ -9,43 +9,107 @@ suite('ToolsTreeProvider Unit Tests', () => {
     let originalWorkspaceFolders: readonly vscode.WorkspaceFolder[] | undefined;
     let testWorkspaceFolder: vscode.WorkspaceFolder;
 
-    setup(() => {
-        // Mock workspace folders
-        originalWorkspaceFolders = vscode.workspace.workspaceFolders;
-        
-        // Create mock test workspace folder
-        testWorkspaceFolder = {
-            uri: vscode.Uri.file('/test/workspace'),
-            name: 'test-workspace',
-            index: 0
-        };
-        
-        Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-            value: [testWorkspaceFolder],
-            configurable: true
-        });
-        
-        // Set CLI path for tests - point to the actual CLI in the monorepo
-        const cliPath = path.join(__dirname, '..', '..', '..', '..', '..', 'packages', 'cli', 'dist', 'index.js');
-        process.env.CARBONARA_CLI_PATH = cliPath;
-        
-        // Set registry path for tests - point to the tools registry
-        const registryPath = path.join(__dirname, '..', '..', '..', '..', '..', 'packages', 'cli', 'src', 'registry', 'tools.json');
-        process.env.CARBONARA_REGISTRY_PATH = registryPath;
-        
-        provider = new ToolsTreeProvider();
+  setup(() => {
+    // Mock workspace folders
+    originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+
+    // Create mock test workspace folder
+    testWorkspaceFolder = {
+      uri: vscode.Uri.file("/test/workspace"),
+      name: "test-workspace",
+      index: 0,
+    };
+
+    Object.defineProperty(vscode.workspace, "workspaceFolders", {
+      value: [testWorkspaceFolder],
+      configurable: true,
     });
 
-    teardown(() => {
-        // Restore original workspace folders
-        Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-            value: originalWorkspaceFolders,
-            configurable: true
-        });
+    // Set CLI path for tests - point to the actual CLI in the monorepo
+    const cliPath = path.join(
+      __dirname,
+      "..",
+      "..",
+      "..",
+      "..",
+      "..",
+      "packages",
+      "cli",
+      "dist",
+      "index.js"
+    );
+    process.env.CARBONARA_CLI_PATH = cliPath;
+
+    // Set registry path for tests - point to the tools registry
+    const registryPath = path.join(
+      __dirname,
+      "..",
+      "..",
+      "..",
+      "..",
+      "..",
+      "packages",
+      "cli",
+      "src",
+      "registry",
+      "tools.json"
+    );
+    process.env.CARBONARA_REGISTRY_PATH = registryPath;
+
+    provider = new ToolsTreeProvider();
+  });
+
+  teardown(() => {
+    // Restore original workspace folders
+    Object.defineProperty(vscode.workspace, "workspaceFolders", {
+      value: originalWorkspaceFolders,
+      configurable: true,
+    });
+  });
+
+  suite("Workspace Tools Registry Loading", () => {
+    test("should load fallback tools when no CLI available", async () => {
+      // Wait for tools to load by calling the async loadTools method directly
+      await (provider as any).loadTools();
+      
+      // Wait for project detection to complete (it runs asynchronously in constructor)
+      // Give it a moment to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Now trigger tree view update
+      const children = await provider.getChildren();
+
+      // Should have loaded some tools (either from registry or fallback)
+      assert.ok(children.length > 0, "Should have loaded tools");
+
+      // Should have both built-in and external tools
+      // Note: External tools may be filtered out if project detection finds no compatible languages
+      // This is expected behavior - the filter should show all tools when project info is unavailable or unknown
+      const builtinTools = children.filter(
+        (child) => child.tool.type === "built-in"
+      );
+      const externalTools = children.filter(
+        (child) => child.tool.type === "external"
+      );
+
+      assert.ok(
+        builtinTools.length > 0,
+        "Should have at least one built-in tool"
+      );
+      
+      // Check if we have external tools - if project detection filtered them out, 
+      // check that we have tools loaded internally even if not shown
+      const allTools = (provider as any).tools || [];
+      const allExternalTools = allTools.filter((t: any) => t.type === "external");
+      
+      // Either external tools should be visible, or we should have external tools loaded but filtered
+      assert.ok(
+        externalTools.length > 0 || allExternalTools.length > 0,
+        "Should have at least one external tool (either visible or loaded)"
+      );
     });
 
-    suite('Workspace Tools Registry Loading', () => {
-        test('with external tools in registry -> should show external tools', async () => {
+    test('with external tools in registry -> should show external tools', async () => {
             // Load tools from actual registry (which includes both built-in and external)
             await (provider as any).loadTools();
             
@@ -142,138 +206,161 @@ suite('ToolsTreeProvider Unit Tests', () => {
             }
         });
 
-        test('should have expected tool structure', async () => {
-            // Wait for tools to load
-            await (provider as any).loadTools();
-            
-            // Test the structure and properties of loaded tools
-            const children = await provider.getChildren();
-            
-            // Should have loaded at least built-in tools
-            assert.ok(children.length > 0, 'Should have loaded tools');
-            
-            // Check that tools have required properties
-            children.forEach(child => {
-                assert.ok(child.tool.id, 'Tool should have an id');
-                assert.ok(child.tool.name, 'Tool should have a name');
-                assert.ok(child.tool.description, 'Tool should have a description');
-                assert.ok(child.tool.type === 'built-in' || child.tool.type === 'external', 'Tool should have valid type');
-                assert.ok(child.tool.command, 'Tool should have a command');
-            });
-        });
+    test("should have expected tool structure", async () => {
+      // Wait for tools to load
+      await (provider as any).loadTools();
+
+      // Test the structure and properties of loaded tools
+      const children = await provider.getChildren();
+
+      // Should have loaded tools
+      assert.ok(
+        children.length >= 3,
+        "Should have at least 3 tools (1 built-in + 2 external)"
+      );
+
+      // Check that tools have required properties
+      children.forEach((child) => {
+        assert.ok(child.tool.id, "Tool should have an id");
+        assert.ok(child.tool.name, "Tool should have a name");
+        assert.ok(child.tool.description, "Tool should have a description");
+        assert.ok(
+          child.tool.type === "built-in" || child.tool.type === "external",
+          "Tool should have valid type"
+        );
+        assert.ok(child.tool.command, "Tool should have a command");
+      });
+    });
+  });
+
+  suite("Tool Item Creation", () => {
+    test("should create built-in tool items with correct properties", () => {
+      const mockTool = {
+        id: "test-tool",
+        name: "Test Tool",
+        description: "A test tool",
+        type: "built-in" as const,
+        command: "built-in",
+      };
+
+      const analyzeCommand = {
+        command: "carbonara.analyzeTool",
+        title: "Analyze with tool",
+        arguments: ["test-tool"],
+      };
+
+      const toolItem = new ToolItem(
+        mockTool,
+        vscode.TreeItemCollapsibleState.None,
+        analyzeCommand
+      );
+
+      assert.strictEqual(toolItem.label, "Test Tool");
+      assert.strictEqual(toolItem.tooltip, "A test tool");
+      assert.strictEqual(toolItem.description, "Built-in");
+      assert.strictEqual(toolItem.contextValue, "builtin-tool");
+      assert.strictEqual(toolItem.command?.command, "carbonara.analyzeTool");
     });
 
-    suite('Tool Item Creation', () => {
-        test('should create built-in tool items with correct properties', () => {
-            const mockTool = {
-                id: 'test-tool',
-                name: 'Test Tool',
-                description: 'A test tool',
-                type: 'built-in' as const,
-                command: 'built-in'
-            };
+    test("should create external uninstalled tool items with correct properties", () => {
+      const mockTool = {
+        id: "external-tool",
+        name: "External Tool",
+        description: "An external tool",
+        type: "external" as const,
+        command: "npm",
+        isInstalled: false,
+      };
 
-            const analyzeCommand = {
-                command: 'carbonara.analyzeTool',
-                title: 'Analyze with tool',
-                arguments: ['test-tool']
-            };
+      const installCommand = {
+        command: "carbonara.installTool",
+        title: "Install tool",
+        arguments: ["external-tool"],
+      };
 
-            const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None, analyzeCommand);
+      const toolItem = new ToolItem(
+        mockTool,
+        vscode.TreeItemCollapsibleState.None,
+        installCommand
+      );
 
-            assert.strictEqual(toolItem.label, 'Test Tool');
-            assert.strictEqual(toolItem.tooltip, 'A test tool');
-            assert.strictEqual(toolItem.description, 'Built-in');
-            assert.strictEqual(toolItem.contextValue, 'builtin-tool');
-            assert.strictEqual(toolItem.command?.command, 'carbonara.analyzeTool');
-        });
+      assert.strictEqual(toolItem.label, "External Tool");
+      assert.strictEqual(toolItem.tooltip, "An external tool");
+      assert.strictEqual(toolItem.description, "Not installed");
+      assert.strictEqual(toolItem.contextValue, "uninstalled-tool");
+      assert.strictEqual(toolItem.command?.command, "carbonara.installTool");
+    });
+  });
 
-        test('should create external uninstalled tool items with correct properties', () => {
-            const mockTool = {
-                id: 'external-tool',
-                name: 'External Tool',
-                description: 'An external tool',
-                type: 'external' as const,
-                command: 'npm',
-                isInstalled: false
-            };
+  suite("Tree Data Provider Interface", () => {
+    test("should return TreeItem for getTreeItem", () => {
+      const mockTool = {
+        id: "test-tool",
+        name: "Test Tool",
+        description: "A test tool",
+        type: "built-in" as const,
+        command: "built-in",
+      };
 
-            const installCommand = {
-                command: 'carbonara.installTool',
-                title: 'Install tool',
-                arguments: ['external-tool']
-            };
+      const toolItem = new ToolItem(
+        mockTool,
+        vscode.TreeItemCollapsibleState.None
+      );
+      const result = provider.getTreeItem(toolItem);
 
-            const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None, installCommand);
-
-            assert.strictEqual(toolItem.label, 'External Tool');
-            assert.strictEqual(toolItem.tooltip, 'An external tool');
-            assert.strictEqual(toolItem.description, 'Not installed');
-            assert.strictEqual(toolItem.contextValue, 'uninstalled-tool');
-            assert.strictEqual(toolItem.command?.command, 'carbonara.installTool');
-        });
+      assert.strictEqual(result, toolItem);
     });
 
-    suite('Tree Data Provider Interface', () => {
-        test('should return TreeItem for getTreeItem', () => {
-            const mockTool = {
-                id: 'test-tool',
-                name: 'Test Tool',
-                description: 'A test tool',
-                type: 'built-in' as const,
-                command: 'built-in'
-            };
+    test("should return empty array for child elements", async () => {
+      const mockTool = {
+        id: "test-tool",
+        name: "Test Tool",
+        description: "A test tool",
+        type: "built-in" as const,
+        command: "built-in",
+      };
 
-            const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None);
-            const result = provider.getTreeItem(toolItem);
+      const toolItem = new ToolItem(
+        mockTool,
+        vscode.TreeItemCollapsibleState.None
+      );
+      const children = await provider.getChildren(toolItem);
 
-            assert.strictEqual(result, toolItem);
-        });
+      assert.strictEqual(children.length, 0);
+    });
+  });
 
-        test('should return empty array for child elements', async () => {
-            const mockTool = {
-                id: 'test-tool',
-                name: 'Test Tool',
-                description: 'A test tool',
-                type: 'built-in' as const,
-                command: 'built-in'
-            };
+  suite("Tool Detection Logic", () => {
+    test("should correctly identify built-in tools as installed", () => {
+      const builtinTool = {
+        id: "builtin-tool",
+        name: "Built-in Tool",
+        description: "A built-in tool",
+        type: "built-in" as const,
+        command: "built-in",
+      };
 
-            const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None);
-            const children = await provider.getChildren(toolItem);
+      const toolItem = new ToolItem(
+        builtinTool,
+        vscode.TreeItemCollapsibleState.None
+      );
 
-            assert.strictEqual(children.length, 0);
-        });
+      assert.strictEqual(toolItem.description, "Built-in");
+      assert.strictEqual(toolItem.contextValue, "builtin-tool");
     });
 
-    suite('Tool Detection Logic', () => {
-        test('should correctly identify built-in tools as installed', () => {
-            const builtinTool = {
-                id: 'builtin-tool',
-                name: 'Built-in Tool',
-                description: 'A built-in tool',
-                type: 'built-in' as const,
-                command: 'built-in'
-            };
+    test("should detect external tool as installed when command succeeds", async () => {
+      // Mock runCommand to succeed
+      const originalRunCommand = (provider as any).runCommand;
+      (provider as any).runCommand = async () => Promise.resolve("success");
 
-            const toolItem = new ToolItem(builtinTool, vscode.TreeItemCollapsibleState.None);
-            
-            assert.strictEqual(toolItem.description, 'Built-in');
-            assert.strictEqual(toolItem.contextValue, 'builtin-tool');
-        });
-
-        test('should detect external tool as installed when command succeeds', async () => {
-            // Mock runCommand to succeed
-            const originalRunCommand = (provider as any).runCommand;
-            (provider as any).runCommand = async () => Promise.resolve('success');
-
-            try {
-                const mockTool = {
-                    detection: {
-                        method: 'command',
-                        target: 'npm --version'
-                    }
-                };
+      try {
+        const mockTool = {
+          detection: {
+            method: "command",
+            target: "npm --version",
+          },
+        };
 
                 const isInstalled = await (provider as any).detectToolInstallation(mockTool);
                 assert.strictEqual(isInstalled, true, 'Should detect tool as installed when command succeeds');

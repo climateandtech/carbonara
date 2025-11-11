@@ -3,6 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawn } from "child_process";
 import { UI_TEXT } from "./constants/ui-text";
+import { ProjectDetector, ProjectInfo } from "./detection/project-detector.js";
 
 export interface AnalysisTool {
   id: string;
@@ -84,19 +85,41 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
   private tools: AnalysisTool[] = [];
   private workspaceFolder: vscode.WorkspaceFolder | undefined;
+private projectInfo: ProjectInfo | null = null;
+private projectDetector: ProjectDetector = new ProjectDetector();
 
   constructor() {
+    console.log('🔧 ToolsTreeProvider constructor called');
     this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    // Load tools asynchronously and handle errors
-    this.loadTools().catch((error) => {
-      console.error("🔧 Failed to load tools in constructor:", error);
+    // Load tools asynchronously (but don't block activation)
+    this.loadTools().catch(error => {
+        console.error('🔧 Failed to load tools in constructor:', error);
       // Fire change event even if loading failed so UI shows the "no tools" message
       this._onDidChangeTreeData.fire();
     });
+    // Defer project detection until after activation completes
+    // This prevents timing issues in E2E tests where workspace might not be ready
+    setTimeout(() => {
+      this.detectProject().catch(error => {
+        console.error('🔧 Failed to detect project:', error);
+      });
+    }, 0);
   }
 
   refresh(): void {
     this.loadTools(); // loadTools() already calls _onDidChangeTreeData.fire()
+    this.detectProject(); // Also refresh project detection
+}
+
+  private async detectProject(): Promise<void> {
+    try {
+      this.projectInfo = await this.projectDetector.detectProject();
+      console.log("🔍 Project detected:", this.projectInfo);
+      // Refresh tools to apply filtering
+      this._onDidChangeTreeData.fire();
+    } catch (error) {
+      console.error("❌ Failed to detect project:", error);
+    }
   }
 
   getTreeItem(element: ToolItem): vscode.TreeItem {
@@ -104,22 +127,30 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
   }
 
   getChildren(element?: ToolItem): Thenable<ToolItem[]> {
+    console.log(
+      `🔍 getChildren called, tools count: ${this.tools.length}, workspaceFolder: ${this.workspaceFolder?.name}`
+    );
+
     // Always show tools, even without workspace folder
     if (element) {
       // No children for individual tools
       return Promise.resolve([]);
     } else {
-      // Return all tools grouped by status
-      const items = this.createToolItems();
+      // Filter tools based on project detection
+      const filteredTools = this.filterToolsByProject();
+      const items = this.createToolItems(filteredTools);
+      console.log(
+        `📊 Created ${items.length} tool items (filtered from ${this.tools.length} total)`
+      );
       return Promise.resolve(items);
     }
   }
 
-  private createToolItems(): ToolItem[] {
+  private createToolItems(tools: AnalysisTool[] = this.tools): ToolItem[] {
     const items: ToolItem[] = [];
 
     // If no tools are loaded, show a helpful message
-    if (this.tools.length === 0) {
+    if (tools.length === 0) {
       const noToolsItem = new ToolItem(
         {
           id: "no-tools",
@@ -138,10 +169,10 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
 
     // Group tools by status
-    const installedTools = this.tools.filter(
+    const installedTools = tools.filter(
       (tool) => tool.type === "built-in" || tool.isInstalled
     );
-    const uninstalledTools = this.tools.filter(
+    const uninstalledTools = tools.filter(
       (tool) => tool.type === "external" && !tool.isInstalled
     );
 
@@ -157,6 +188,17 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         vscode.TreeItemCollapsibleState.None,
         analyzeCommand
       );
+
+      // Add compatibility indicator
+      if (this.projectInfo) {
+        const isCompatible = this.isToolCompatibleWithProject(tool);
+        if (isCompatible) {
+          item.description = `${tool.description} ✓ Compatible`;
+        } else {
+          item.description = `${tool.description} ⚠ Not compatible with ${this.projectInfo.primaryLanguage}`;
+        }
+      }
+
       items.push(item);
     });
 
@@ -178,7 +220,25 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     return items;
   }
 
+  private isToolCompatibleWithProject(tool: AnalysisTool): boolean {
+    if (!this.projectInfo) {
+      return true; // No project info, assume compatible
+    }
+
+    // Built-in tools are always compatible
+    if (tool.type === "built-in") {
+      return true;
+    }
+
+    // Check if tool supports any of the project languages
+    const supportedLanguages = this.getToolSupportedLanguages(tool);
+    return supportedLanguages.some((lang) =>
+      this.projectInfo!.supportedLanguages.includes(lang)
+    );
+  }
+
   private async loadTools(): Promise<void> {
+    console.log("🔧 ToolsTreeProvider.loadTools() called");
     try {
       // HIGHEST PRIORITY: Check if CARBONARA_REGISTRY_PATH is set (for testing/override)
       if (process.env.CARBONARA_REGISTRY_PATH) {
@@ -190,6 +250,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
       // ALWAYS try workspace tools.json first
       if (await this.loadWorkspaceTools()) {
+        console.log("✅ Loaded tools from workspace");
         this._onDidChangeTreeData.fire();
         return;
       }
@@ -203,12 +264,14 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       // Try CLI registry (for development in monorepo)
       const cliPath = await this.findCarbonaraCLI();
       if (cliPath) {
+        console.log("🔧 CLI found at:", cliPath);
         await this.loadToolsFromRegistry(cliPath);
         this._onDidChangeTreeData.fire();
         return;
       }
 
       // Last resort: show "no tools available" message
+      console.log("🔧 No CLI found, showing no tools message");
       this.tools = [];
       this._onDidChangeTreeData.fire();
     } catch (error: any) {
@@ -302,6 +365,8 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
   private async loadToolsFromRegistry(cliPath: string): Promise<void> {
     try {
+      console.log(`🔧 Loading tools from registry`);
+
       // Best practice: Use environment variable for registry path
       const registryPath =
         process.env.CARBONARA_REGISTRY_PATH ||
@@ -327,7 +392,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
         // Check installation status for external tools
         await this.checkToolInstallationStatus();
+        console.log(`✅ Loaded ${this.tools.length} tools from registry`);
       } else {
+        console.log(`❌ Tools registry not found at: ${registryPath}`);
         this.tools = [];
       }
     } catch (error: any) {
@@ -362,6 +429,71 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     } catch {
       return false;
     }
+  }
+
+  private filterToolsByProject(): AnalysisTool[] {
+    if (!this.projectInfo) {
+      // No project info available, show all tools
+      return this.tools;
+    }
+
+    // If project type is unknown or no supported languages, show all tools
+    if (
+      this.projectInfo.projectType === "unknown" ||
+      this.projectInfo.supportedLanguages.length === 0
+    ) {
+      return this.tools;
+    }
+
+    return this.tools.filter((tool) => {
+      // Built-in tools are always compatible
+      if (tool.type === "built-in") {
+        return true;
+      }
+
+      // Check if tool supports any of the project languages
+      const supportedLanguages = this.getToolSupportedLanguages(tool);
+      const hasLanguageSupport = supportedLanguages.some((lang) =>
+        this.projectInfo!.supportedLanguages.includes(lang)
+      );
+
+      return hasLanguageSupport;
+    });
+  }
+
+  private getToolSupportedLanguages(tool: AnalysisTool): string[] {
+    // Map tool IDs to supported languages
+    const toolLanguageMap: Record<string, string[]> = {
+      semgrep: [
+        "javascript",
+        "typescript",
+        "python",
+        "java",
+        "csharp",
+        "go",
+        "php",
+        "ruby",
+      ],
+      eslint: ["javascript", "typescript"],
+      pylint: ["python"],
+      checkstyle: ["java"],
+      sonarqube: [
+        "javascript",
+        "typescript",
+        "java",
+        "csharp",
+        "python",
+        "php",
+        "go",
+      ],
+      "ecocode-java": ["java"],
+      "ecocode-csharp": ["csharp"],
+      "ecocode-python": ["python"],
+      "ecocode-php": ["php"],
+      "ecocode-javascript": ["javascript", "typescript"],
+    };
+
+    return toolLanguageMap[tool.id] || [];
   }
 
   public async installTool(toolId: string): Promise<void> {
