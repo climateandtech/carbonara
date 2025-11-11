@@ -3,12 +3,15 @@ import ora from 'ora';
 import execa from 'execa';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import yaml from 'js-yaml';
 import { Command } from 'commander';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake, createDeploymentService } from '@carbonara/core';
-import { loadProjectConfig } from '../utils/config.js';
+import { loadProjectConfig, getProjectRoot } from '../utils/config.js';
 import { CarbonaraSWDAnalyzer } from '../analyzers/carbonara-swd.js';
+import { IsolatedToolExecutor } from '../utils/tool-executor.js';
+import { checkPrerequisites, Prerequisite } from '../utils/prerequisites.js';
 
 interface AnalyzeOptions {
   save: boolean;
@@ -73,6 +76,36 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     process.exit(1);
   }
 
+  // Check prerequisites before execution
+  if (tool.prerequisites && tool.prerequisites.length > 0) {
+    const prerequisites: Prerequisite[] = tool.prerequisites.map((p: any) => ({
+      type: p.type,
+      name: p.name,
+      checkCommand: p.checkCommand,
+      expectedOutput: p.expectedOutput,
+      errorMessage: p.errorMessage,
+      setupInstructions: p.setupInstructions
+    }));
+
+    const prereqCheck = await checkPrerequisites(prerequisites);
+    
+    if (!prereqCheck.allAvailable) {
+      console.error(chalk.red(`❌ Prerequisites not met for ${tool.name}:`));
+      prereqCheck.missing.forEach(({ prerequisite, error }) => {
+        console.error(chalk.red(`   • ${prerequisite.name}: ${error}`));
+        if (prerequisite.setupInstructions) {
+          console.log(chalk.yellow(`     Setup: ${prerequisite.setupInstructions}`));
+        }
+      });
+      
+      // Show full installation instructions including prerequisites
+      console.log(chalk.yellow('\n📋 Installation Instructions:'));
+      showInstallationInstructions(tool);
+      
+      process.exit(1);
+    }
+  }
+
   const spinner = ora(`Running ${tool.name} analysis...`).start();
 
   try {
@@ -116,9 +149,100 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
   } catch (error: any) {
     spinner.fail(`${tool.name} analysis failed`);
-    console.error(chalk.red('Error:'), error.message);
+    
+    // Check if error is related to missing prerequisites (e.g., Docker, Playwright)
+    const errorMessage = error.message || String(error);
+    const errorOutput = error.stderr || error.stdout || '';
+    const fullError = errorMessage + (errorOutput ? '\n' + errorOutput : '');
+    
+    // Detect Docker-related errors
+    if (fullError.includes('Cannot connect to the Docker daemon') || 
+        fullError.includes('docker daemon') ||
+        fullError.includes('Is the docker daemon running')) {
+      console.error(chalk.red('\n❌ Docker Error:'));
+      console.error(chalk.yellow('   Docker is required but not running.'));
+      console.log(chalk.yellow('\n💡 Please:'));
+      console.log(chalk.white('   1. Start Docker Desktop'));
+      console.log(chalk.white('   2. Wait for Docker to fully start'));
+      console.log(chalk.white('   3. Try running the analysis again'));
+      if (tool.prerequisites) {
+        const dockerPrereq = tool.prerequisites.find((p: any) => p.type === 'docker');
+        if (dockerPrereq?.setupInstructions) {
+          console.log(chalk.gray(`\n   Setup: ${dockerPrereq.setupInstructions}`));
+        }
+      }
+    } 
+    // Detect Playwright browser errors
+    else if (fullError.includes('Executable doesn\'t exist') ||
+             fullError.includes('Please run the following command to download new browsers') ||
+             fullError.includes('npx playwright install')) {
+      console.error(chalk.red('\n❌ Playwright Browser Error:'));
+      console.error(chalk.yellow('   Playwright browsers are required but not installed.'));
+      console.log(chalk.yellow('\n💡 Please:'));
+      console.log(chalk.white('   1. Run: npx playwright install chromium'));
+      console.log(chalk.white('   2. Wait for the installation to complete'));
+      console.log(chalk.white('   3. Try running the analysis again'));
+      if (tool.prerequisites) {
+        const playwrightPrereq = tool.prerequisites.find((p: any) => p.type === 'playwright');
+        if (playwrightPrereq?.setupInstructions) {
+          console.log(chalk.gray(`\n   Setup: ${playwrightPrereq.setupInstructions}`));
+        }
+      }
+      // Show full installation instructions
+      console.log(chalk.yellow('\n📋 Installation Instructions:'));
+      showInstallationInstructions(tool);
+    } 
+    else {
+      console.error(chalk.red('Error:'), errorMessage);
+      if (errorOutput) {
+        console.error(chalk.gray(errorOutput));
+      }
+    }
+    
     process.exit(1);
   }
+}
+
+function showInstallationInstructions(tool: AnalysisTool): void {
+  console.log(chalk.blue(`\n${tool.name} Setup Guide`));
+  console.log(chalk.gray('═'.repeat(50)));
+  
+  if (tool.description) {
+    console.log(chalk.white(`\n${tool.description}\n`));
+  }
+
+  // Show prerequisites
+  if (tool.prerequisites && tool.prerequisites.length > 0) {
+    console.log(chalk.yellow('📦 Prerequisites:'));
+    tool.prerequisites.forEach((prereq: any) => {
+      console.log(chalk.white(`\n  • ${prereq.name} (${prereq.type})`));
+      if (prereq.setupInstructions) {
+        console.log(chalk.gray(`    ${prereq.setupInstructions}`));
+      }
+      console.log(chalk.dim(`    Check: ${prereq.checkCommand}`));
+    });
+    console.log('');
+  }
+
+  // Show installation instructions
+  if (tool.installation) {
+    console.log(chalk.yellow('🔧 Installation:'));
+    if (tool.installation.type === 'npm') {
+      const packages = tool.installation.package.split(' ').filter(p => p.trim().length > 0);
+      console.log(chalk.white(`\n  Install packages:`));
+      packages.forEach(pkg => {
+        console.log(chalk.cyan(`    npm install -g ${pkg}`));
+      });
+    } else {
+      console.log(chalk.white(`\n  ${tool.installation.instructions}`));
+    }
+    console.log('');
+  }
+
+  // Show usage
+  console.log(chalk.yellow('🚀 Usage:'));
+  console.log(chalk.white(`  carbonara analyze ${tool.id} <url>`));
+  console.log('');
 }
 
 async function runCarbonaraSWD(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
@@ -177,16 +301,29 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
   // Replace placeholders in command args
   const args = tool.command.args.map(arg => arg.replace('{url}', url));
   
-  const result = await execa(tool.command.executable, args, {
-    stdio: 'pipe'
-  });
+  // Use isolated executor to prevent workspace interference
+  const executor = new IsolatedToolExecutor();
+  try {
+    const result = await executor.execute({
+      command: tool.command.executable,
+      args: args,
+      stdio: 'pipe'
+    });
 
-  if (tool.command.outputFormat === 'json') {
-    return JSON.parse(result.stdout);
-  } else if (tool.command.outputFormat === 'yaml') {
-    return yaml.load(result.stdout);
-  } else {
-    return { output: result.stdout };
+    // Check if command failed
+    if (result.exitCode !== 0) {
+      throw new Error(`Tool execution failed: ${result.stderr || result.stdout || 'Unknown error'}`);
+    }
+
+    if (tool.command.outputFormat === 'json') {
+      return JSON.parse(result.stdout);
+    } else if (tool.command.outputFormat === 'yaml') {
+      return yaml.load(result.stdout);
+    } else {
+      return { output: result.stdout };
+    }
+  } finally {
+    executor.cleanup();
   }
 }
 
@@ -222,6 +359,7 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     throw new Error(`Tool ${tool.id} does not have a manifest template configured`);
   }
 
+<<<<<<< HEAD
   // Load project and get CO2 variables for intelligent defaults
   let co2Variables: any = {};
   try {
@@ -238,11 +376,9 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     console.log(chalk.yellow('⚠️  Could not load assessment data, using defaults'));
   }
 
-  // Create temporary directory for analysis
-  const tempDir = path.join(process.cwd(), '.carbonara-temp');
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
+  // Create isolated executor for tool execution
+  const executor = new IsolatedToolExecutor();
+  const tempDir = await executor.createIsolatedEnvironment();
 
   // Create manifest from template with placeholder replacement
   const manifest = JSON.parse(JSON.stringify(tool.manifestTemplate)); // Deep clone
@@ -293,21 +429,67 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   }
 
   const manifestPath = path.join(tempDir, 'manifest.yml');
-  const outputPath = path.join(tempDir, 'output.yml');
+  // if-run outputs to .yaml extension by default, but we'll check both
+  const outputPathYaml = path.join(tempDir, 'output.yaml');
+  const outputPathYml = path.join(tempDir, 'output.yml');
   
   fs.writeFileSync(manifestPath, yaml.dump(processedManifest));
 
-  // Run Impact Framework analysis
-  await execa('if-run', [
-    '--manifest', manifestPath,
-    '--output', outputPath
-  ], {
-    stdio: 'pipe'
-  });
+  // Run Impact Framework analysis in isolated environment
+  try {
+    const result = await executor.execute({
+      command: 'if-run',
+      args: [
+        '--manifest', manifestPath,
+        '--output', outputPathYaml  // Use .yaml extension as that's what if-run creates
+      ],
+      cwd: tempDir,
+      stdio: 'pipe'
+    });
 
-  // Check if output file exists
-  if (!fs.existsSync(outputPath)) {
-    throw new Error(`Output file not created at ${outputPath}`);
+    // Check if command failed
+    if (result.exitCode !== 0) {
+      const errorMessage = result.stderr || result.stdout || 'Unknown error';
+      console.error('if-run command failed:', errorMessage);
+      if (result.stdout) {
+        console.error('if-run stdout:', result.stdout);
+      }
+      if (result.stderr) {
+        console.error('if-run stderr:', result.stderr);
+      }
+      throw new Error(`Impact Framework analysis failed: ${errorMessage}`);
+    }
+
+    // Log stdout/stderr for debugging if verbose
+    if (result.stdout) {
+      console.log('if-run stdout:', result.stdout);
+    }
+    if (result.stderr) {
+      console.log('if-run stderr:', result.stderr);
+    }
+  } catch (error: any) {
+    // Capture error details
+    const errorMessage = error.message || 'Unknown error';
+    throw new Error(`Impact Framework analysis failed: ${errorMessage}`);
+  } finally {
+    // Cleanup will happen, but we need to read output first
+  }
+
+  // Check if output file exists (try both .yaml and .yml extensions)
+  let outputPath = outputPathYaml;
+  if (!fs.existsSync(outputPathYaml)) {
+    if (fs.existsSync(outputPathYml)) {
+      outputPath = outputPathYml;
+    } else {
+      // List files in tempDir for debugging
+      const filesInTemp = fs.existsSync(tempDir) ? fs.readdirSync(tempDir) : [];
+      executor.cleanup();
+      throw new Error(
+        `Output file not created at ${outputPathYaml} or ${outputPathYml}\n` +
+        `Temp directory: ${tempDir}\n` +
+        `Files in temp directory: ${filesInTemp.join(', ') || 'none'}`
+      );
+    }
   }
 
   // Parse results and convert to JSON
@@ -322,8 +504,8 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     ...yamlResults
   };
   
-  // Cleanup
-  fs.rmSync(tempDir, { recursive: true, force: true });
+  // Cleanup isolated environment
+  executor.cleanup();
   
   return results;
 }
@@ -656,6 +838,11 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
 
     console.log(chalk.green(`✅ Results saved to project database (project ID: ${projectId}, data ID: ${dataId})`));
   } catch (error) {
-    console.log(chalk.yellow('\n⚠️  Could not save results:'), error);
+    console.error(chalk.red('\n❌ Error saving results to database:'));
+    console.error(chalk.red(`   ${error instanceof Error ? error.message : String(error)}`));
+    if (error instanceof Error && error.stack) {
+      console.error(chalk.gray(error.stack));
+    }
+    console.log(chalk.yellow('\n⚠️  Results were not saved.'));
   }
 }

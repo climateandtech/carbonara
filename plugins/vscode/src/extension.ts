@@ -32,10 +32,456 @@ let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
 let deploymentsTreeProvider: DeploymentsTreeProvider;
 
+// Virtual document provider for tool installation instructions
+class ToolInstructionsProvider implements vscode.TextDocumentContentProvider {
+  onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
+  onDidChange = this.onDidChangeEmitter.event;
+
+  async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+    // Extract toolId from URI path (format: /tool/{toolId}.md or /tool/{toolId})
+    // Remove leading slash, extract tool ID, remove .md extension if present
+    let toolId = uri.path;
+    if (toolId.startsWith("/tool/")) {
+      toolId = toolId.substring(6); // Remove "/tool/"
+    } else if (toolId.startsWith("tool/")) {
+      toolId = toolId.substring(5); // Remove "tool/"
+    }
+    // Remove .md extension if present
+    if (toolId.endsWith(".md")) {
+      toolId = toolId.substring(0, toolId.length - 3);
+    }
+    // Remove any remaining leading/trailing slashes
+    toolId = toolId.replace(/^\/+|\/+$/g, "");
+    
+    console.log(`[ToolInstructionsProvider] Extracted toolId: "${toolId}" from URI path: "${uri.path}"`);
+    
+    if (!toolsTreeProvider) {
+      return `# Installation Instructions\n\nTools provider not initialized.`;
+    }
+    
+    // Get the markdown - the method will handle tool lookup
+    // If tools aren't loaded yet, it will show a helpful message
+    const markdown = toolsTreeProvider.getToolInstallationInstructionsMarkdown(toolId);
+    
+    // If tool wasn't found, try refreshing and waiting a bit
+    if (markdown.includes("not found in registry")) {
+      // Trigger a refresh (async, but we can't await it directly)
+      toolsTreeProvider.refresh();
+      
+      // Wait a bit for tools to potentially load
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Try again
+      return toolsTreeProvider.getToolInstallationInstructionsMarkdown(toolId);
+    }
+    
+    return markdown;
+  }
+}
+
+const toolInstructionsProvider = new ToolInstructionsProvider();
+
 let currentProjectPath: string | null = null;
 
 // Diagnostics collection for Semgrep results
 let semgrepDiagnostics: vscode.DiagnosticCollection;
+
+/**
+ * Check if Carbonara CLI is installed globally
+ */
+async function isCarbonaraCLIInstalled(): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const child = spawn("carbonara", ["--version"], {
+      stdio: "pipe",
+      shell: true,
+    });
+
+    let hasOutput = false;
+
+    child.stdout?.on("data", () => {
+      hasOutput = true;
+    });
+
+    child.on("close", (code) => {
+      // If command exits with 0 or has output, CLI is installed
+      resolve(code === 0 || hasOutput);
+    });
+
+    child.on("error", () => {
+      // Command not found or other error
+      resolve(false);
+    });
+
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      child.kill();
+      resolve(false);
+    }, 5000);
+  });
+}
+
+/**
+ * Find local CLI package in monorepo
+ */
+function findLocalCLIPackage(): string | null {
+  // Try to find packages/cli relative to extension path
+  // Extension is at plugins/vscode, so go up two levels to monorepo root
+  const extensionPath = __dirname; // This will be dist/ in built extension
+  // In development: plugins/vscode/src -> plugins/vscode -> monorepo root
+  // In built: plugins/vscode/dist -> plugins/vscode -> monorepo root
+  
+  const possiblePaths: string[] = [
+    path.join(extensionPath, "../../../packages/cli"), // From dist/
+    path.join(extensionPath, "../../packages/cli"), // From src/
+    path.join(process.cwd(), "packages/cli"), // From workspace root
+  ];
+
+  // Also check workspace folders (for when extension is installed as VSIX)
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (workspaceFolders) {
+    for (const folder of workspaceFolders) {
+      const workspaceCliPath = path.join(folder.uri.fsPath, "packages/cli");
+      possiblePaths.push(workspaceCliPath);
+    }
+  }
+
+  for (const cliPath of possiblePaths) {
+    const packageJsonPath = path.join(cliPath, "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      console.log(`Found local CLI package at: ${cliPath}`);
+      return cliPath;
+    }
+  }
+
+  console.log("Local CLI package not found. Checked paths:", possiblePaths);
+  return null;
+}
+
+/**
+ * Automatically install Carbonara CLI if not found
+ */
+async function ensureCarbonaraCLIInstalled(): Promise<void> {
+  const isInstalled = await isCarbonaraCLIInstalled();
+  if (isInstalled) {
+    console.log("Carbonara CLI is already installed");
+    return;
+  }
+
+  console.log("Carbonara CLI not found, attempting to install...");
+
+  // First, try to find local CLI package in monorepo
+  const localCliPath = findLocalCLIPackage();
+  if (localCliPath) {
+    console.log("Found local CLI package, installing from monorepo...");
+    await installCLIFromLocalPath(localCliPath);
+    return;
+  }
+
+  console.log("Local CLI package not found in monorepo");
+
+  // If not found locally, try npm (for when it's published)
+  console.log("Local CLI not found, checking npm...");
+  const packageExists = await checkPackageExistsOnNpm("@carbonara/cli");
+  if (!packageExists) {
+    console.log("@carbonara/cli is not published to npm and local package not found.");
+    // Show a notification to the user
+    vscode.window.showInformationMessage(
+      "Carbonara CLI is not installed. To install it manually, run: npm install -g @carbonara/cli (or install from the monorepo: cd packages/cli && npm install -g .)",
+      "OK"
+    );
+    return;
+  }
+
+  await installCLIFromNpm();
+}
+
+/**
+ * Check if @carbonara/cli package exists on npm
+ */
+async function checkPackageExistsOnNpm(packageName: string): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const child = spawn("npm", ["view", packageName, "version"], {
+      stdio: "pipe",
+      shell: true,
+    });
+
+    child.on("close", (code) => {
+      resolve(code === 0);
+    });
+
+    child.on("error", () => {
+      resolve(false);
+    });
+
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      child.kill();
+      resolve(false);
+    }, 5000);
+  });
+}
+
+/**
+ * Install CLI from local monorepo path
+ */
+async function installCLIFromLocalPath(cliPath: string): Promise<void> {
+  const installPromise = vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "Installing Carbonara CLI from local package...",
+      cancellable: false,
+    },
+    async (progress) => {
+      progress.report({ increment: 0, message: "Building CLI package..." });
+      
+      // First, build the CLI package
+      return new Promise<void>((resolve) => {
+        const buildChild = spawn("npm", ["run", "build"], {
+          cwd: cliPath,
+          stdio: "pipe",
+          shell: true,
+        });
+
+        let buildStdout = "";
+        let buildStderr = "";
+
+        buildChild.stdout?.on("data", (data) => {
+          buildStdout += data.toString();
+        });
+
+        buildChild.stderr?.on("data", (data) => {
+          buildStderr += data.toString();
+        });
+
+        buildChild.on("close", (buildCode) => {
+          if (buildCode !== 0) {
+            console.error(`CLI build failed: ${buildStderr || buildStdout}`);
+            vscode.window.showWarningMessage(
+              `Failed to build CLI package. Please build it manually: cd ${cliPath} && npm run build`,
+              "OK"
+            );
+            resolve();
+            return;
+          }
+
+          // Build succeeded, now install
+          progress.report({ increment: 50, message: "Installing CLI globally..." });
+          
+          const installChild = spawn("npm", ["install", "-g", "."], {
+            cwd: cliPath,
+            stdio: "pipe",
+            shell: true,
+          });
+
+          let installStdout = "";
+          let installStderr = "";
+
+          installChild.stdout?.on("data", (data) => {
+            installStdout += data.toString();
+          });
+
+          installChild.stderr?.on("data", (data) => {
+            installStderr += data.toString();
+          });
+
+          installChild.on("close", async (installCode) => {
+            if (installCode === 0) {
+              // Ensure the binary has execute permissions
+              const binaryPath = path.join(cliPath, "dist/index.js");
+              try {
+                if (fs.existsSync(binaryPath)) {
+                  fs.chmodSync(binaryPath, 0o755); // rwxr-xr-x
+                  console.log(`Set execute permissions on ${binaryPath}`);
+                }
+              } catch (chmodError) {
+                console.warn(`Failed to set execute permissions: ${chmodError}`);
+                // Continue anyway - npm might have set it
+              }
+
+              // Reset CLI availability cache so it re-checks
+              const { resetCLIAvailabilityCache } = await import("./semgrep-integration");
+              resetCLIAvailabilityCache();
+
+              progress.report({ increment: 100, message: "Installation complete!" });
+              vscode.window.showInformationMessage(
+                "Carbonara CLI installed successfully from local package!",
+                "OK"
+              );
+            } else {
+              const errorMessage = installStderr || installStdout || `npm install exited with code ${installCode ?? 'unknown'}`;
+              console.error(`CLI installation failed: ${errorMessage}`);
+              showInstallationError(installCode ?? 1, installStdout, installStderr);
+            }
+            resolve();
+          });
+
+          installChild.on("error", (error) => {
+            console.error(`Failed to start npm install: ${error.message}`);
+            vscode.window.showWarningMessage(
+              `Failed to install Carbonara CLI: ${error.message}`,
+              "OK"
+            );
+            resolve();
+          });
+        });
+
+        buildChild.on("error", (error) => {
+          console.error(`Failed to start npm build: ${error.message}`);
+          vscode.window.showWarningMessage(
+            `Failed to build CLI package: ${error.message}`,
+            "OK"
+          );
+          resolve();
+        });
+      });
+    }
+  );
+
+  Promise.resolve(installPromise).catch((error: any) => {
+    console.error("Error during CLI installation:", error);
+  });
+}
+
+/**
+ * Show installation error details
+ */
+function showInstallationError(code: number, stdout: string, stderr: string): void {
+  // Extract meaningful error message
+  let errorMessage = "Unknown error";
+  if (stderr) {
+    const errorLines = stderr.split('\n').filter(line => 
+      line.includes('error') || 
+      line.includes('Error') || 
+      line.includes('EACCES') ||
+      line.includes('permission') ||
+      line.includes('ENOENT')
+    );
+    if (errorLines.length > 0) {
+      errorMessage = errorLines[0].trim();
+    } else {
+      errorMessage = stderr.split('\n').find(line => line.trim().length > 0) || stderr.substring(0, 200);
+    }
+  } else if (stdout) {
+    errorMessage = stdout.split('\n').find(line => line.includes('error') || line.includes('Error')) || stdout.substring(0, 200);
+  } else {
+    errorMessage = `npm install exited with code ${code}`;
+  }
+  
+  // Check if it's a 404 error (package not found)
+  if (stderr.includes('404') || stderr.includes('Not found') || stderr.includes('is not in this registry')) {
+    errorMessage = "@carbonara/cli is not published to npm. Install it locally from the monorepo.";
+  }
+  
+  // Always create and show output channel with error details
+  const outputChannel = vscode.window.createOutputChannel("Carbonara CLI Installation");
+  outputChannel.appendLine("Carbonara CLI Installation Failed");
+  outputChannel.appendLine("=".repeat(50));
+  outputChannel.appendLine(`Exit code: ${code}`);
+  outputChannel.appendLine("\nSTDOUT:");
+  outputChannel.appendLine(stdout || "(empty)");
+  outputChannel.appendLine("\nSTDERR:");
+  outputChannel.appendLine(stderr || "(empty)");
+  outputChannel.appendLine("\nTo install manually:");
+  if (stderr.includes('404') || stderr.includes('Not found') || stderr.includes('is not in this registry')) {
+    outputChannel.appendLine("The package is not published to npm. Install it locally:");
+    outputChannel.appendLine("  cd packages/cli && npm install -g .");
+    outputChannel.appendLine("Or build and install from the monorepo root:");
+    outputChannel.appendLine("  npm run build && cd packages/cli && npm install -g .");
+  } else {
+    outputChannel.appendLine("npm install -g @carbonara/cli");
+  }
+  outputChannel.show();
+  
+  vscode.window.showWarningMessage(
+    `Carbonara CLI installation failed: ${errorMessage.substring(0, 100)}${errorMessage.length > 100 ? '...' : ''}`,
+    "OK"
+  );
+}
+
+/**
+ * Install CLI from npm
+ */
+async function installCLIFromNpm(): Promise<void> {
+  // Show a notification that we're installing
+  const installPromise = vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "Installing Carbonara CLI...",
+      cancellable: false,
+    },
+    async (progress) => {
+      progress.report({ increment: 0, message: "Installing @carbonara/cli globally..." });
+      
+      return new Promise<void>((resolve, reject) => {
+        const child = spawn("npm", ["install", "-g", "@carbonara/cli"], {
+          stdio: "pipe",
+        });
+
+        let stdout = "";
+        let stderr = "";
+
+        child.stdout?.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        child.stderr?.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        child.on("close", async (code) => {
+          if (code === 0) {
+            // Reset CLI availability cache so it re-checks
+            const { resetCLIAvailabilityCache } = await import("./semgrep-integration");
+            resetCLIAvailabilityCache();
+
+            progress.report({ increment: 100, message: "Installation complete!" });
+            vscode.window.showInformationMessage(
+              "Carbonara CLI installed successfully!",
+              "OK"
+            );
+            resolve();
+          } else {
+            // Log full output for debugging
+            console.error(`CLI installation failed with exit code ${code ?? 'unknown'}`);
+            console.error(`stdout: ${stdout}`);
+            console.error(`stderr: ${stderr}`);
+            
+            // Use shared error handler
+            showInstallationError(code ?? 1, stdout, stderr);
+            
+            // Don't reject - we'll continue without CLI
+            resolve();
+          }
+        });
+
+        child.on("error", (error) => {
+          console.error(`Failed to start npm install: ${error.message}`);
+          console.error(`Error details:`, error);
+          
+          let errorMsg = error.message;
+          if (error.message.includes('ENOENT') || error.message.includes('spawn')) {
+            errorMsg = "npm command not found. Please ensure Node.js and npm are installed and in your PATH.";
+          } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
+            errorMsg = "Permission denied. You may need to run with sudo or fix npm permissions.";
+          }
+          
+          vscode.window.showWarningMessage(
+            `Failed to install Carbonara CLI: ${errorMsg}. Please install it manually with: npm install -g @carbonara/cli`,
+            "OK"
+          );
+          // Don't reject - we'll continue without CLI
+          resolve();
+        });
+      });
+    }
+  );
+
+  // Don't await - let it run in background so extension activation isn't blocked
+  // withProgress returns a Thenable, so we need to handle it differently
+  Promise.resolve(installPromise).catch((error: any) => {
+    console.error("Error during CLI installation:", error);
+  });
+}
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log("Carbonara extension is now active!");
@@ -46,6 +492,11 @@ export async function activate(context: vscode.ExtensionContext) {
     "carbonara.notInitialized",
     true
   );
+
+  // Check and install CLI automatically (non-blocking)
+  ensureCarbonaraCLIInstalled().catch((error) => {
+    console.error("Error checking/installing CLI:", error);
+  });
 
   // Initialize Semgrep integration (now async)
   await initializeSemgrep(context);
@@ -107,6 +558,14 @@ export async function activate(context: vscode.ExtensionContext) {
     dataTreeProvider.refresh();
   });
 
+  // Register virtual document provider for tool instructions
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      "carbonara-tool-instructions",
+      toolInstructionsProvider
+    )
+  );
+
   // Register commands
   const commands = [
     vscode.commands.registerCommand("carbonara.showMenu", showCarbonaraMenu),
@@ -146,12 +605,57 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("carbonara.refreshTools", () =>
       toolsTreeProvider.refresh()
     ),
-    vscode.commands.registerCommand("carbonara.installTool", (toolId) =>
-      toolsTreeProvider.installTool(toolId)
-    ),
+    vscode.commands.registerCommand("carbonara.installTool", (toolIdOrItem: string | any) => {
+      // Handle both direct toolId string and tree item (ToolItem)
+      let toolId: string;
+      if (typeof toolIdOrItem === "string") {
+        toolId = toolIdOrItem;
+      } else if (toolIdOrItem && typeof toolIdOrItem === "object") {
+        // Try to get toolId from ToolItem
+        if (toolIdOrItem.tool && toolIdOrItem.tool.id) {
+          toolId = toolIdOrItem.tool.id;
+        } else if (toolIdOrItem.id) {
+          toolId = toolIdOrItem.id;
+        } else {
+          vscode.window.showErrorMessage("Unable to determine tool ID from selection");
+          return;
+        }
+      } else {
+        vscode.window.showErrorMessage("Unable to determine tool ID");
+        return;
+      }
+      toolsTreeProvider.installTool(toolId);
+    }),
     vscode.commands.registerCommand("carbonara.analyzeTool", (toolId) =>
       toolsTreeProvider.analyzeTool(toolId)
     ),
+    vscode.commands.registerCommand("carbonara.viewToolInstructions", async (toolIdOrItem: string | any) => {
+      // Handle both direct toolId string and tree item (ToolItem)
+      let toolId: string;
+      if (typeof toolIdOrItem === "string") {
+        toolId = toolIdOrItem;
+      } else if (toolIdOrItem && typeof toolIdOrItem === "object") {
+        // Try to get toolId from ToolItem
+        if (toolIdOrItem.tool && toolIdOrItem.tool.id) {
+          toolId = toolIdOrItem.tool.id;
+        } else if (toolIdOrItem.id) {
+          toolId = toolIdOrItem.id;
+        } else {
+          vscode.window.showErrorMessage("Unable to determine tool ID from selection");
+          return;
+        }
+      } else {
+        vscode.window.showErrorMessage("Unable to determine tool ID");
+        return;
+      }
+      
+      const uri = vscode.Uri.parse(`carbonara-tool-instructions://tool/${toolId}.md`);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(doc, { 
+        preview: false,
+        viewColumn: vscode.ViewColumn.Beside
+      });
+    }),
     vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
     vscode.commands.registerCommand("carbonara.scanAllFiles", scanAllFiles),
     vscode.commands.registerCommand(

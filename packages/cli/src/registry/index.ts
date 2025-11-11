@@ -40,6 +40,14 @@ export interface AnalysisTool {
   }>;
   manifestTemplate?: any; // For Impact Framework tools
   display?: any; // For display configuration
+  prerequisites?: Array<{
+    type: string; // e.g., 'docker', 'node', 'python', 'command'
+    name: string;
+    checkCommand: string;
+    expectedOutput?: string;
+    errorMessage: string;
+    setupInstructions?: string;
+  }>;
 }
 
 export interface ToolRegistry {
@@ -105,13 +113,23 @@ export class AnalysisToolRegistry {
         case 'built-in':
           return true; // Built-in tools are always available
         case 'command':
-          // For commands, we just need to check if they exist, not necessarily succeed
+          // For commands, we check if they exist and can be executed
           try {
-            await execa.command(tool.detection.target, { stdio: 'pipe', timeout: 5000 });
-            return true;
+            const result = await execa.command(tool.detection.target, { 
+              stdio: 'pipe', 
+              timeout: 5000,
+              reject: false // Don't throw, check exit code
+            });
+            // Command succeeded (exit code 0) - tool is installed
+            if (result.exitCode === 0) {
+              return true;
+            }
+            // For help/version commands, non-zero exit might still mean installed
+            // But exit code 127 definitely means command not found
+            return result.exitCode !== 127;
           } catch (error: any) {
-            // If the command exists but fails (like help commands), that's still installed
-            return error.exitCode !== 127 && !error.message.includes('command not found');
+            // If execa throws, it's likely a command not found error
+            return false;
           }
         case 'npm':
           // Check if npm package is globally installed

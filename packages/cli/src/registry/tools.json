@@ -210,8 +210,8 @@
       "name": "GreenFrame",
       "description": "Measure the carbon footprint of web applications",
       "command": {
-        "executable": "npx",
-        "args": ["greenframe", "analyze", "{url}", "--format=json"],
+        "executable": "greenframe",
+        "args": ["analyze", "{url}", "--format=json"],
         "outputFormat": "json"
       },
       "installation": {
@@ -222,8 +222,17 @@
       },
       "detection": {
         "method": "command",
-        "target": "npx greenframe --help"
+        "target": "greenframe --version"
       },
+      "prerequisites": [
+        {
+          "type": "docker",
+          "name": "Docker",
+          "checkCommand": "docker --version",
+          "errorMessage": "Docker is required but not available",
+          "setupInstructions": "Install Docker Desktop from https://www.docker.com/products/docker-desktop and ensure it's running"
+        }
+      ],
       "display": {
         "category": "Carbon Analysis",
         "icon": "🌱",
@@ -284,6 +293,7 @@
     {
       "id": "if-webpage-scan",
       "name": "IF Webpage Scan",
+      "displayName": "Impact Framework",
       "description": "Impact Framework webpage analysis with carbon estimation using WebpageImpact and Co2js plugins",
       "command": {
         "executable": "if-run",
@@ -298,7 +308,7 @@
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "target": "if-run --help"
       },
       "parameters": [
         {
@@ -442,7 +452,7 @@
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "target": "if-run --help"
       },
       "parameters": [
         {
@@ -531,7 +541,7 @@
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "target": "if-run --help"
       },
       "parameters": [
         {
@@ -820,7 +830,7 @@
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "target": "if-run --help"
       },
       "parameters": [
         {

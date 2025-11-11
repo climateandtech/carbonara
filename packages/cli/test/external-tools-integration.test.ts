@@ -39,7 +39,10 @@ describe('External Tools - Integration Tests', () => {
       created: new Date().toISOString()
     };
     
-    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
+    // Use the correct .carbonara/ path structure (as per commit e6384130)
+    const carbonaraDir = path.join(testDir, '.carbonara');
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
   }
 
   test('external tools should handle analyze command with project creation', async () => {
@@ -63,12 +66,29 @@ describe('External Tools - Integration Tests', () => {
         // Should either succeed or fail gracefully
         expect(result).toBeTruthy();
         
-        // If it succeeded, should have created database
-        const dbPath = path.join(testDir, 'carbonara.db');
+        // If it succeeded, should have created database at the correct .carbonara/ path
+        const dbPath = path.join(testDir, '.carbonara', 'carbonara.db');
         if (fs.existsSync(dbPath)) {
           // Database was created - verify it has content
           const dbSize = fs.statSync(dbPath).size;
           expect(dbSize).toBeGreaterThan(0);
+          
+          // Verify project was created in database
+          const initSqlJs = require('sql.js');
+          const SQL = await initSqlJs();
+          const dbData = fs.readFileSync(dbPath);
+          const db = new SQL.Database(dbData);
+          
+          try {
+            // Check project count
+            const projectResult = db.exec('SELECT COUNT(*) as count FROM projects');
+            expect(projectResult[0].values[0][0]).toBeGreaterThan(0);
+            
+            db.close();
+          } catch (err) {
+            db.close();
+            throw err;
+          }
         }
         
       } catch (error: any) {
@@ -121,7 +141,7 @@ describe('External Tools - Integration Tests', () => {
       } catch (error: any) {
         // Expected to fail for most external tools (not installed)
         const stderr = error.stderr?.toString() || '';
-        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
+        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool|Prerequisites not met/i);
       }
     });
   });
@@ -151,7 +171,7 @@ describe('External Tools - Integration Tests', () => {
           
         } catch (error: any) {
           const stderr = error.stderr?.toString() || '';
-          expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
+          expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool|Prerequisites not met/i);
         }
       }
     });
@@ -170,7 +190,10 @@ describe('External Tools - Integration Tests', () => {
       created: new Date().toISOString()
     };
     
-    fs.writeFileSync(path.join(testDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
+    // Use the correct .carbonara/ path structure
+    const carbonaraDir = path.join(testDir, '.carbonara');
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
     
     const externalTools = getExternalTools();
     const toolsToTest = externalTools.slice(0, 1);
@@ -188,7 +211,7 @@ describe('External Tools - Integration Tests', () => {
         
       } catch (error: any) {
         const stderr = error.stderr?.toString() || '';
-        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
+        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool|Prerequisites not met/i);
       }
     }
   });
@@ -216,7 +239,8 @@ describe('External Tools - Integration Tests', () => {
         
         const hasToolError = stderr.includes('not installed') ||
                            stderr.includes('analysis failed') ||
-                           stderr.includes('Unknown analysis tool');
+                           stderr.includes('Unknown analysis tool') ||
+                           stderr.includes('Prerequisites not met');
         
         expect(hasUrlError || hasToolError).toBe(true);
       }
@@ -364,16 +388,41 @@ describe('External Tools - Integration Tests', () => {
         
         // If successful, should mention saving to database
         if (result.includes('saved') || result.includes('database')) {
-          // Verify database was created
-          const dbPath = path.join(testDir, 'carbonara.db');
+          // Verify database was created at the correct .carbonara/ path
+          const dbPath = path.join(testDir, '.carbonara', 'carbonara.db');
           expect(fs.existsSync(dbPath)).toBe(true);
+          
+          // Also verify the database actually has content (not just an empty file)
+          const dbSize = fs.statSync(dbPath).size;
+          expect(dbSize).toBeGreaterThan(0);
+          
+          // Verify project was created in database
+          const initSqlJs = require('sql.js');
+          const SQL = await initSqlJs();
+          const dbData = fs.readFileSync(dbPath);
+          const db = new SQL.Database(dbData);
+          
+          try {
+            // Check project count
+            const projectResult = db.exec('SELECT COUNT(*) as count FROM projects');
+            expect(projectResult[0].values[0][0]).toBeGreaterThan(0);
+            
+            // Check assessment data count
+            const dataResult = db.exec('SELECT COUNT(*) as count FROM assessment_data WHERE project_id IS NOT NULL');
+            expect(dataResult[0].values[0][0]).toBeGreaterThan(0);
+            
+            db.close();
+          } catch (err) {
+            db.close();
+            throw err;
+          }
         }
         
       } catch (error: any) {
         const stderr = error.stderr?.toString() || '';
         
-        // Should fail gracefully with appropriate error
-        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
+        // Should fail gracefully with appropriate error (including prerequisite errors)
+        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool|Prerequisites not met/i);
       }
     }
   });
@@ -403,7 +452,7 @@ describe('External Tools - Integration Tests', () => {
           
         } catch (error: any) {
           const stderr = error.stderr?.toString() || '';
-          expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
+          expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool|Prerequisites not met/i);
         }
       }
       
@@ -425,7 +474,7 @@ describe('External Tools - Integration Tests', () => {
           
         } catch (error: any) {
           const stderr = error.stderr?.toString() || '';
-          expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
+          expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool|Prerequisites not met/i);
         }
       }
     });
@@ -474,7 +523,7 @@ describe('External Tools - Integration Tests', () => {
         
       } catch (error: any) {
         const stderr = error.stderr?.toString() || '';
-        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
+        expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool|Prerequisites not met/i);
       }
     });
   });

@@ -178,6 +178,14 @@ let cliAvailable: boolean | null = null;
 let lastValidEditor: vscode.TextEditor | undefined;
 
 /**
+ * Reset the CLI availability cache (call after CLI installation)
+ */
+export function resetCLIAvailabilityCache(): void {
+  cliAvailable = null;
+  console.log("CLI availability cache reset");
+}
+
+/**
  * Check if the carbonara CLI is available
  */
 async function checkCarbonaraCLI(): Promise<boolean> {

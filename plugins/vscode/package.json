@@ -117,6 +117,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "carbonara.viewToolInstructions",
+        "title": "View Installation Instructions",
+        "icon": "$(book)"
+      },
+      {
         "command": "carbonara.runSemgrep",
         "title": "Scan current file",
         "icon": "$(play)"
@@ -243,6 +248,11 @@
       "view/item/context": [
         {
           "command": "carbonara.installTool",
+          "when": "view == carbonara.toolsTree && viewItem == uninstalled-tool",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.viewToolInstructions",
           "when": "view == carbonara.toolsTree && viewItem == uninstalled-tool",
           "group": "inline"
         },

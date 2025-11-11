@@ -43,7 +43,10 @@ export class VSCodeDataProvider {
       // Assessment data can exist without a project record (project_id can be NULL)
       return await this.dataService.getAssessmentData();
     } catch (error) {
-      console.error('Failed to load data for project:', error);
+      console.error('[VSCodeDataProvider] Failed to load data for project:', error);
+      if (error instanceof Error) {
+        console.error('[VSCodeDataProvider] Error stack:', error.stack);
+      }
       return [];
     }
   }
@@ -52,6 +55,7 @@ export class VSCodeDataProvider {
     const assessmentData = await this.loadDataForProject(projectPath);
     
     if (assessmentData.length === 0) {
+      console.log(`[VSCodeDataProvider] No assessment data to group`);
       return [];
     }
 
@@ -64,14 +68,18 @@ export class VSCodeDataProvider {
       groups[entry.tool_name].push(entry);
     });
 
+    console.log(`[VSCodeDataProvider] Grouped into ${Object.keys(groups).length} tool groups:`, Object.keys(groups));
+
     const dataGroups: DataGroup[] = [];
 
     // Create groups with schema-based display
     Object.keys(groups).forEach(toolName => {
+      console.log(`[VSCodeDataProvider] Processing tool: ${toolName}`);
       const toolSchema = this.schemaService.getToolSchema(toolName);
       const entries = groups[toolName];
 
       if (toolSchema && toolSchema.display) {
+        console.log(`[VSCodeDataProvider] Found schema for ${toolName}, using schema-based display`);
         // Schema-based group
         dataGroups.push({
           toolName,
@@ -80,6 +88,7 @@ export class VSCodeDataProvider {
           entries: entries.map(entry => this.createSchemaBasedEntry(entry, toolSchema))
         });
       } else {
+        console.log(`[VSCodeDataProvider] No schema found for ${toolName}, using fallback display`);
         // Fallback group
         dataGroups.push({
           toolName,
@@ -90,6 +99,7 @@ export class VSCodeDataProvider {
       }
     });
 
+    console.log(`[VSCodeDataProvider] Created ${dataGroups.length} data groups`);
     return dataGroups;
   }
 

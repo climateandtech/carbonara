@@ -15,5 +15,5 @@
     "types": ["vscode", "mocha", "node", "@playwright/test"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", ".vscode-test", "dist", "src/test/e2e"]
+  "exclude": ["node_modules", ".vscode-test", "dist", "src/test/**/*"]
 } 
