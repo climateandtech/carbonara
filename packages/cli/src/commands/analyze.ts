@@ -555,39 +555,86 @@ function displayGreenframeResults(results: any) {
 
 async function saveToDatabase(toolId: string, url: string, results: any) {
   try {
+    console.log(chalk.blue(`\n💾 Saving results to database...`));
+    console.log(chalk.gray(`   Tool ID: ${toolId}`));
+    console.log(chalk.gray(`   URL: ${url}`));
+    
     const config = await loadProjectConfig();
-    if (!config) {
-      console.log(chalk.yellow('⚠️  No project found. Results not saved.'));
-      return;
+    const projectPath = process.cwd();
+    
+    // Determine database path from config or use default
+    let dbPath: string | undefined;
+    if (config?.database?.path) {
+      // If path is relative, make it relative to project root
+      dbPath = path.isAbsolute(config.database.path)
+        ? config.database.path
+        : path.join(projectPath, config.database.path);
+    } else {
+      // Use default path: .carbonara/carbonara.db in project root
+      dbPath = path.join(projectPath, '.carbonara', 'carbonara.db');
     }
-
-    const dataLake = createDataLake();
+    
+    console.log(chalk.gray(`   Database path: ${dbPath}`));
+    
+    const dataLake = createDataLake({ dbPath });
     await dataLake.initialize();
 
-    // Ensure we have a valid project ID
-    let projectId = config.projectId;
+    // Get or create project
+    let projectId: number | undefined;
     
+    if (config) {
+      console.log(chalk.gray(`   Project: ${config.name || 'Unnamed'}`));
+      console.log(chalk.gray(`   Project ID: ${config.projectId || 'none'}`));
+      projectId = config.projectId;
+    } else {
+      console.log(chalk.yellow('⚠️  No project config found.'));
+    }
+    
+    // If no project ID, try to find existing project by path, or create new one
     if (!projectId) {
-      console.log(chalk.blue('🔧 No project ID found, creating project in database...'));
-      
-      // Create project in database
-      const projectPath = process.cwd();
-      projectId = await dataLake.createProject(
-        config.name || 'Unnamed Project',
-        projectPath,
-        {
-          description: config.description,
-          projectType: config.projectType || 'web',
-          initialized: new Date().toISOString()
+      // Try to find existing project by path
+      const existingProject = await dataLake.getProject(projectPath);
+      if (existingProject) {
+        projectId = existingProject.id;
+        console.log(chalk.blue(`🔧 Found existing project with ID: ${projectId}`));
+      } else {
+        console.log(chalk.blue('🔧 No project found, creating new project in database...'));
+        
+        // Create project in database
+        const projectName = config?.name || path.basename(projectPath) || 'Unnamed Project';
+        projectId = await dataLake.createProject(
+          projectName,
+          projectPath,
+          {
+            description: config?.description || 'Auto-created project',
+            projectType: config?.projectType || 'web',
+            initialized: new Date().toISOString()
+          }
+        );
+        
+        // Try to save config if we can
+        if (config) {
+          const { saveProjectConfig } = await import('../utils/config.js');
+          const updatedConfig = { ...config, projectId };
+          saveProjectConfig(updatedConfig, projectPath);
+        } else {
+          // Create minimal config
+          const { saveProjectConfig } = await import('../utils/config.js');
+          const newConfig: any = {
+            name: projectName,
+            description: 'Auto-created project',
+            projectType: 'web',
+            projectId,
+            database: {
+              path: '.carbonara/carbonara.db'
+            },
+            tools: {}
+          };
+          saveProjectConfig(newConfig, projectPath);
         }
-      );
-      
-      // Update config with new project ID
-      const { saveProjectConfig } = await import('../utils/config.js');
-      const updatedConfig = { ...config, projectId };
-      saveProjectConfig(updatedConfig, projectPath);
-      
-      console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
+        
+        console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
+      }
     }
 
     const assessmentData = {
@@ -598,11 +645,16 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
       ...results  // Spread the results to make fields directly accessible
     };
 
-    await dataLake.storeAssessmentData(projectId, toolId, 'web-analysis', assessmentData, url);
+    console.log(chalk.gray(`   Data type: web-analysis`));
+    console.log(chalk.gray(`   Data keys: ${Object.keys(assessmentData).join(', ')}`));
+    
+    const dataId = await dataLake.storeAssessmentData(projectId, toolId, 'web-analysis', assessmentData, url);
+    
+    console.log(chalk.gray(`   Saved with data ID: ${dataId}`));
 
     await dataLake.close();
 
-    console.log(chalk.green('\n✅ Results saved to project database'));
+    console.log(chalk.green(`✅ Results saved to project database (project ID: ${projectId}, data ID: ${dataId})`));
   } catch (error) {
     console.log(chalk.yellow('\n⚠️  Could not save results:'), error);
   }

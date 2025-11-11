@@ -29,6 +29,12 @@
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
+  "overrides": {
+    "playwright": "^1.55.1",
+    "@playwright/test": {
+      "playwright": "^1.55.1"
+    }
+  },
   "packageManager": "npm@11.6.1",
   "engines": {
     "node": ">=24.9.0",
