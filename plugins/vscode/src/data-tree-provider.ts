@@ -104,6 +104,16 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         "carbonara.config.json"
       );
 
+      // Check if Carbonara project is initialized
+      if (!require("fs").existsSync(configPath)) {
+        console.log(
+          "No Carbonara project detected. Core services will not be initialized."
+        );
+        this.coreServices = null;
+        this._onDidChangeTreeData.fire();
+        return;
+      }
+
       try {
         if (require("fs").existsSync(configPath)) {
           const config = JSON.parse(
@@ -146,7 +156,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       const dbInitPromise = dataService.initialize();
       const dbInitTimeout = setTimeout(() => {
-        console.warn("⚠️ Database initialization taking longer than expected (10s)...");
+        console.warn(
+          "⚠️ Database initialization taking longer than expected (10s)..."
+        );
       }, 10000);
 
       await dbInitPromise;
@@ -187,7 +199,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
           await this.coreServices.vscodeProvider.loadDataForProject(
             projectPath
           );
-        console.log(`✅ Test data load successful: ${testData.length} entries found`);
+        console.log(
+          `✅ Test data load successful: ${testData.length} entries found`
+        );
       } catch (testError) {
         console.error("⚠️ Test data load failed:", testError);
       }
@@ -596,7 +610,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       // Load assessment data - check coreServices is available
       if (!this.coreServices) {
-        console.warn("⚠️ Core services not initialized yet, returning loading state");
+        console.warn(
+          "⚠️ Core services not initialized yet, returning loading state"
+        );
         return [
           new DataItem(
             UI_TEXT.DATA_TREE.LOADING,

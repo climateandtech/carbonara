@@ -17,6 +17,7 @@ import { ToolsTreeProvider } from "./tools-tree-provider";
 import { DeploymentsTreeProvider } from "./deployments-tree-provider";
 import {
   initializeSemgrep,
+  ensureDatabaseInitialized,
   runSemgrepOnFile,
   scanAllFiles,
   clearSemgrepResults,
@@ -181,7 +182,19 @@ export async function activate(context: vscode.ExtensionContext) {
   const watcher = vscode.workspace.createFileSystemWatcher(
     "**/.carbonara/carbonara.config.json"
   );
-  watcher.onDidCreate(() => {
+  watcher.onDidCreate(async () => {
+    // Config was created - initialize Carbonara database
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      try {
+        await ensureDatabaseInitialized(workspaceFolder.uri.fsPath);
+      } catch (error) {
+        console.error(
+          "Failed to initialize Carbonara database after config creation:",
+          error
+        );
+      }
+    }
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
     checkProjectStatus();
@@ -301,6 +314,16 @@ async function initProject() {
     projectName,
     projectType.value
   );
+
+  // Initialize Carbonara database now that project is created
+  try {
+    await ensureDatabaseInitialized(projectPath);
+  } catch (error) {
+    console.error(
+      "Failed to initialize Carbonara database after project creation:",
+      error
+    );
+  }
 
   // Ensure UI reflects the new project
   assessmentTreeProvider.refresh();

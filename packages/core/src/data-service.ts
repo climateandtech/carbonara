@@ -60,6 +60,23 @@ export class DataService {
     }
   }
 
+  /**
+   * Check if database file exists on disk
+   */
+  databaseExists(): boolean {
+    return fs.existsSync(this.dbPath);
+  }
+
+  /**
+   * Check if the project is initialized (has config file)
+   * This prevents creating databases for non-Carbonara projects
+   */
+  isProjectInitialized(): boolean {
+    const dbDir = path.dirname(this.dbPath);
+    const configPath = path.join(dbDir, "carbonara.config.json");
+    return fs.existsSync(configPath);
+  }
+
   async initialize(): Promise<void> {
     // Initialize sql.js
     this.SQL = await initSqlJs();
