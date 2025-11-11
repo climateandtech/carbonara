@@ -835,7 +835,6 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         cwd: this.workspaceFolder?.uri.fsPath,
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
-        cwd: workingDir,
       });
 
       let stdout = "";
