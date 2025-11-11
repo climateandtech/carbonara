@@ -197,16 +197,19 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+    toolsTreeProvider.refresh();
     checkProjectStatus();
   });
   watcher.onDidChange(() => {
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+    toolsTreeProvider.refresh();
     checkProjectStatus();
   });
   watcher.onDidDelete(() => {
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+    toolsTreeProvider.refresh();
     checkProjectStatus();
   });
   context.subscriptions.push(watcher);
@@ -328,6 +331,7 @@ async function initProject() {
   // Ensure UI reflects the new project
   assessmentTreeProvider.refresh();
   dataTreeProvider.refresh();
+  toolsTreeProvider.refresh();
   checkProjectStatus();
 
   vscode.window.showInformationMessage(
@@ -672,6 +676,7 @@ async function searchWorkspaceForProjects() {
     checkProjectStatus();
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+    toolsTreeProvider.refresh();
   }
 }
 
@@ -742,11 +747,14 @@ async function ensureLocalCarbonaraProject(
   projectType: string
 ): Promise<void> {
   try {
-    const configPath = path.join(
-      projectPath,
-      ".carbonara",
-      "carbonara.config.json"
-    );
+    // Ensure .carbonara directory exists first
+    const carbonaraDir = path.join(projectPath, ".carbonara");
+    if (!fs.existsSync(carbonaraDir)) {
+      fs.mkdirSync(carbonaraDir, { recursive: true });
+    }
+
+    // Now create the config file
+    const configPath = path.join(carbonaraDir, "carbonara.config.json");
     if (!fs.existsSync(configPath)) {
       const minimalConfig = {
         name: projectName,
@@ -760,11 +768,6 @@ async function ensureLocalCarbonaraProject(
         JSON.stringify(minimalConfig, null, 2),
         "utf-8"
       );
-    }
-    // Ensure data directory exists
-    const dataDir = path.join(projectPath, ".carbonara");
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
     }
   } catch (error) {
     vscode.window.showErrorMessage(
@@ -823,11 +826,13 @@ function checkProjectStatus() {
     // Make sure views show project data state
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+    toolsTreeProvider.refresh();
   } else {
     carbonaraStatusBar.text = "$(pulse) Carbonara";
     carbonaraStatusBar.tooltip = "Click to initialize Carbonara project";
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
+    toolsTreeProvider.refresh();
   }
 }
 

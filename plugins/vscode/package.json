@@ -273,6 +273,23 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "carbonara.assessmentTree",
+        "contents": "Carbonara has not yet been initialised for this workspace.\n\nInitialise Carbonara to enable the assessment questionnaire, the analysis tools and to view analysis results for this project.\n\n[Initialise Carbonara](command:carbonara.initProject)\n\nInitialise Carbonara to access assessment questionnaire",
+        "when": "workspaceFolderCount != 0"
+      },
+      {
+        "view": "carbonara.dataTree",
+        "contents": "Initialise Carbonara to access analysis results",
+        "when": "workspaceFolderCount != 0"
+      },
+      {
+        "view": "carbonara.toolsTree",
+        "contents": "Initialise Carbonara to access analysis tools",
+        "when": "workspaceFolderCount != 0"
+      }
+    ],
     "configuration": {
       "title": "Carbonara",
       "properties": {
