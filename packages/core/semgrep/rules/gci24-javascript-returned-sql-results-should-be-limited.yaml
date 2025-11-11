@@ -3,7 +3,7 @@ rules:
     languages:
       - javascript
       - typescript
-    severity: WARNING
+    severity: INFO
     message: Returned SQL results should be limited. Add a LIMIT or FETCH FIRST
       clause to your SQL queries.
     patterns:
