@@ -308,7 +308,7 @@
     "@types/node": "22.9.0",
     "@types/vscode": "^1.76.0",
     "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^3.6.2",
+    "@vscode/vsce": "^3.7.0",
     "glob": "^11.0.3",
     "mocha": "^10.2.0",
     "playwright": "^1.55.1",

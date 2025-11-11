@@ -18,6 +18,7 @@ tsconfig.json
 webpack.config.js
 .claude/
 carbonara.db
+.carbonara/
 
 # Parent directory files (monorepo structure)
 ../**
@@ -40,9 +41,8 @@ src/test/e2e/test-results/
 src/test/e2e/playwright-report/
 src/test/e2e/screenshots/
 
-# Documentation (except README)
+# Documentation
 *.md
-!README.md
 
 # IDE files
 .vscode/
