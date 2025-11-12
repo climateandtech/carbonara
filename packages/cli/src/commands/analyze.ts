@@ -346,6 +346,21 @@ function displayDeploymentScanResults(results: any) {
       if (deployment.country) {
         console.log(chalk.gray(`      Country: ${deployment.country}`));
       }
+      if (deployment.grid_zone) {
+        console.log(chalk.gray(`      Grid Zone: ${deployment.grid_zone}`));
+      }
+      if (deployment.carbon_intensity !== null && deployment.carbon_intensity !== undefined) {
+        // Color code based on carbon intensity
+        let carbonColor = chalk.green;
+        if (deployment.carbon_intensity >= 500) {
+          carbonColor = chalk.red;
+        } else if (deployment.carbon_intensity >= 300) {
+          carbonColor = chalk.yellow;
+        } else if (deployment.carbon_intensity >= 100) {
+          carbonColor = chalk.blue;
+        }
+        console.log(chalk.gray(`      Carbon Intensity: ${carbonColor(`${deployment.carbon_intensity} gCO2/kWh`)}`));
+      }
       console.log(chalk.gray(`      Config: ${path.relative(process.cwd(), deployment.config_file_path)}`));
       console.log('');
     }

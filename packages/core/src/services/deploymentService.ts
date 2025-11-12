@@ -1,7 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { DataService } from '../data-service.js';
 import { getGridZoneForRegion, getRegionMapping } from '../data/region-to-grid-mapping.js';
+
+// ES module compatibility for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface DeploymentDetectionResult {
   name: string;
@@ -204,9 +209,10 @@ export class DeploymentService {
     let regexStr = pattern
       .replace(/\./g, '\\.')
       .replace(/\*\*/g, '___DOUBLESTAR___')
+      .replace(/\?/g, '.')  // Convert glob ? to regex . BEFORE adding regex quantifiers
       .replace(/\*/g, '[^/]*')
-      .replace(/___DOUBLESTAR___/g, '.*')
-      .replace(/\?/g, '.');
+      .replace(/___DOUBLESTAR___\//g, '(.*/)?' )  // Make **/ optional to match root dir
+      .replace(/___DOUBLESTAR___/g, '.*');
 
     return new RegExp('^' + regexStr + '$');
   }
