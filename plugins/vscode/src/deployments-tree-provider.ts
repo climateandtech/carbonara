@@ -18,6 +18,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
   private dataService: DataService | null = null;
   private deploymentService: DeploymentService | null = null;
   private carbonService: CarbonIntensityService | null = null;
+  private projectId: number | undefined = undefined;
 
   constructor() {}
 
@@ -32,13 +33,18 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     }
 
     const projectPath = workspaceFolder.uri.fsPath;
-    const configPath = path.join(projectPath, "carbonara.config.json");
+    const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
 
     if (!fs.existsSync(configPath)) {
       return false;
     }
 
-    const dbPath = path.join(projectPath, "carbonara.db");
+    // Load config to get project ID
+    const configContent = fs.readFileSync(configPath, 'utf-8');
+    const config = JSON.parse(configContent);
+    this.projectId = config.projectId;
+
+    const dbPath = path.join(projectPath, ".carbonara", "carbonara.db");
 
     if (!this.dataService) {
       this.dataService = new DataService({ dbPath });
@@ -69,17 +75,78 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
     if (!element) {
       // Root level - show main actions and provider groups
-      // TODO: Update to use assessment_data table
-      const deployments: any[] = [];
+      try {
+        // Fetch deployments from assessment_data table
+        const assessmentData = await this.dataService!.getAssessmentData(
+          undefined,
+          'deployment-scan'
+        );
 
-      if (deployments.length === 0) {
+        // Extract deployments from the most recent scan
+        let deployments: any[] = [];
+        if (assessmentData.length > 0) {
+          const latestScan = assessmentData[0]; // Most recent
+          // data is already parsed by getAssessmentData
+          const data = latestScan.data;
+          deployments = data.deployments || [];
+        }
+
+        if (deployments.length === 0) {
+          return [
+            new DeploymentTreeItem(
+              "No deployments detected",
+              vscode.TreeItemCollapsibleState.None,
+              "info",
+              undefined,
+              "scan-deployments"
+            ),
+            new DeploymentTreeItem(
+              "Scan for Deployments",
+              vscode.TreeItemCollapsibleState.None,
+              "action",
+              "carbonara.scanDeployments"
+            )
+          ];
+        }
+
+        // Group by provider
+        const providers = [...new Set(deployments.map(d => d.provider))];
+        const items: DeploymentTreeItem[] = [];
+
+        // Add scan action at top
+        items.push(
+          new DeploymentTreeItem(
+            "Rescan Deployments",
+            vscode.TreeItemCollapsibleState.None,
+            "action",
+            "carbonara.scanDeployments"
+          )
+        );
+
+        // Add provider groups
+        for (const provider of providers) {
+          const providerDeployments = deployments.filter(d => d.provider === provider);
+          items.push(
+            new DeploymentTreeItem(
+              `${provider.toUpperCase()} (${providerDeployments.length})`,
+              vscode.TreeItemCollapsibleState.Expanded,
+              "provider",
+              undefined,
+              undefined,
+              providerDeployments
+            )
+          );
+        }
+
+        return items;
+      } catch (error: any) {
+        console.error('Error loading deployments:', error);
+        vscode.window.showErrorMessage(`Failed to load deployments: ${error.message || error}`);
         return [
           new DeploymentTreeItem(
-            "No deployments detected",
+            "Error loading deployments",
             vscode.TreeItemCollapsibleState.None,
-            "info",
-            undefined,
-            "scan-deployments"
+            "info"
           ),
           new DeploymentTreeItem(
             "Scan for Deployments",
@@ -89,37 +156,6 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
           )
         ];
       }
-
-      // Group by provider
-      const providers = [...new Set(deployments.map(d => d.provider))];
-      const items: DeploymentTreeItem[] = [];
-
-      // Add scan action at top
-      items.push(
-        new DeploymentTreeItem(
-          "Rescan Deployments",
-          vscode.TreeItemCollapsibleState.None,
-          "action",
-          "carbonara.scanDeployments"
-        )
-      );
-
-      // Add provider groups
-      for (const provider of providers) {
-        const providerDeployments = deployments.filter(d => d.provider === provider);
-        items.push(
-          new DeploymentTreeItem(
-            `${provider.toUpperCase()} (${providerDeployments.length})`,
-            vscode.TreeItemCollapsibleState.Expanded,
-            "provider",
-            undefined,
-            undefined,
-            providerDeployments
-          )
-        );
-      }
-
-      return items;
     }
 
     if (element.type === "provider" && element.deployments) {
@@ -198,11 +234,14 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
           // Save deployments
           progress.report({ message: "Saving detected deployments..." });
-          await this.deploymentService!.saveDeployments(detections);
+          await this.deploymentService!.saveDeployments(
+            detections,
+            this.projectId,
+            workspaceFolder.uri.fsPath
+          );
 
-          // Update carbon intensities
-          progress.report({ message: "Updating carbon intensity data..." });
-          await this.carbonService!.updateDeploymentCarbonIntensities();
+          // Carbon intensity updates are deprecated (they relied on deployments table)
+          // TODO: Implement carbon intensity lookup for deployments in assessment_data
 
           vscode.window.showInformationMessage(
             `Found ${detections.length} deployment(s)`
