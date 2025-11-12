@@ -1,0 +1,1565 @@
+- zone_key: AE
+  country: United Arab Emirates
+  zone_name: United Arab Emirates
+  average_co2: 387.32692481884055
+- zone_key: AF
+  country: Afghanistan
+  zone_name: Afghanistan
+  average_co2: 129.00345561594204
+- zone_key: AG
+  country: Antigua and Barbuda
+  zone_name: Antigua and Barbuda
+  average_co2: 664.0281657608696
+- zone_key: AL
+  country: Albania
+  zone_name: Albania
+  average_co2: 98.59865942028985
+- zone_key: AM
+  country: Armenia
+  zone_name: Armenia
+  average_co2: 224.0113813405797
+- zone_key: AO
+  country: Angola
+  zone_name: Angola
+  average_co2: 177.78724184782607
+- zone_key: AR
+  country: Argentina
+  zone_name: Argentina
+  average_co2: 377.61636775362314
+- zone_key: ASM
+  country: American Samoa
+  zone_name: American Samoa
+  average_co2: 647.05884
+- zone_key: AT
+  country: Austria
+  zone_name: Austria
+  average_co2: 190.8585597826087
+- zone_key: AU
+  country: Australia
+  zone_name: Australia
+  average_co2: 455.9182427536232
+- zone_key: AU-NSW
+  country: Australia
+  zone_name: New South Wales
+  fallback_zone_key: AU
+  average_co2: 502.12161231884056
+- zone_key: AU-NT
+  country: Australia
+  zone_name: Northern Territory
+  fallback_zone_key: AU
+  average_co2: 497.3488315217391
+- zone_key: AU-QLD
+  country: Australia
+  zone_name: Queensland
+  fallback_zone_key: AU
+  average_co2: 563.9940760869565
+- zone_key: AU-SA
+  country: Australia
+  zone_name: South Australia
+  fallback_zone_key: AU
+  average_co2: 151.6420652173913
+- zone_key: AU-TAS
+  country: Australia
+  zone_name: Tasmania
+  fallback_zone_key: AU
+  average_co2: 93.88438405797102
+- zone_key: AU-TAS-FI
+  country: Australia
+  zone_name: Flinders Island
+  fallback_zone_key: AU
+  average_co2: 237.21932518115943
+- zone_key: AU-TAS-KI
+  country: Australia
+  zone_name: King Island
+  fallback_zone_key: AU
+  average_co2: 450.5694384057971
+- zone_key: AU-VIC
+  country: Australia
+  zone_name: Victoria
+  fallback_zone_key: AU
+  average_co2: 449.5577762681159
+- zone_key: AU-WA
+  country: Australia
+  zone_name: Western Australia
+  fallback_zone_key: AU
+  average_co2: 372.9866621376812
+- zone_key: AU-WA-RI
+  country: Australia
+  zone_name: Rottnest Island
+  fallback_zone_key: AU
+  average_co2: 499.341893115942
+- zone_key: AW
+  country: Aruba
+  zone_name: Aruba
+  average_co2: 594.2917481884058
+- zone_key: AX
+  country: Åland Islands
+  zone_name: Åland Islands
+  average_co2: 16.01794384057971
+  low_average: true
+- zone_key: AZ
+  country: Azerbaijan
+  zone_name: Azerbaijan
+  average_co2: 461.295919384058
+- zone_key: BA
+  country: Bosnia and Herzegovina
+  zone_name: Bosnia and Herzegovina
+  average_co2: 503.4212454710145
+- zone_key: BB
+  country: Barbados
+  zone_name: Barbados
+  average_co2: 648.5430027173912
+- zone_key: BD
+  country: Bangladesh
+  zone_name: Bangladesh
+  average_co2: 610.671902173913
+- zone_key: BE
+  country: Belgium
+  zone_name: Belgium
+  average_co2: 189.27769021739132
+- zone_key: BF
+  country: Burkina Faso
+  zone_name: Burkina Faso
+  average_co2: 575.3178623188406
+- zone_key: BG
+  country: Bulgaria
+  zone_name: Bulgaria
+  average_co2: 449.733419384058
+- zone_key: BH
+  country: Bahrain
+  zone_name: Bahrain
+  average_co2: 488.4814356884058
+- zone_key: BI
+  country: Burundi
+  zone_name: Burundi
+  average_co2: 265.2836277173913
+- zone_key: BJ
+  country: Benin
+  zone_name: Benin
+  average_co2: 517.0395606884058
+- zone_key: BMU
+  country: Bermuda
+  zone_name: Bermuda
+  average_co2: 640.625
+- zone_key: BN
+  country: Brunei
+  zone_name: Brunei
+  average_co2: 566.9360009057971
+- zone_key: BO
+  country: Bolivia
+  zone_name: Bolivia
+  average_co2: 353.8582201086956
+- zone_key: BR
+  country: Brazil
+  zone_name: Brazil
+  average_co2: 109.95475543478261
+- zone_key: BR-CS
+  country: Brazil
+  zone_name: Central Brazil
+  fallback_zone_key: BR
+  average_co2: 119.97695199275361
+- zone_key: BR-N
+  country: Brazil
+  zone_name: North Brazil
+  fallback_zone_key: BR
+  average_co2: 180.15471920289855
+- zone_key: BR-NE
+  country: Brazil
+  zone_name: North-East Brazil
+  fallback_zone_key: BR
+  average_co2: 51.44235054347826
+- zone_key: BR-S
+  country: Brazil
+  zone_name: South Brazil
+  fallback_zone_key: BR
+  average_co2: 94.92945199275363
+- zone_key: BS
+  country: Bahamas
+  zone_name: Bahamas
+  average_co2: 691.7862182971014
+- zone_key: BT
+  country: Bhutan
+  zone_name: Bhutan
+  average_co2: 67.34346014492753
+- zone_key: BW
+  country: Botswana
+  zone_name: Botswana
+  average_co2: 811.0291077898551
+- zone_key: BY
+  country: Belarus
+  zone_name: Belarus
+  average_co2: 334.31643568840576
+- zone_key: BZ
+  country: Belize
+  zone_name: Belize
+  average_co2: 175.11311141304347
+- zone_key: CA
+  country: Canada
+  zone_name: Canada
+  fallback_zone_key: XZ
+  average_co2: 128.16888586956523
+- zone_key: CA-AB
+  country: Canada
+  zone_name: Alberta
+  average_co2: 384.2668478260869
+- zone_key: CA-BC
+  country: Canada
+  zone_name: British Columbia
+  average_co2: 66.65802083333334
+- zone_key: CA-MB
+  country: Canada
+  zone_name: Manitoba
+  average_co2: 51.24582427536232
+- zone_key: CA-NB
+  country: Canada
+  zone_name: New Brunswick
+  average_co2: 163.43480072463768
+- zone_key: CA-NL
+  country: Canada
+  zone_name: Newfoundland and Labrador
+  average_co2: 26.84547554347826
+  low_average: true
+- zone_key: CA-NS
+  country: Canada
+  zone_name: Nova Scotia
+  average_co2: 391.34678442028985
+- zone_key: CA-NT
+  country: Canada
+  zone_name: Northwest Territories
+  average_co2: 106.7767527173913
+- zone_key: CA-NU
+  country: Canada
+  zone_name: Nunavut
+  average_co2: 649.3738858695652
+- zone_key: CA-ON
+  country: Canada
+  zone_name: Ontario
+  average_co2: 77.6897509057971
+- zone_key: CA-PE
+  country: Canada
+  zone_name: Prince Edward Island
+  average_co2: 32.59719202898551
+  low_average: true
+- zone_key: CA-QC
+  country: Canada
+  zone_name: Québec
+  average_co2: 37.089651268115944
+  low_average: true
+- zone_key: CA-SK
+  country: Canada
+  zone_name: Saskatchewan
+  average_co2: 484.948777173913
+- zone_key: CA-YT
+  country: Canada
+  zone_name: Yukon
+  average_co2: 238.0646376811594
+- zone_key: CD
+  country: Democratic Republic of the Congo
+  zone_name: Democratic Republic of the Congo
+  average_co2: 24.585498188405797
+  low_average: true
+- zone_key: CF
+  country: Central African Republic
+  zone_name: Central African Republic
+  average_co2: 24.0
+  low_average: true
+- zone_key: CG
+  country: Congo
+  zone_name: Congo
+  average_co2: 401.72446105072464
+- zone_key: CH
+  country: Switzerland
+  zone_name: Switzerland
+  average_co2: 49.77315217391304
+  low_average: true
+- zone_key: CI
+  country: Ivory Coast
+  zone_name: Ivory Coast
+  average_co2: 390.48985054347827
+- zone_key: CL-SEN
+  country: Chile
+  zone_name: Sistema Eléctrico Nacional
+  average_co2: 170.85684329710145
+- zone_key: CM
+  country: Cameroon
+  zone_name: Cameroon
+  average_co2: 159.63951992753624
+- zone_key: CN
+  country: China
+  zone_name: China
+  average_co2: 521.8808333333333
+- zone_key: CO
+  country: Colombia
+  zone_name: Colombia
+  average_co2: 90.54041666666666
+- zone_key: COK
+  country: Cook Islands
+  zone_name: Cook Islands
+  average_co2: 250.0
+- zone_key: CR
+  country: Costa Rica
+  zone_name: Costa Rica
+  average_co2: 26.1423731884058
+  low_average: true
+- zone_key: CU
+  country: Cuba
+  zone_name: Cuba
+  average_co2: 605.9701675724638
+- zone_key: CV
+  country: Cabo Verde
+  zone_name: Cabo Verde
+  average_co2: 497.1321150362319
+- zone_key: CW
+  country: Curaçao
+  zone_name: Curaçao
+  average_co2: 550.6336458333334
+- zone_key: CY
+  country: Cyprus
+  zone_name: Cyprus
+  average_co2: 716.563106884058
+- zone_key: CZ
+  country: Czechia
+  zone_name: Czechia
+  average_co2: 549.1406476449275
+- zone_key: DE
+  country: Germany
+  zone_name: Germany
+  average_co2: 390.8151675724638
+- zone_key: DJ
+  country: Djibouti
+  zone_name: Djibouti
+  average_co2: 419.84534420289856
+- zone_key: DK
+  country: Denmark
+  zone_name: Denmark
+  average_co2: 123.71727807971014
+- zone_key: DK-BHM
+  country: Denmark
+  zone_name: Bornholm
+  fallback_zone_key: DK
+  average_co2: 63.7149411231884
+- zone_key: DK-DK1
+  country: Denmark
+  zone_name: West Denmark
+  fallback_zone_key: DK
+  average_co2: 117.48992300724638
+- zone_key: DK-DK2
+  country: Denmark
+  zone_name: East Denmark
+  fallback_zone_key: DK
+  average_co2: 135.51364130434783
+- zone_key: DM
+  country: Dominica
+  zone_name: Dominica
+  average_co2: 621.967527173913
+- zone_key: DO
+  country: Dominican Republic
+  zone_name: Dominican Republic
+  average_co2: 601.8187454710145
+- zone_key: DZ
+  country: Algeria
+  zone_name: Algeria
+  average_co2: 487.6616893115942
+- zone_key: EC
+  country: Ecuador
+  zone_name: Ecuador
+  average_co2: 332.3781793478261
+- zone_key: EE
+  country: Estonia
+  zone_name: Estonia
+  average_co2: 222.175
+- zone_key: EG
+  country: Egypt
+  zone_name: Egypt
+  average_co2: 447.37368659420287
+- zone_key: ER
+  country: Eritrea
+  zone_name: Eritrea
+  average_co2: 634.1769972826087
+- zone_key: ES
+  country: Spain
+  zone_name: Spain
+  average_co2: 152.1161186594203
+- zone_key: ES-CE
+  country: Spain
+  zone_name: Ceuta
+  fallback_zone_key: ES
+  average_co2: 649.4122780797102
+- zone_key: ES-CN-FV
+  country: Spain
+  zone_name: Fuerteventura
+  fallback_zone_key: ES
+  average_co2: 806.4058378623189
+- zone_key: ES-CN-GC
+  country: Spain
+  zone_name: Gran Canaria
+  fallback_zone_key: ES
+  average_co2: 770.4604347826087
+- zone_key: ES-CN-HI
+  country: Spain
+  zone_name: El Hierro
+  fallback_zone_key: ES
+  average_co2: 664.7130163043479
+- zone_key: ES-CN-IG
+  country: Spain
+  zone_name: Isla de la Gomera
+  fallback_zone_key: ES
+  average_co2: 886.8502445652174
+- zone_key: ES-CN-LP
+  country: Spain
+  zone_name: La Palma
+  fallback_zone_key: ES
+  average_co2: 862.2489990942029
+- zone_key: ES-CN-LZ
+  country: Spain
+  zone_name: Lanzarote
+  fallback_zone_key: ES
+  average_co2: 851.9380932971014
+- zone_key: ES-CN-TE
+  country: Spain
+  zone_name: Tenerife
+  fallback_zone_key: ES
+  average_co2: 799.2436277173913
+- zone_key: ES-IB-FO
+  country: Spain
+  zone_name: Formentera
+  fallback_zone_key: ES
+  average_co2: 463.9352128623188
+- zone_key: ES-IB-IZ
+  country: Spain
+  zone_name: Ibiza
+  fallback_zone_key: ES
+  average_co2: 479.33865036231884
+- zone_key: ES-IB-MA
+  country: Spain
+  zone_name: Mallorca
+  fallback_zone_key: ES
+  average_co2: 412.42835597826087
+- zone_key: ES-IB-ME
+  country: Spain
+  zone_name: Menorca
+  fallback_zone_key: ES
+  average_co2: 822.0159375
+- zone_key: ES-ML
+  country: Spain
+  zone_name: Melilla
+  fallback_zone_key: ES
+  average_co2: 623.503125
+- zone_key: ET
+  country: Ethiopia
+  zone_name: Ethiopia
+  average_co2: 23.80014945652174
+  low_average: true
+- zone_key: FI
+  country: Finland
+  zone_name: Finland
+  average_co2: 73.24217391304347
+- zone_key: FJ
+  country: Fiji
+  zone_name: Fiji
+  average_co2: 305.20935235507244
+- zone_key: FK
+  country: Falkland Islands
+  zone_name: Falkland Islands
+  average_co2: 700.0
+- zone_key: FM
+  country: Micronesia
+  zone_name: Micronesia
+  average_co2: 616.3887998188405
+- zone_key: FO
+  country: Faroe Islands
+  zone_name: Faroe Islands
+  average_co2: 337.06020380434785
+- zone_key: FO-MI
+  country: Faroe Islands
+  zone_name: Main Islands
+  fallback_zone_key: XZ
+  average_co2: 319.838115942029
+- zone_key: FO-SI
+  country: Faroe Islands
+  zone_name: South Island
+  fallback_zone_key: XZ
+  average_co2: 501.4815851449276
+- zone_key: FR
+  country: France
+  zone_name: France
+  average_co2: 35.56600996376812
+  low_average: true
+- zone_key: FR-COR
+  country: France
+  zone_name: Corsica
+  fallback_zone_key: XZ
+  average_co2: 509.48100996376814
+- zone_key: GA
+  country: Gabon
+  zone_name: Gabon
+  average_co2: 306.8964266304348
+- zone_key: GB
+  country: Great Britain
+  zone_name: Great Britain
+  average_co2: 191.56878623188405
+- zone_key: GB-NIR
+  country: Great Britain
+  zone_name: Northern Ireland
+  average_co2: 309.18594655797096
+- zone_key: GB-ORK
+  country: Great Britain
+  zone_name: Orkney Islands
+  fallback_zone_key: GB
+  average_co2: 65.74151268115942
+- zone_key: GE
+  country: Georgia
+  zone_name: Georgia
+  average_co2: 225.80926630434783
+- zone_key: GF
+  country: French Guiana
+  zone_name: French Guiana
+  average_co2: 454.83673007246375
+- zone_key: GH
+  country: Ghana
+  zone_name: Ghana
+  average_co2: 326.292481884058
+- zone_key: GI
+  country: Gibraltar
+  zone_name: Gibraltar
+  average_co2: 490.0
+- zone_key: GL
+  country: Greenland
+  zone_name: Greenland
+  average_co2: 106.89579257246378
+- zone_key: GMB
+  country: Gambia
+  zone_name: Gambia
+  average_co2: 666.6667
+- zone_key: GN
+  country: Guinea
+  zone_name: Guinea
+  average_co2: 194.14824275362318
+- zone_key: GP
+  country: Guadeloupe
+  zone_name: Guadeloupe
+  average_co2: 511.4090353260869
+- zone_key: GQ
+  country: Equatorial Guinea
+  zone_name: Equatorial Guinea
+  average_co2: 353.8770244565217
+- zone_key: GR
+  country: Greece
+  zone_name: Greece
+  average_co2: 349.6316259057971
+- zone_key: GRD
+  country: Grenada
+  zone_name: Grenada
+  average_co2: 666.6667
+- zone_key: GS
+  country: South Georgia and the South Sandwich Islands
+  zone_name: South Georgia and the South Sandwich Islands
+  average_co2: 23.752178442028985
+  low_average: true
+- zone_key: GT
+  country: Guatemala
+  zone_name: Guatemala
+  average_co2: 246.6051947463768
+- zone_key: GU
+  country: Guam
+  zone_name: Guam
+  average_co2: 656.3513224637682
+- zone_key: GW
+  country: Guinea-Bissau
+  zone_name: Guinea-Bissau
+  average_co2: 700.0
+- zone_key: GY
+  country: Guyana
+  zone_name: Guyana
+  average_co2: 653.1282336956522
+- zone_key: HK
+  country: Hong Kong
+  zone_name: Hong Kong
+  average_co2: 594.5927490942029
+- zone_key: HN
+  country: Honduras
+  zone_name: Honduras
+  average_co2: 268.9482518115942
+- zone_key: HR
+  country: Croatia
+  zone_name: Croatia
+  average_co2: 276.8922509057971
+- zone_key: HT
+  country: Haiti
+  zone_name: Haiti
+  average_co2: 522.3941485507246
+- zone_key: HU
+  country: Hungary
+  zone_name: Hungary
+  average_co2: 276.638446557971
+- zone_key: ID
+  country: Indonesia
+  zone_name: Indonesia
+  average_co2: 645.5143251811594
+- zone_key: IE
+  country: Ireland
+  zone_name: Ireland
+  average_co2: 385.7694474637681
+- zone_key: IL
+  country: Israel
+  zone_name: Israel
+  average_co2: 504.47975543478265
+- zone_key: IN
+  country: Mainland India
+  zone_name: Mainland India
+  fallback_zone_key: XZ
+  average_co2: 667.6556023550725
+- zone_key: IN-EA
+  country: India
+  zone_name: Eastern India
+  fallback_zone_key: XZ
+  average_co2: 749.1220969202899
+- zone_key: IN-NE
+  country: India
+  zone_name: North Eastern India
+  average_co2: 423.90309329710146
+- zone_key: IN-NO
+  country: India
+  zone_name: Northern India
+  average_co2: 619.3297554347827
+- zone_key: IN-SO
+  country: India
+  zone_name: Southern India
+  average_co2: 526.698455615942
+- zone_key: IN-WE
+  country: India
+  zone_name: Western India
+  average_co2: 743.3971105072465
+- zone_key: IQ
+  country: Iraq
+  zone_name: Iraq
+  average_co2: 558.8256929347825
+- zone_key: IR
+  country: Iran
+  zone_name: Iran
+  average_co2: 526.8264130434783
+- zone_key: IS
+  country: Iceland
+  zone_name: Iceland
+  average_co2: 28.099153079710145
+  low_average: true
+- zone_key: IT
+  country: Italy
+  zone_name: Italy
+  average_co2: 300.9953849637681
+- zone_key: IT-CNO
+  country: Italy
+  zone_name: Central North Italy
+  fallback_zone_key: IT
+  average_co2: 305.2848596014493
+- zone_key: IT-CSO
+  country: Italy
+  zone_name: Central South Italy
+  fallback_zone_key: IT
+  average_co2: 322.55202898550726
+- zone_key: IT-NO
+  country: Italy
+  zone_name: North Italy
+  fallback_zone_key: IT
+  average_co2: 273.3386548913044
+- zone_key: IT-SAR
+  country: Italy
+  zone_name: Sardinia
+  fallback_zone_key: IT
+  average_co2: 557.1576539855073
+- zone_key: IT-SIC
+  country: Italy
+  zone_name: Sicily
+  fallback_zone_key: IT
+  average_co2: 331.0107201086957
+- zone_key: IT-SO
+  country: Italy
+  zone_name: South Italy
+  fallback_zone_key: IT
+  average_co2: 312.97073822463767
+- zone_key: JM
+  country: Jamaica
+  zone_name: Jamaica
+  average_co2: 488.620982789855
+- zone_key: JO
+  country: Jordan
+  zone_name: Jordan
+  average_co2: 405.5424230072464
+- zone_key: JP
+  country: Japan
+  zone_name: Japan
+  fallback_zone_key: XZ
+  average_co2: 464.6736865942029
+- zone_key: JP-CB
+  country: Japan
+  zone_name: Chūbu
+  average_co2: 486.7145244565217
+- zone_key: JP-CG
+  country: Japan
+  zone_name: Chūgoku
+  average_co2: 482.26994565217393
+- zone_key: JP-HKD
+  country: Japan
+  zone_name: Hokkaidō
+  average_co2: 468.7680932971014
+- zone_key: JP-HR
+  country: Japan
+  zone_name: Hokuriku
+  average_co2: 461.21426177536233
+- zone_key: JP-KN
+  country: Japan
+  zone_name: Kansai
+  average_co2: 365.21050724637684
+- zone_key: JP-KY
+  country: Japan
+  zone_name: Kyūshū
+  average_co2: 310.3716485507246
+- zone_key: JP-ON
+  country: Japan
+  zone_name: Okinawa
+  average_co2: 598.8582563405797
+- zone_key: JP-SK
+  country: Japan
+  zone_name: Shikoku
+  average_co2: 394.6961956521739
+- zone_key: JP-TH
+  country: Japan
+  zone_name: Tōhoku
+  average_co2: 483.68908967391303
+- zone_key: JP-TK
+  country: Japan
+  zone_name: Tōkyō
+  average_co2: 545.5932246376811
+- zone_key: KE
+  country: Kenya
+  zone_name: Kenya
+  average_co2: 96.13029891304349
+- zone_key: KG
+  country: Kyrgyzstan
+  zone_name: Kyrgyzstan
+  average_co2: 150.58913496376812
+- zone_key: KH
+  country: Cambodia
+  zone_name: Cambodia
+  average_co2: 275.63324275362316
+- zone_key: KIR
+  country: Kiribati
+  zone_name: Kiribati
+  average_co2: 500.0
+- zone_key: KM
+  country: Comoros
+  zone_name: Comoros
+  average_co2: 700.0
+- zone_key: KNA
+  country: Saint Kitts and Nevis
+  zone_name: Saint Kitts and Nevis
+  average_co2: 636.36365
+- zone_key: KP
+  country: North Korea
+  zone_name: North Korea
+  average_co2: 300.8273777173913
+- zone_key: KR
+  country: South Korea
+  zone_name: South Korea
+  average_co2: 398.5660461956522
+- zone_key: KW
+  country: Kuwait
+  zone_name: Kuwait
+  average_co2: 515.022490942029
+- zone_key: KY
+  country: Cayman Islands
+  zone_name: Cayman Islands
+  average_co2: 681.1112182971015
+- zone_key: KZ
+  country: Kazakhstan
+  zone_name: Kazakhstan
+  average_co2: 604.6361458333333
+- zone_key: LA
+  country: Laos
+  zone_name: Laos
+  average_co2: 203.62586956521739
+- zone_key: LB
+  country: Lebanon
+  zone_name: Lebanon
+  average_co2: 378.46052989130436
+- zone_key: LC
+  country: Saint Lucia
+  zone_name: Saint Lucia
+  average_co2: 684.6766440217391
+- zone_key: LK
+  country: Sri Lanka
+  zone_name: Sri Lanka
+  average_co2: 353.51624094202896
+- zone_key: LR
+  country: Liberia
+  zone_name: Liberia
+  average_co2: 487.1354981884058
+- zone_key: LS
+  country: Lesotho
+  zone_name: Lesotho
+  average_co2: 24.0
+  low_average: true
+- zone_key: LT
+  country: Lithuania
+  zone_name: Lithuania
+  average_co2: 172.71660326086956
+- zone_key: LU
+  country: Luxembourg
+  zone_name: Luxembourg
+  average_co2: 296.10647192028983
+- zone_key: LV
+  country: Latvia
+  zone_name: Latvia
+  average_co2: 206.76490489130433
+- zone_key: LY
+  country: Libya
+  zone_name: Libya
+  average_co2: 525.2646920289855
+- zone_key: MA
+  country: Morocco
+  zone_name: Morocco
+  average_co2: 579.6045153985507
+- zone_key: MD
+  country: Moldova
+  zone_name: Moldova
+  average_co2: 424.73298913043476
+- zone_key: ME
+  country: Montenegro
+  zone_name: Montenegro
+  average_co2: 412.61367300724635
+- zone_key: MG
+  country: Madagascar
+  zone_name: Madagascar
+  average_co2: 477.2856023550725
+- zone_key: MK
+  country: North Macedonia
+  zone_name: North Macedonia
+  average_co2: 499.26595108695653
+- zone_key: ML
+  country: Mali
+  zone_name: Mali
+  average_co2: 418.28748188405797
+- zone_key: MM
+  country: Myanmar
+  zone_name: Myanmar
+  average_co2: 328.0898278985507
+- zone_key: MN
+  country: Mongolia
+  zone_name: Mongolia
+  average_co2: 752.9844202898552
+- zone_key: MO
+  country: Macao3
+  zone_name: Macao3
+  fallback_zone_key: XZ
+  average_co2: 387.57552536231884
+- zone_key: MQ
+  country: Martinique
+  zone_name: Martinique
+  average_co2: 588.2794836956522
+- zone_key: MR
+  country: Mauritania
+  zone_name: Mauritania
+  average_co2: 541.2480298913043
+- zone_key: MSR
+  country: Montserrat
+  zone_name: Montserrat
+  average_co2: 1000.0
+- zone_key: MT
+  country: Malta
+  zone_name: Malta
+  average_co2: 436.4840081521739
+- zone_key: MU
+  country: Mauritius
+  zone_name: Mauritius
+  average_co2: 592.4139628623188
+- zone_key: MV
+  country: Maldives
+  zone_name: Maldives
+  average_co2: 643.0546331521739
+- zone_key: MW
+  country: Malawi
+  zone_name: Malawi
+  average_co2: 63.35807518115942
+- zone_key: MX
+  country: Mexico
+  zone_name: Mexico
+  average_co2: 383.2010054347826
+- zone_key: MY
+  country: Malaysia
+  zone_name: Malaysia
+  average_co2: 567.8724864130435
+- zone_key: MY-EM
+  country: Malaysia
+  zone_name: Borneo
+  fallback_zone_key: XZ
+  average_co2: 385.4336367753623
+- zone_key: MY-WM
+  country: Malaysia
+  zone_name: Peninsula
+  fallback_zone_key: XZ
+  average_co2: 646.2559918478261
+- zone_key: MZ
+  country: Mozambique
+  zone_name: Mozambique
+  average_co2: 99.44571557971015
+- zone_key: NA
+  country: Namibia
+  zone_name: Namibia
+  average_co2: 45.50850996376811
+  low_average: true
+- zone_key: NC
+  country: New Caledonia
+  zone_name: New Caledonia
+  average_co2: 525.4381567028985
+- zone_key: NE
+  country: Niger
+  zone_name: Niger
+  average_co2: 650.2360144927537
+- zone_key: NG
+  country: Nigeria
+  zone_name: Nigeria
+  average_co2: 361.510009057971
+- zone_key: NI
+  country: Nicaragua
+  zone_name: Nicaragua
+  average_co2: 259.2248188405797
+- zone_key: NL
+  country: Netherlands
+  zone_name: Netherlands
+  average_co2: 333.028419384058
+- zone_key: "NO"
+  country: Norway
+  zone_name: Norway
+- zone_key: NO-NO1
+  country: Norway
+  zone_name: Southeast Norway
+  fallback_zone_key: "NO"
+  average_co2: 24.236064311594205
+  low_average: true
+- zone_key: NO-NO2
+  country: Norway
+  zone_name: Southwest Norway
+  fallback_zone_key: "NO"
+  average_co2: 26.699166666666667
+  low_average: true
+- zone_key: NO-NO3
+  country: Norway
+  zone_name: Middle Norway
+  fallback_zone_key: "NO"
+  average_co2: 28.062644927536233
+  low_average: true
+- zone_key: NO-NO4
+  country: Norway
+  zone_name: North Norway
+  fallback_zone_key: "NO"
+  average_co2: 49.48104166666667
+  low_average: true
+- zone_key: NO-NO5
+  country: Norway
+  zone_name: West Norway
+  fallback_zone_key: "NO"
+  average_co2: 26.863713768115943
+  low_average: true
+- zone_key: NP
+  country: Nepal
+  zone_name: Nepal
+  average_co2: 55.946354166666666
+- zone_key: NRU
+  country: Nauru
+  zone_name: Nauru
+  average_co2: 750.0
+- zone_key: NZ
+  country: New Zealand
+  zone_name: New Zealand
+  average_co2: 54.32084692028985
+- zone_key: OM
+  country: Oman
+  zone_name: Oman
+  average_co2: 480.7985552536232
+- zone_key: PA
+  country: Panama
+  zone_name: Panama
+  average_co2: 73.2358106884058
+- zone_key: PE
+  country: Peru
+  zone_name: Peru
+  average_co2: 190.07657155797102
+- zone_key: PF
+  country: French Polynesia
+  zone_name: French Polynesia
+  average_co2: 335.86241847826085
+- zone_key: PG
+  country: Papua New Guinea
+  zone_name: Papua New Guinea
+  average_co2: 522.622490942029
+- zone_key: PH
+  country: Philippines
+  zone_name: Philippines
+  average_co2: 605.416240942029
+- zone_key: PH-LU
+  country: Philippines
+  zone_name: Luzon
+  fallback_zone_key: PH
+  average_co2: 625.1787182971015
+- zone_key: PH-MI
+  country: Philippines
+  zone_name: Mindanao
+  fallback_zone_key: PH
+  average_co2: 535.6425588768116
+- zone_key: PH-VI
+  country: Philippines
+  zone_name: Visayas
+  fallback_zone_key: PH
+  average_co2: 580.5044157608696
+- zone_key: PK
+  country: Pakistan
+  zone_name: Pakistan
+  average_co2: 253.67312952898553
+- zone_key: PL
+  country: Poland
+  zone_name: Poland
+  average_co2: 736.0558242753623
+- zone_key: PM
+  country: Saint Pierre and Miquelon
+  zone_name: Saint Pierre and Miquelon
+  average_co2: 700.0
+- zone_key: PR
+  country: Puerto Rico
+  zone_name: Puerto Rico
+  average_co2: 392.3483061594203
+- zone_key: PS
+  country: State of Palestine
+  zone_name: State of Palestine
+  average_co2: 526.4164492753623
+- zone_key: PSE
+  country: Palestine
+  zone_name: Palestine
+  average_co2: 460.78433
+- zone_key: PT
+  country: Portugal
+  zone_name: Portugal
+  average_co2: 125.18615489130435
+- zone_key: PT-MA
+  country: Portugal
+  zone_name: Madeira
+  fallback_zone_key: PT
+  average_co2: 679.5257699275362
+- zone_key: PW
+  country: Palau
+  zone_name: Palau
+  average_co2: 604.1948278985507
+- zone_key: PY
+  country: Paraguay
+  zone_name: Paraguay
+  average_co2: 25.445774456521736
+  low_average: true
+- zone_key: QA
+  country: Qatar
+  zone_name: Qatar
+  average_co2: 490.0
+- zone_key: RE
+  country: Réunion
+  zone_name: Réunion
+  average_co2: 318.97852807971014
+- zone_key: REU
+  country: Reunion
+  zone_name: Reunion
+  average_co2: 525.22253
+- zone_key: RO
+  country: Romania
+  zone_name: Romania
+  average_co2: 349.4313768115942
+- zone_key: RS
+  country: Serbia
+  zone_name: Serbia
+  average_co2: 558.645027173913
+- zone_key: RU-1
+  country: Russia
+  zone_name: Europe-Ural
+  fallback_zone_key: XZ
+  average_co2: 363.1492481884058
+- zone_key: RU-2
+  country: Russia
+  zone_name: Siberia
+  fallback_zone_key: XZ
+  average_co2: 443.69333786231886
+- zone_key: RU-AS
+  country: Russia
+  zone_name: East
+  fallback_zone_key: XZ
+  average_co2: 436.7753894927537
+- zone_key: RW
+  country: Rwanda
+  zone_name: Rwanda
+  average_co2: 337.11781702898554
+- zone_key: SA
+  country: Saudi Arabia
+  zone_name: Saudi Arabia
+  average_co2: 548.9054347826087
+- zone_key: SB
+  country: Solomon Islands
+  zone_name: Solomon Islands
+  average_co2: 598.405588768116
+- zone_key: SC
+  country: Seychelles
+  zone_name: Seychelles
+  average_co2: 576.607178442029
+- zone_key: SD
+  country: Sudan
+  zone_name: Sudan
+  average_co2: 183.36335597826087
+- zone_key: SE
+  country: Sweden
+  zone_name: Sweden
+  average_co2: 18.840434782608696
+  low_average: true
+- zone_key: SE-SE1
+  country: Sweden
+  zone_name: North Sweden
+  fallback_zone_key: SE
+  average_co2: 15.0039990942029
+  low_average: true
+- zone_key: SE-SE2
+  country: Sweden
+  zone_name: North Central Sweden
+  fallback_zone_key: SE
+  average_co2: 13.06095561594203
+  low_average: true
+- zone_key: SE-SE3
+  country: Sweden
+  zone_name: South Central Sweden
+  fallback_zone_key: SE
+  average_co2: 17.867721920289856
+  low_average: true
+- zone_key: SE-SE4
+  country: Sweden
+  zone_name: South Sweden
+  fallback_zone_key: SE
+  average_co2: 28.50021739130435
+  low_average: true
+- zone_key: SG
+  country: Singapore
+  zone_name: Singapore
+  average_co2: 486.0166394927536
+- zone_key: SHN
+  country: Saint Helena
+  zone_name: Saint Helena
+  average_co2: 1000.0
+- zone_key: SI
+  country: Slovenia
+  zone_name: Slovenia
+  average_co2: 281.9257472826087
+- zone_key: SK
+  country: Slovakia
+  zone_name: Slovakia
+  average_co2: 293.7275362318841
+- zone_key: SL
+  country: Sierra Leone
+  zone_name: Sierra Leone
+  average_co2: 59.318306159420295
+- zone_key: SN
+  country: Senegal
+  zone_name: Senegal
+  average_co2: 581.2309284420289
+- zone_key: SO
+  country: Somalia
+  zone_name: Somalia
+  average_co2: 585.1507427536233
+- zone_key: SR
+  country: Suriname
+  zone_name: Suriname
+  average_co2: 388.90813405797104
+- zone_key: SS
+  country: South Sudan
+  zone_name: South Sudan
+  average_co2: 591.5600905797102
+- zone_key: STP
+  country: Sao Tome and Principe
+  zone_name: Sao Tome and Principe
+  average_co2: 555.55554
+- zone_key: SV
+  country: El Salvador
+  zone_name: El Salvador
+  average_co2: 230.27161684782607
+- zone_key: SY
+  country: Syria
+  zone_name: Syria
+  average_co2: 564.9808333333333
+- zone_key: SZ
+  country: Eswatini
+  zone_name: Eswatini
+  average_co2: 111.72799365942029
+- zone_key: TCA
+  country: Turks and Caicos Islands
+  zone_name: Turks and Caicos Islands
+  average_co2: 653.8462
+- zone_key: TD
+  country: Chad
+  zone_name: Chad
+  average_co2: 635.8480163043478
+- zone_key: TG
+  country: Togo
+  zone_name: Togo
+  average_co2: 394.7921195652174
+- zone_key: TH
+  country: Thailand
+  zone_name: Thailand
+  average_co2: 494.81341032608697
+- zone_key: TJ
+  country: Tajikistan
+  zone_name: Tajikistan
+  average_co2: 111.07875905797101
+- zone_key: TL
+  country: Timor-Leste
+  zone_name: Timor-Leste
+  average_co2: 649.2286503623188
+- zone_key: TM
+  country: Turkmenistan
+  zone_name: Turkmenistan
+  average_co2: 489.9402083333333
+- zone_key: TN
+  country: Tunisia
+  zone_name: Tunisia
+  average_co2: 480.2892119565218
+- zone_key: TO
+  country: Tonga
+  zone_name: Tonga
+  average_co2: 575.2496422101449
+- zone_key: TR
+  country: Turkey
+  zone_name: Turkey
+  average_co2: 470.89972826086955
+- zone_key: TT
+  country: Trinidad and Tobago
+  zone_name: Trinidad and Tobago
+  average_co2: 490.3349094202898
+- zone_key: TW
+  country: Taiwan
+  zone_name: Taiwan
+  average_co2: 519.0091893115942
+- zone_key: TZ
+  country: Tanzania
+  zone_name: Tanzania
+  average_co2: 362.0022735507246
+- zone_key: UG
+  country: Uganda
+  zone_name: Uganda
+  average_co2: 59.98774456521739
+- zone_key: UKR
+  country: Ukraine
+  zone_name: Ukraine
+  average_co2: 256.21008
+- zone_key: US
+  country: Contiguous United States
+  zone_name: Contiguous United States
+  fallback_zone_key: XZ
+  average_co2: 339.5416259057971
+- zone_key: US-AK
+  country: USA
+  zone_name: Alaska
+  average_co2: 504.8417074275362
+- zone_key: US-AK-SEAPA
+  country: USA
+  zone_name: Southeast Alaska Power Agency
+  average_co2: 25.355452898550723
+  low_average: true
+- zone_key: US-CAL-BANC
+  country: USA
+  zone_name: Balancing Authority of Northern California
+  fallback_zone_key: XZ
+  average_co2: 343.07401268115945
+- zone_key: US-CAL-CISO
+  country: USA
+  zone_name: CAISO
+  fallback_zone_key: XZ
+  average_co2: 269.4037726449275
+- zone_key: US-CAL-IID
+  country: USA
+  zone_name: Imperial Irrigation District
+  average_co2: 552.8628351449275
+- zone_key: US-CAL-LDWP
+  country: USA
+  zone_name: Los Angeles Department of Water and Power
+  average_co2: 481.74717391304347
+- zone_key: US-CAL-TIDC
+  country: USA
+  zone_name: Turlock Irrigation District
+  average_co2: 528.6410552536232
+- zone_key: US-CAR-CPLE
+  country: USA
+  zone_name: Duke Energy Progress East
+  average_co2: 329.1853759057971
+- zone_key: US-CAR-CPLW
+  country: USA
+  zone_name: Duke Energy Progress West
+  average_co2: 462.20489583333335
+- zone_key: US-CAR-DUK
+  country: USA
+  zone_name: Duke Energy Carolinas
+  average_co2: 288.34625
+- zone_key: US-CAR-SC
+  country: USA
+  zone_name: South Carolina Public Service Authority
+  average_co2: 679.1035190217392
+- zone_key: US-CAR-SCEG
+  country: USA
+  zone_name: South Carolina Electric & Gas Company
+  average_co2: 487.7704211956522
+- zone_key: US-CAR-YAD
+  country: USA
+  zone_name: Alcoa Power Generating
+  average_co2: 48.97084692028986
+  low_average: true
+- zone_key: US-CENT-SPA
+  country: USA
+  zone_name: Southwestern Power Administration
+  average_co2: 143.9121195652174
+- zone_key: US-CENT-SWPP
+  country: USA
+  zone_name: Southwest Power Pool
+  fallback_zone_key: XZ
+  average_co2: 402.34415307971017
+- zone_key: US-FLA-FMPP
+  country: USA
+  zone_name: Florida Municipal Power Pool
+  average_co2: 525.5842119565217
+- zone_key: US-FLA-FPC
+  country: USA
+  zone_name: Duke Energy Florida
+  average_co2: 497.5842934782609
+- zone_key: US-FLA-FPL
+  country: USA
+  zone_name: Florida Power and Light Company
+  average_co2: 363.09346467391305
+- zone_key: US-FLA-GVL
+  country: USA
+  zone_name: Gainesville Regional Utilities
+  average_co2: 567.7032880434783
+- zone_key: US-FLA-HST
+  country: USA
+  zone_name: City of Homestead
+  average_co2: 363.12408061594203
+- zone_key: US-FLA-JEA
+  country: USA
+  zone_name: Jacksonville Electric Authority
+  average_co2: 569.0770697463768
+- zone_key: US-FLA-SEC
+  country: USA
+  zone_name: Seminole Electric Cooperative
+  average_co2: 569.2118614130435
+- zone_key: US-FLA-TAL
+  country: USA
+  zone_name: City of Tallahassee
+  average_co2: 458.6273777173913
+- zone_key: US-FLA-TEC
+  country: USA
+  zone_name: Tampa Electric Company
+  average_co2: 467.185643115942
+- zone_key: US-MIDA-PJM
+  country: USA
+  zone_name: PJM Interconnection
+  fallback_zone_key: XZ
+  average_co2: 375.6073052536232
+- zone_key: US-MIDW-AECI
+  country: USA
+  zone_name: Associated Electric Cooperative
+  average_co2: 610.312581521739
+- zone_key: US-MIDW-LGEE
+  country: USA
+  zone_name: Louisville Gas and Electric Company and Kentucky Utilities
+  fallback_zone_key: XZ
+  average_co2: 832.2292255434783
+- zone_key: US-MIDW-MISO
+  country: USA
+  zone_name: Midcontinent ISO
+  fallback_zone_key: XZ
+  average_co2: 471.65046648550725
+- zone_key: US-NE-ISNE
+  country: USA
+  zone_name: ISO New England
+  average_co2: 327.56633152173913
+- zone_key: US-NW-AVA
+  country: USA
+  zone_name: Avista Corporation
+  average_co2: 228.5226856884058
+- zone_key: US-NW-BPAT
+  country: USA
+  zone_name: Bonneville Power Administration
+  average_co2: 120.39035778985506
+- zone_key: US-NW-CHPD
+  country: USA
+  zone_name: Chelan County
+  average_co2: 25.964773550724637
+  low_average: true
+- zone_key: US-NW-DOPD
+  country: USA
+  zone_name: Douglas County
+  average_co2: 31.360335144927536
+  low_average: true
+- zone_key: US-NW-GCPD
+  country: USA
+  zone_name: Grant County
+  average_co2: 51.4413768115942
+- zone_key: US-NW-GRID
+  country: USA
+  zone_name: Gridforce Energy Management
+  average_co2: 518.2214673913044
+- zone_key: US-NW-IPCO
+  country: USA
+  zone_name: Idaho Power Company
+  average_co2: 400.79663043478257
+- zone_key: US-NW-NEVP
+  country: USA
+  zone_name: Nevada Power Company
+  average_co2: 484.86605072463766
+- zone_key: US-NW-NWMT
+  country: USA
+  zone_name: Northwestern Energy
+  average_co2: 592.451277173913
+- zone_key: US-NW-PACE
+  country: USA
+  zone_name: Pacificorp East
+  average_co2: 651.114651268116
+- zone_key: US-NW-PACW
+  country: USA
+  zone_name: Pacificorp West
+  average_co2: 223.8894927536232
+- zone_key: US-NW-PGE
+  country: USA
+  zone_name: Portland General Electric Company
+  average_co2: 233.66808423913045
+- zone_key: US-NW-PSCO
+  country: USA
+  zone_name: Public Service Company of Colorado
+  fallback_zone_key: XZ
+  average_co2: 453.935634057971
+- zone_key: US-NW-PSEI
+  country: USA
+  zone_name: Puget Sound Energy
+  average_co2: 189.00547101449277
+- zone_key: US-NW-SCL
+  country: USA
+  zone_name: Seattle City Light
+  average_co2: 93.53803442028986
+- zone_key: US-NW-TPWR
+  country: USA
+  zone_name: City of Tacoma
+  average_co2: 85.50098278985507
+- zone_key: US-NW-WACM
+  country: USA
+  zone_name: Western Area Power Administration - Rocky Mountain Region
+  fallback_zone_key: XZ
+  average_co2: 668.5052626811595
+- zone_key: US-NW-WAUW
+  country: USA
+  zone_name: Western Area Power Administration - Upper Great Plains West
+  fallback_zone_key: XZ
+  average_co2: 278.82626358695654
+- zone_key: US-NY-NYIS
+  country: USA
+  zone_name: New York ISO
+  average_co2: 292.3786322463768
+- zone_key: US-SE-SEPA
+  country: USA
+  zone_name: Southeastern Power Administration
+  average_co2: 327.2461775362319
+- zone_key: US-SE-SOCO
+  country: USA
+  zone_name: Southern Company Services
+  average_co2: 410.60261322463765
+- zone_key: US-SW-AZPS
+  country: USA
+  zone_name: Arizona Public Service Company
+  average_co2: 470.6658650362319
+- zone_key: US-SW-EPE
+  country: USA
+  zone_name: El Paso Electric Company
+  average_co2: 574.3713451086957
+- zone_key: US-SW-PNM
+  country: USA
+  zone_name: Public Service Company of New Mexico
+  average_co2: 295.66024456521734
+- zone_key: US-SW-SRP
+  country: USA
+  zone_name: Salt River Project
+  average_co2: 416.64570199275363
+- zone_key: US-SW-TEPC
+  country: USA
+  zone_name: Tucson Electric Power Company
+  average_co2: 583.3304619565217
+- zone_key: US-SW-WALC
+  country: USA
+  zone_name: Western Area Power Administration - Desert Southwest Region
+  fallback_zone_key: XZ
+  average_co2: 386.3848278985507
+- zone_key: US-TEN-TVA
+  country: USA
+  zone_name: Tennessee Valley Authority
+  fallback_zone_key: XZ
+  average_co2: 378.7330797101449
+- zone_key: US-TEX-ERCO
+  country: USA
+  zone_name: Electric Reliability Council of Texas
+  fallback_zone_key: XZ
+  average_co2: 365.2726313405797
+- zone_key: UY
+  country: Uruguay
+  zone_name: Uruguay
+  average_co2: 47.61903079710145
+  low_average: true
+- zone_key: UZ
+  country: Uzbekistan
+  zone_name: Uzbekistan
+  average_co2: 473.18207880434784
+- zone_key: VC
+  country: Saint Vincent and the Grenadines
+  zone_name: Saint Vincent and the Grenadines
+  average_co2: 612.7376268115942
+- zone_key: VE
+  country: Venezuela
+  zone_name: Venezuela
+  average_co2: 126.91941576086957
+- zone_key: VGB
+  country: British Virgin Islands
+  zone_name: British Virgin Islands
+  average_co2: 647.05884
+- zone_key: VI
+  country: USA
+  zone_name: Virgin Islands
+  average_co2: 683.2217980072463
+- zone_key: VN
+  country: Vietnam
+  zone_name: Vietnam
+  average_co2: 383.03354619565215
+- zone_key: VU
+  country: Vanuatu
+  zone_name: Vanuatu
+  average_co2: 491.35501358695655
+- zone_key: WS
+  country: Samoa
+  zone_name: Samoa
+  average_co2: 399.99997
+- zone_key: XK
+  country: Kosovo
+  zone_name: Kosovo
+  average_co2: 631.529347826087
+- zone_key: YE
+  country: Yemen
+  zone_name: Yemen
+  average_co2: 549.5832653985508
+- zone_key: YT
+  country: Mayotte
+  zone_name: Mayotte
+  average_co2: 561.4472101449276
+- zone_key: ZA
+  country: South Africa
+  zone_name: South Africa
+  average_co2: 707.1734963768116
+- zone_key: ZM
+  country: Zambia
+  zone_name: Zambia
+  average_co2: 119.64345108695652
+- zone_key: ZW
+  country: Zimbabwe
+  zone_name: Zimbabwe
+  average_co2: 257.63634510869565
