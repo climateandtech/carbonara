@@ -118,14 +118,26 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
                   config.database.path
                 );
           } else {
-            dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
+            dbPath = path.join(
+              this.workspaceFolder.uri.fsPath,
+              ".carbonara",
+              "carbonara.db"
+            );
           }
         } else {
-          dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
+          dbPath = path.join(
+            this.workspaceFolder.uri.fsPath,
+            ".carbonara",
+            "carbonara.db"
+          );
         }
       } catch (error) {
         console.error("❌ Error reading config:", error);
-        dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
+        dbPath = path.join(
+          this.workspaceFolder.uri.fsPath,
+          ".carbonara",
+          "carbonara.db"
+        );
       }
 
       // Test individual steps to isolate the hanging issue
@@ -266,7 +278,11 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
               );
             }
           } else {
-            dbPath = path.join(this.workspaceFolder.uri.fsPath, ".carbonara", "carbonara.db");
+            dbPath = path.join(
+              this.workspaceFolder.uri.fsPath,
+              ".carbonara",
+              "carbonara.db"
+            );
           }
           dbExists = require("fs").existsSync(dbPath);
         } catch (error) {
@@ -558,7 +574,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
               `Found in ${resultsByFile.size} files`,
               vscode.TreeItemCollapsibleState.Expanded,
               "group",
-              "semgrep"
+              "code-scan" // Use unique toolName to avoid ID collision
             );
 
             // Build folder tree structure
@@ -574,48 +590,44 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         console.error("Error loading Semgrep results:", error);
       }
 
-      // Note: Other assessment data is intentionally not shown here
-      // Only properly categorized tool data (like Semgrep) is displayed
-      // Uncomment this section when other tools have proper tree layouts
+      // Load assessment data
+      const assessmentData =
+        await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
 
-      // // Load assessment data
-      // const assessmentData =
-      //   await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
-      //
-      // if (assessmentData.length > 0) {
-      //   // Create grouped items for assessment data
-      //   const groups =
-      //     await this.coreServices!.vscodeProvider.createGroupedItems(
-      //       projectPath
-      //     );
-      //
-      //   groups.forEach((group, groupIndex) => {
-      //     // Add group header
-      //     items.push(
-      //       new DataItem(
-      //         group.displayName,
-      //         group.toolName,
-      //         vscode.TreeItemCollapsibleState.Expanded,
-      //         "group",
-      //         group.toolName
-      //       )
-      //     );
-      //
-      //     // Add entries
-      //     group.entries.forEach((entry) => {
-      //       items.push(
-      //         new DataItem(
-      //           entry.label,
-      //           entry.description,
-      //           vscode.TreeItemCollapsibleState.Collapsed,
-      //           "entry",
-      //           entry.toolName,
-      //           entry.id
-      //         )
-      //       );
-      //     });
-      //   });
-      // }
+      if (assessmentData.length > 0) {
+        // Create grouped items for assessment data
+        const groups =
+          await this.coreServices!.vscodeProvider.createGroupedItems(
+            projectPath
+          );
+
+        groups.forEach((group, groupIndex) => {
+          // Add group header
+          items.push(
+            new DataItem(
+              group.displayName,
+              group.toolName,
+              vscode.TreeItemCollapsibleState.Expanded,
+              "group",
+              group.toolName
+            )
+          );
+
+          // Add entries
+          group.entries.forEach((entry) => {
+            items.push(
+              new DataItem(
+                entry.label,
+                entry.description,
+                vscode.TreeItemCollapsibleState.Collapsed,
+                "entry",
+                entry.toolName,
+                entry.id
+              )
+            );
+          });
+        });
+      }
 
       if (items.length === 0) {
         return [
@@ -773,7 +785,10 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       const timestamp = new Date().toISOString().split("T")[0];
       const filename = `carbonara-export-${timestamp}.${format}`;
-      const carbonaraDir = path.join(this.workspaceFolder.uri.fsPath, ".carbonara");
+      const carbonaraDir = path.join(
+        this.workspaceFolder.uri.fsPath,
+        ".carbonara"
+      );
 
       // Ensure .carbonara directory exists
       if (!require("fs").existsSync(carbonaraDir)) {
@@ -784,7 +799,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       require("fs").writeFileSync(filePath, exportData);
 
-      vscode.window.showInformationMessage(`Data exported to .carbonara/${filename}`);
+      vscode.window.showInformationMessage(
+        `Data exported to .carbonara/${filename}`
+      );
     } catch (error) {
       console.error("Export failed:", error);
       vscode.window.showErrorMessage("Failed to export data");
