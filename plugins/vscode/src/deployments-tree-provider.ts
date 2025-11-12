@@ -113,17 +113,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         const providers = [...new Set(deployments.map(d => d.provider))];
         const items: DeploymentTreeItem[] = [];
 
-        // Add scan action at top
-        items.push(
-          new DeploymentTreeItem(
-            "Rescan Deployments",
-            vscode.TreeItemCollapsibleState.None,
-            "action",
-            "carbonara.scanDeployments"
-          )
-        );
-
-        // Add provider groups
+        // Add provider groups (no rescan action here - it's in the title bar)
         for (const provider of providers) {
           const providerDeployments = deployments.filter(d => d.provider === provider);
           items.push(
@@ -177,21 +167,75 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     if (element.type === "environment" && element.deployments) {
       // Show deployments in this environment
       return element.deployments.map(deployment => {
-        const carbonBadge = this.getCarbonBadge(deployment.carbon_intensity);
         const label = deployment.name;
-        const description = deployment.region || deployment.country || 'Unknown region';
 
         return new DeploymentTreeItem(
           label,
-          vscode.TreeItemCollapsibleState.None,
+          vscode.TreeItemCollapsibleState.Collapsed,
           "deployment",
-          "carbonara.openDeploymentConfig",
+          undefined,
           undefined,
           undefined,
           deployment,
-          `${carbonBadge} ${description}`
+          undefined
         );
       });
+    }
+
+    if (element.type === "deployment" && element.deployment) {
+      // Show details for this deployment
+      const deployment = element.deployment;
+      const children: DeploymentTreeItem[] = [];
+
+      // Region info
+      if (deployment.region) {
+        children.push(
+          new DeploymentTreeItem(
+            `Deployment region: ${deployment.region}`,
+            vscode.TreeItemCollapsibleState.None,
+            "info"
+          )
+        );
+      }
+
+      // Look up carbon intensity from the carbon service
+      let intensity = deployment.carbon_intensity;
+      if ((!intensity || intensity === null) && deployment.country && this.carbonService) {
+        intensity = this.carbonService.getCarbonIntensity(deployment.country);
+      }
+
+      // Carbon intensity info
+      if (intensity !== null && intensity !== undefined) {
+        const carbonBadge = this.getCarbonBadge(intensity);
+        children.push(
+          new DeploymentTreeItem(
+            `Current carbon intensity: ${carbonBadge} ${intensity} gCO2/kWh`,
+            vscode.TreeItemCollapsibleState.None,
+            "info"
+          )
+        );
+
+        // Recommendation if not in lowest category
+        if (intensity >= 100) {
+          children.push(
+            new DeploymentTreeItem(
+              "Consider deploying in a region with a higher percentage of renewable energy in the grid, for a lower carbon impact.",
+              vscode.TreeItemCollapsibleState.None,
+              "info"
+            )
+          );
+        }
+      } else {
+        children.push(
+          new DeploymentTreeItem(
+            "Current carbon intensity: Unknown",
+            vscode.TreeItemCollapsibleState.None,
+            "info"
+          )
+        );
+      }
+
+      return children;
     }
 
     return [];
@@ -445,13 +489,9 @@ class DeploymentTreeItem extends vscode.TreeItem {
     this.description = customDescription;
     this.contextValue = contextValue;
 
-    // Set icons based on type
+    // Set icons based on type (no icons for provider or environment)
     if (type === "action") {
       this.iconPath = new vscode.ThemeIcon("search");
-    } else if (type === "provider") {
-      this.iconPath = new vscode.ThemeIcon("organization");
-    } else if (type === "environment") {
-      this.iconPath = new vscode.ThemeIcon("folder");
     } else if (type === "deployment") {
       this.iconPath = new vscode.ThemeIcon("file-code");
     }

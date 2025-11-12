@@ -188,7 +188,7 @@
         },
         {
           "id": "carbonara.deploymentsTree",
-          "name": "Deployments",
+          "name": "Deployment Insights",
           "icon": "$(cloud)",
           "visibility": "visible"
         }
