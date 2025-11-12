@@ -10,45 +10,45 @@ These example files showcase deployments across different cloud providers and re
 
 ### AWS Deployments
 
-| File | Region | Country | Carbon Intensity | Environment |
-|------|--------|---------|------------------|-------------|
-| `aws-production.tf` | us-east-1 | USA | 400 gCO2/kWh | Production |
-| `aws-staging.tf` | eu-north-1 | Sweden | 45 gCO2/kWh | Staging |
+| File                | Region     | Country | Carbon Intensity | Environment |
+| ------------------- | ---------- | ------- | ---------------- | ----------- |
+| `aws-production.tf` | us-east-1  | USA     | 400 gCO2/kWh     | Production  |
+| `aws-staging.tf`    | eu-north-1 | Sweden  | 45 gCO2/kWh      | Staging     |
 
 **Insight**: The staging environment in Sweden has ~89% lower carbon intensity than the US production deployment!
 
 ### GCP Deployments
 
-| File | Region | Country | Carbon Intensity | Environment |
-|------|--------|---------|------------------|-------------|
-| `gcp-production.tf` | asia-southeast1 | Singapore | 420 gCO2/kWh | Production |
-| `gcp-dev.tf` | europe-north1 | Finland | 85 gCO2/kWh | Development |
+| File                | Region         | Country   | Carbon Intensity | Environment |
+| ------------------- | -------------- | --------- | ---------------- | ----------- |
+| `gcp-production.tf` | ap-southeast-1 | Singapore | 420 gCO2/kWh     | Production  |
+| `gcp-dev.tf`        | eu-north-1     | Finland   | 85 gCO2/kWh      | Development |
 
 **Insight**: Finland has ~80% lower carbon emissions than Singapore due to its clean grid.
 
 ### Azure Deployments
 
-| File | Region | Country | Carbon Intensity | Environment |
-|------|--------|---------|------------------|-------------|
-| `azure-production.tf` | australiaeast | Australia | 650 gCO2/kWh | Production |
-| `azure-staging.tf` | norwayeast | Norway | 25 gCO2/kWh | Staging |
+| File                  | Region        | Country   | Carbon Intensity | Environment |
+| --------------------- | ------------- | --------- | ---------------- | ----------- |
+| `azure-production.tf` | australiaeast | Australia | 650 gCO2/kWh     | Production  |
+| `azure-staging.tf`    | norwayeast    | Norway    | 25 gCO2/kWh      | Staging     |
 
 **Insight**: Norway has the lowest carbon intensity in this set at only 25 gCO2/kWh (hydro-powered)!
 
 ### CI/CD Pipelines
 
-| File | Region | Carbon Intensity |
-|------|--------|------------------|
-| `.github/workflows/deploy-production.yml` | us-west-2 | 350 gCO2/kWh |
-| `.github/workflows/deploy-staging.yml` | eu-central-1 | 420 gCO2/kWh |
+| File                                      | Region       | Carbon Intensity |
+| ----------------------------------------- | ------------ | ---------------- |
+| `.github/workflows/deploy-production.yml` | us-west-2    | 350 gCO2/kWh     |
+| `.github/workflows/deploy-staging.yml`    | eu-central-1 | 420 gCO2/kWh     |
 
 ### Platform-as-a-Service
 
-| File | Platform | Notes |
-|------|----------|-------|
-| `vercel.json` | Vercel | Multi-region (iad1, sfo1) |
-| `netlify.toml` | Netlify | Global CDN |
-| `heroku.yml` | Heroku | Default US region |
+| File           | Platform | Notes                     |
+| -------------- | -------- | ------------------------- |
+| `vercel.json`  | Vercel   | Multi-region (iad1, sfo1) |
+| `netlify.toml` | Netlify  | Global CDN                |
+| `heroku.yml`   | Heroku   | Default US region         |
 
 ## Carbon Intensity Rankings (Low to High)
 
@@ -80,11 +80,13 @@ These example files showcase deployments across different cloud providers and re
 ### 3. View Results
 
 The extension should detect:
+
 - **8 deployments** from Terraform files
 - **2 deployments** from GitHub Actions workflows
 - **3 deployments** from PaaS configs (Vercel, Netlify, Heroku)
 
 Each deployment will show:
+
 - 🟢 Green badge: Low carbon intensity (< 100 gCO2/kWh)
 - 🟡 Yellow badge: Medium carbon intensity (100-300 gCO2/kWh)
 - 🟠 Orange badge: High carbon intensity (300-500 gCO2/kWh)
@@ -107,12 +109,14 @@ If all production workloads were moved to low-carbon regions:
 - **Potential reduction**: ~89%
 
 Assuming 1 kWh/day per deployment:
+
 - Annual savings: **~160 kg CO2 per deployment**
 - For 3 production deployments: **~480 kg CO2/year**
 
 ## Real-World Considerations
 
 When choosing deployment regions, also consider:
+
 - **Latency**: Proximity to users
 - **Data sovereignty**: Legal requirements
 - **Cost**: Regional pricing differences
@@ -122,6 +126,7 @@ When choosing deployment regions, also consider:
 ## Next Steps
 
 Consider:
+
 1. Moving development/staging to low-carbon regions (lower stakes)
 2. Using multi-region deployments with green regions as primary
 3. Scheduling batch jobs during low-carbon hours

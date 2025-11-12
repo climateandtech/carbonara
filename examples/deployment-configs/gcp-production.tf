@@ -1,5 +1,5 @@
 # GCP Production Infrastructure - High Carbon Region
-# This example deploys to asia-southeast1 (Singapore)
+# This example deploys to ap-southeast-1 (Singapore)
 
 terraform {
   required_providers {
@@ -12,13 +12,13 @@ terraform {
 
 provider "google" {
   project = "my-production-project"
-  region  = "asia-southeast1"  # Singapore
+  region  = "ap-southeast-1"  # Singapore
 }
 
 # Production GKE Cluster
 resource "google_container_cluster" "production" {
   name     = "production-gke-cluster"
-  location = "asia-southeast1-a"
+  location = "ap-southeast-1-a"
 
   initial_node_count = 3
 
@@ -40,7 +40,7 @@ resource "google_container_cluster" "production" {
 resource "google_sql_database_instance" "production" {
   name             = "production-db-instance"
   database_version = "POSTGRES_15"
-  region           = "asia-southeast1"
+  region           = "ap-southeast-1"
 
   settings {
     tier = "db-f1-micro"
