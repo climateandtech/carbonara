@@ -467,6 +467,7 @@ export class DataService {
     );
 
     const result = this.db.exec("SELECT last_insert_rowid() as id");
+    return result[0].values[0][0] as number;
   }
 
   // Deployment methods
