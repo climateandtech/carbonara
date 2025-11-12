@@ -36,12 +36,11 @@ export class VSCodeDataProvider {
 
   async loadDataForProject(projectPath: string): Promise<AssessmentDataEntry[]> {
     try {
+      // Try to find project, but don't require it to exist
       const project = await this.dataService.getProject(projectPath);
-      if (!project) {
-        return [];
-      }
-
-      // Load all assessment data (don't filter by project ID)
+      
+      // Load all assessment data regardless of whether project exists
+      // Assessment data can exist without a project record (project_id can be NULL)
       return await this.dataService.getAssessmentData();
     } catch (error) {
       console.error('Failed to load data for project:', error);

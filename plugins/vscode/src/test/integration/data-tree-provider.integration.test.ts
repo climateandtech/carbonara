@@ -4,6 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { DataTreeProvider, DataItem } from "../../data-tree-provider";
 import { UI_TEXT } from "../../constants/ui-text";
+import { createDataService } from "@carbonara/core";
 
 suite("DataTreeProvider Integration Tests", () => {
   let provider: DataTreeProvider;
@@ -18,7 +19,11 @@ suite("DataTreeProvider Integration Tests", () => {
     );
     fs.mkdirSync(tempDir, { recursive: true });
 
-    testDbPath = path.join(tempDir, "carbonara.db");
+    // Create .carbonara directory structure
+    const carbonaraDir = path.join(tempDir, ".carbonara");
+    fs.mkdirSync(carbonaraDir, { recursive: true });
+
+    testDbPath = path.join(carbonaraDir, "carbonara.db");
 
     testWorkspaceFolder = {
       uri: vscode.Uri.file(tempDir),
@@ -403,6 +408,191 @@ suite("DataTreeProvider Integration Tests", () => {
         endTime - startTime < 100,
         "Provider initialization should not block"
       );
+    });
+  });
+
+  suite("Core Services Initialization", () => {
+    test("should initialize core services successfully", async () => {
+      // Wait for core services to initialize (up to 15 seconds)
+      let initialized = false;
+      const maxWaitTime = 15000;
+      const startTime = Date.now();
+
+      while (!initialized && Date.now() - startTime < maxWaitTime) {
+        const children = await provider.getChildren();
+        
+        // Check if we're past the loading/initialization state
+        const isInitializing = children.some(
+          (child) =>
+            child.label.includes("Loading") ||
+            child.label.includes("Initializing") ||
+            child.label.includes("Waiting for initialization")
+        );
+
+        if (!isInitializing) {
+          initialized = true;
+          break;
+        }
+
+        // Wait a bit before checking again
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      assert.ok(
+        initialized,
+        "Core services should initialize within 15 seconds"
+      );
+
+      // Verify we can get children without errors
+      const children = await provider.getChildren();
+      assert.ok(Array.isArray(children));
+      assert.ok(children.length > 0);
+    });
+
+    test("should load and display data when assessment data exists", async function () {
+      // Increase timeout for this test (15 seconds)
+      this.timeout(15000);
+      
+      // Create test database with assessment data
+      const carbonaraDir = path.join(
+        testWorkspaceFolder.uri.fsPath,
+        ".carbonara"
+      );
+      fs.mkdirSync(carbonaraDir, { recursive: true });
+      const dbPath = path.join(carbonaraDir, "carbonara.db");
+
+      const dataService = createDataService({ dbPath });
+      await dataService.initialize();
+
+      // Create a test project
+      const projectId = await dataService.createProject(
+        "Test Project",
+        testWorkspaceFolder.uri.fsPath,
+        {}
+      );
+
+      // Insert test-analyzer assessment data
+      await dataService.storeAssessmentData(
+        projectId,
+        "test-analyzer",
+        "web-analysis",
+        {
+          url: "https://test.example.com",
+          result: "test result",
+        }
+      );
+
+      await dataService.close();
+
+      // Wait for provider to detect the data (up to 10 seconds)
+      // The provider should reload the database on refresh
+      let dataLoaded = false;
+      const maxWaitTime = 10000;
+      const startTime = Date.now();
+
+      while (!dataLoaded && Date.now() - startTime < maxWaitTime) {
+        // Trigger refresh (this will reload database from disk)
+        await provider.refresh();
+
+        // Wait for refresh to complete
+        await new Promise<void>((resolve) => {
+          const disposable = provider.onDidChangeTreeData(() => {
+            disposable.dispose();
+            resolve();
+          });
+          // Timeout after 1 second
+          setTimeout(() => resolve(), 1000);
+        });
+
+        const children = await provider.getChildren();
+
+        // Check if we have data (not loading, not "No data available")
+        const hasData =
+          children.length > 0 &&
+          !children.some(
+            (child) =>
+              child.label === UI_TEXT.DATA_TREE.LOADING ||
+              child.label === UI_TEXT.DATA_TREE.NO_DATA ||
+              child.label.includes("Loading") ||
+              child.label.includes("Initializing")
+          );
+
+        if (hasData) {
+          // Verify we have test-analyzer data
+          const hasTestAnalyzer = children.some(
+            (child) =>
+              child.toolName === "test-analyzer" ||
+              child.label.toLowerCase().includes("test") ||
+              child.description?.toLowerCase().includes("test")
+          );
+          if (hasTestAnalyzer) {
+            dataLoaded = true;
+            break;
+          }
+        }
+
+        // Wait a bit before checking again
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      assert.ok(
+        dataLoaded,
+        "Assessment data should be loaded and displayed within 10 seconds"
+      );
+
+      // Verify the data structure
+      const children = await provider.getChildren();
+      assert.ok(children.length > 0, "Should have at least one data item");
+      
+      // Should have either groups or entries
+      const hasGroupsOrEntries = children.some(
+        (child) => child.type === "group" || child.type === "entry"
+      );
+      assert.ok(
+        hasGroupsOrEntries,
+        "Should have groups or entries when data exists"
+      );
+    });
+
+    test("should complete initialization even if it takes longer than timeout warning", async () => {
+      // This test verifies that timeout warnings don't abort initialization
+      // We can't easily simulate slow initialization, but we can verify
+      // that initialization completes successfully regardless of timing
+
+      // Wait for initialization to complete
+      let initialized = false;
+      const maxWaitTime = 20000; // 20 seconds
+      const startTime = Date.now();
+
+      while (!initialized && Date.now() - startTime < maxWaitTime) {
+        const children = await provider.getChildren();
+
+        // Check if we're past the loading/initialization state
+        const isInitializing = children.some(
+          (child) =>
+            child.label.includes("Loading") ||
+            child.label.includes("Initializing") ||
+            child.label.includes("Waiting for initialization")
+        );
+
+        if (!isInitializing) {
+          initialized = true;
+          break;
+        }
+
+        // Wait a bit before checking again
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      assert.ok(
+        initialized,
+        "Initialization should complete successfully even if it takes longer than timeout warning"
+      );
+
+      // Verify we can use the services
+      const stats = await provider.getProjectStats();
+      assert.ok(typeof stats === "object");
+      assert.ok(typeof stats.totalEntries === "number");
     });
   });
 });

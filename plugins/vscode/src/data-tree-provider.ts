@@ -140,32 +140,31 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         );
       }
 
-      // Test individual steps to isolate the hanging issue
-
+      // Initialize database service with timeout warning (but don't abort)
+      console.log("🔧 Initializing database service...");
       const dataService = createDataService({ dbPath });
 
-      const dbInitTimeout = new Promise((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error("Database initialization timed out after 10 seconds")
-            ),
-          10000
-        )
-      );
+      const dbInitPromise = dataService.initialize();
+      const dbInitTimeout = setTimeout(() => {
+        console.warn("⚠️ Database initialization taking longer than expected (10s)...");
+      }, 10000);
 
-      await Promise.race([dataService.initialize(), dbInitTimeout]);
+      await dbInitPromise;
+      clearTimeout(dbInitTimeout);
+      console.log("✅ Database service initialized");
 
+      // Initialize schema service with timeout warning (but don't abort)
+      console.log("🔧 Loading tool schemas...");
       const schemaService = createSchemaService();
 
-      const schemaTimeout = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Schema loading timed out after 5 seconds")),
-          5000
-        )
-      );
+      const schemaLoadPromise = schemaService.loadToolSchemas();
+      const schemaTimeout = setTimeout(() => {
+        console.warn("⚠️ Schema loading taking longer than expected (5s)...");
+      }, 5000);
 
-      await Promise.race([schemaService.loadToolSchemas(), schemaTimeout]);
+      await schemaLoadPromise;
+      clearTimeout(schemaTimeout);
+      console.log("✅ Tool schemas loaded");
 
       const vscodeProvider = createVSCodeDataProvider(
         dataService,
@@ -178,13 +177,17 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         vscodeProvider,
       };
 
+      console.log("✅ Core services initialized successfully");
+
       // Test the services immediately
       try {
         const projectPath = this.workspaceFolder.uri.fsPath;
+        console.log("🧪 Testing data load...");
         const testData =
           await this.coreServices.vscodeProvider.loadDataForProject(
             projectPath
           );
+        console.log(`✅ Test data load successful: ${testData.length} entries found`);
       } catch (testError) {
         console.error("⚠️ Test data load failed:", testError);
       }
@@ -208,6 +211,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     // This prevents showing "Loading..." message during refresh
     if (this.coreServices && this.workspaceFolder) {
       try {
+        // Reload database from disk to pick up any changes made by other processes
+        await this.coreServices.dataService.reloadDatabase();
+        
         const newItems = await this.loadRootItemsAsync();
         // Only update cache and fire event if data actually changed
         const hasChanged =
@@ -590,14 +596,26 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         console.error("Error loading Semgrep results:", error);
       }
 
-      // Load assessment data
+      // Load assessment data - check coreServices is available
+      if (!this.coreServices) {
+        console.warn("⚠️ Core services not initialized yet, returning loading state");
+        return [
+          new DataItem(
+            UI_TEXT.DATA_TREE.LOADING,
+            UI_TEXT.DATA_TREE.LOADING_DESCRIPTION,
+            vscode.TreeItemCollapsibleState.None,
+            "info"
+          ),
+        ];
+      }
+
       const assessmentData =
-        await this.coreServices!.vscodeProvider.loadDataForProject(projectPath);
+        await this.coreServices.vscodeProvider.loadDataForProject(projectPath);
 
       if (assessmentData.length > 0) {
         // Create grouped items for assessment data
         const groups =
-          await this.coreServices!.vscodeProvider.createGroupedItems(
+          await this.coreServices.vscodeProvider.createGroupedItems(
             projectPath
           );
 

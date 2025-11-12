@@ -375,4 +375,75 @@ suite("DataTreeProvider Unit Tests", () => {
       // Should handle gracefully, not throw
     });
   });
+
+  suite("Refresh Behavior", () => {
+    test("refresh should fire tree data change event", async () => {
+      let eventFired = false;
+      const disposable = provider.onDidChangeTreeData(() => {
+        eventFired = true;
+      });
+
+      await provider.refresh();
+
+      assert.strictEqual(eventFired, true);
+      disposable.dispose();
+    });
+
+    test("refresh should not throw when coreServices is null", async () => {
+      let threwError = false;
+      try {
+        await provider.refresh();
+      } catch (error) {
+        threwError = true;
+      }
+
+      assert.strictEqual(threwError, false);
+    });
+
+    test("refresh should return a Promise", () => {
+      const result = provider.refresh();
+      assert.ok(result instanceof Promise);
+    });
+
+    test("refresh should clear cache when coreServices is null", async () => {
+      // Set up a mock cache
+      (provider as any).cachedItems = [new DataItem("Test", "", vscode.TreeItemCollapsibleState.None, "info")];
+      
+      await provider.refresh();
+      
+      assert.strictEqual((provider as any).cachedItems, null);
+    });
+  });
+
+  suite("Core Services Null Handling", () => {
+    test("getChildren should return array when coreServices is null", async () => {
+      const children = await provider.getChildren();
+      assert.ok(Array.isArray(children));
+    });
+
+    test("getChildren should not throw when coreServices is null", async () => {
+      let threwError = false;
+      try {
+        await provider.getChildren();
+      } catch (error) {
+        threwError = true;
+      }
+
+      assert.strictEqual(threwError, false);
+    });
+
+    test("getChildren should return items with string labels when coreServices is null", async () => {
+      const children = await provider.getChildren();
+      const firstChild = children[0];
+      
+      assert.ok(typeof firstChild.label === "string");
+    });
+
+    test("getChildren should return DataItem instances when coreServices is null", async () => {
+      const children = await provider.getChildren();
+      const firstChild = children[0];
+      
+      assert.ok(firstChild instanceof DataItem);
+    });
+  });
 });
