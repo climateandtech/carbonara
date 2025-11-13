@@ -112,7 +112,7 @@ export async function assessCommand(options: AssessOptions) {
     await dataLake.updateProjectCO2Variables(config.projectId, validated);
     await dataLake.storeAssessmentData(
       config.projectId,
-      "co2-assessment",
+      "assessment-questionnaire",
       "questionnaire",
       {
         ...validated,

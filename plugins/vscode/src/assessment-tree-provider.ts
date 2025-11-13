@@ -112,7 +112,7 @@ export class AssessmentTreeProvider
           // Add description as first item with muted appearance
           // Use minimal label and put text in description field for secondary styling
           new AssessmentItem(
-            "  ", // Minimal label (two spaces for alignment)
+            "", // Minimal label (two spaces for alignment)
             section.description, // Description appears in secondary color
             vscode.TreeItemCollapsibleState.None,
             "description",
@@ -607,7 +607,7 @@ export class AssessmentTreeProvider
             // Store assessment data
             await dataService.storeAssessmentData(
               project.id,
-              "co2-assessment",
+              "assessment-questionnaire",
               "assessment",
               assessmentData,
               "vscode-extension"
@@ -624,8 +624,10 @@ export class AssessmentTreeProvider
         }
       );
 
-      vscode.window.showInformationMessage(
-        "🎉 assessment questionnaire completed and saved successfully!"
+      // Show success message that auto-dismisses after 5 seconds
+      vscode.window.setStatusBarMessage(
+        "$(check) assessment questionnaire completed and saved successfully!",
+        5000
       );
     } catch (error) {
       const errorMessage =
@@ -714,33 +716,69 @@ export class AssessmentTreeProvider
   }
 
   public async completeAssessment(): Promise<void> {
-    // Find incomplete sections
+    // Check if all sections are already completed
     const incompleteSections = this.assessmentData.filter(
       (s) => s.status !== "completed"
     );
 
-    if (incompleteSections.length > 0) {
-      // Queue all incomplete sections and go through them sequentially
-      for (const section of incompleteSections) {
-        const completed = await this.editSection(section.id, true);
-        if (!completed) {
-          // User cancelled, stop the flow
-          vscode.window.showInformationMessage(
-            "Assessment paused. You can continue later by clicking the play button."
-          );
-          return;
+    if (incompleteSections.length === 0) {
+      // All sections already completed, ask user if they want to retake
+      const answer = await vscode.window.showInformationMessage(
+        "Assessment already completed. Would you like to retake it?",
+        "Retake",
+        "Cancel"
+      );
+
+      if (answer !== "Retake") {
+        return;
+      }
+
+      // Reset all sections to allow retaking - clear data and field values
+      for (const section of this.assessmentData) {
+        section.status = "pending";
+        section.data = undefined; // Clear saved data
+        // Clear field values
+        for (const field of section.fields) {
+          field.value = undefined;
         }
       }
 
-      // All sections completed, finalize
-      vscode.window.showInformationMessage(
-        `🎉 All sections completed! Finalizing assessment...`
+      // Delete the progress file so it doesn't restore the old data
+      const projectPath = this.getCurrentProjectPath();
+      const progressFile = path.join(
+        projectPath,
+        ".carbonara",
+        ".carbonara-progress.json"
       );
-      await this.finalizeAssessment();
-    } else {
-      // All sections already complete, just finalize
-      await this.finalizeAssessment();
+      if (fs.existsSync(progressFile)) {
+        fs.unlinkSync(progressFile);
+      }
+
+      this.refresh();
     }
+
+    // Get all sections (either incomplete or all if retaking)
+    const sectionsToComplete = this.assessmentData.filter(
+      (s) => s.status !== "completed"
+    );
+
+    // Queue all sections and go through them sequentially
+    for (const section of sectionsToComplete) {
+      const completed = await this.editSection(section.id, true);
+      if (!completed) {
+        // User cancelled, stop the flow
+        vscode.window.showInformationMessage(
+          "Assessment paused. You can continue later by clicking the play button."
+        );
+        return;
+      }
+    }
+
+    // All sections completed, finalize
+    vscode.window.showInformationMessage(
+      `🎉 All sections completed! Finalizing assessment...`
+    );
+    await this.finalizeAssessment();
   }
 
   public getCompletionStatus(): { completed: number; total: number } {
