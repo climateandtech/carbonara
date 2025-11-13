@@ -173,7 +173,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
           label,
           vscode.TreeItemCollapsibleState.Collapsed,
           "deployment",
-          undefined,
+          "carbonara.openDeploymentConfig",
           undefined,
           undefined,
           deployment,
@@ -187,13 +187,18 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       const deployment = element.deployment;
       const children: DeploymentTreeItem[] = [];
 
-      // Region info
+      // Region info - shown as description (muted/smaller)
       if (deployment.region) {
         children.push(
           new DeploymentTreeItem(
-            `Deployment region: ${deployment.region}`,
+            "Deployment region",
             vscode.TreeItemCollapsibleState.None,
-            "info"
+            "info",
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            deployment.region
           )
         );
       }
@@ -204,14 +209,19 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         intensity = this.carbonService.getCarbonIntensityByCountry(deployment.country);
       }
 
-      // Carbon intensity info
+      // Carbon intensity info - shown as description (muted/smaller)
       if (intensity !== null && intensity !== undefined) {
         const carbonBadge = this.getCarbonBadge(intensity);
         children.push(
           new DeploymentTreeItem(
-            `Current carbon intensity: ${carbonBadge} ${intensity} gCO2/kWh`,
+            "Current carbon intensity",
             vscode.TreeItemCollapsibleState.None,
-            "info"
+            "info",
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            `${carbonBadge} ${intensity} gCO2/kWh`
           )
         );
 
@@ -228,9 +238,14 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       } else {
         children.push(
           new DeploymentTreeItem(
-            "Current carbon intensity: Unknown",
+            "Current carbon intensity",
             vscode.TreeItemCollapsibleState.None,
-            "info"
+            "info",
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            "Unknown"
           )
         );
       }

@@ -75,7 +75,7 @@ export class CarbonIntensityService {
    */
   getCarbonIntensityByGridZone(gridZone: string): number | null {
     const zone = this.gridZones.get(gridZone);
-    return zone ? zone.average_co2 : null;
+    return zone ? Math.round(zone.average_co2) : null;
   }
 
   /**
@@ -231,7 +231,7 @@ export class CarbonIntensityService {
         gridZone: zone.zone_key,
         zoneName: zone.zone_name,
         country: zone.country,
-        intensity: zone.average_co2
+        intensity: Math.round(zone.average_co2)
       }))
       .sort((a, b) => a.intensity - b.intensity);
 
@@ -358,11 +358,11 @@ export class CarbonIntensityService {
       averageIntensity: Math.round(averageIntensity),
       lowestIntensity: {
         zone: lowest.zone_key,
-        intensity: lowest.average_co2
+        intensity: Math.round(lowest.average_co2)
       },
       highestIntensity: {
         zone: highest.zone_key,
-        intensity: highest.average_co2
+        intensity: Math.round(highest.average_co2)
       }
     };
   }

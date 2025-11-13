@@ -209,9 +209,18 @@ export class DeploymentService {
         for (const entry of entries) {
           const fullPath = path.join(currentPath, entry.name);
 
-          // Skip node_modules and hidden directories
+          // Skip specific directories that we don't want to scan
           if (entry.isDirectory()) {
-            if (!entry.name.startsWith(".") && entry.name !== "node_modules") {
+            const skipDirs = [
+              "node_modules",
+              ".git",
+              ".next",
+              ".cache",
+              "dist",
+              "build",
+              "out",
+            ];
+            if (!skipDirs.includes(entry.name)) {
               stack.push(fullPath);
             }
           } else if (entry.isFile()) {
