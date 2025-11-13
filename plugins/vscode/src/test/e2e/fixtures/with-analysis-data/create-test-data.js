@@ -4,12 +4,10 @@
 const path = require("path");
 const fs = require("fs");
 
-const dbPath = path.join(__dirname, "carbonara.db");
+const carbonaraDir = path.join(__dirname, ".carbonara");
+const dbPath = path.join(carbonaraDir, "carbonara.db");
 
 // Remove existing database and directory
-if (fs.existsSync(dbPath)) {
-  fs.unlinkSync(dbPath);
-}
 if (fs.existsSync(carbonaraDir)) {
   fs.rmSync(carbonaraDir, { recursive: true, force: true });
 }
