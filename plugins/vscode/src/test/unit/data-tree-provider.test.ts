@@ -407,10 +407,12 @@ suite("DataTreeProvider Unit Tests", () => {
 
     test("refresh should clear cache when coreServices is null", async () => {
       // Set up a mock cache
-      (provider as any).cachedItems = [new DataItem("Test", "", vscode.TreeItemCollapsibleState.None, "info")];
-      
+      (provider as any).cachedItems = [
+        new DataItem("Test", "", vscode.TreeItemCollapsibleState.None, "info"),
+      ];
+
       await provider.refresh();
-      
+
       assert.strictEqual((provider as any).cachedItems, null);
     });
   });
@@ -435,15 +437,18 @@ suite("DataTreeProvider Unit Tests", () => {
     test("getChildren should return items with string labels when coreServices is null", async () => {
       const children = await provider.getChildren();
       const firstChild = children[0];
-      
+
       assert.ok(typeof firstChild.label === "string");
     });
 
     test("getChildren should return DataItem instances when coreServices is null", async () => {
       const children = await provider.getChildren();
       const firstChild = children[0];
-      
+
       assert.ok(firstChild instanceof DataItem);
+    });
+  });
+
   suite("Initialization State Detection", () => {
     test("should return description item when Carbonara is not initialized", async () => {
       const mockWorkspacePath = "/test/workspace-uninitialized";
@@ -473,7 +478,10 @@ suite("DataTreeProvider Unit Tests", () => {
           "Should return single description item when Carbonara is not initialized"
         );
         assert.strictEqual(children[0].label, "");
-        assert.strictEqual(children[0].description, "Initialise Carbonara to access analysis results");
+        assert.strictEqual(
+          children[0].description,
+          "Initialise Carbonara to access analysis results"
+        );
       } finally {
         Object.defineProperty(vscode.workspace, "workspaceFolders", {
           value: originalWorkspaceFolders,
@@ -506,10 +514,7 @@ suite("DataTreeProvider Unit Tests", () => {
 
       // Check icon
       assert.ok(actionItem.iconPath instanceof vscode.ThemeIcon);
-      assert.strictEqual(
-        (actionItem.iconPath as vscode.ThemeIcon).id,
-        "add"
-      );
+      assert.strictEqual((actionItem.iconPath as vscode.ThemeIcon).id, "add");
     });
   });
 });
