@@ -1,24 +1,3 @@
-/**
- * Comprehensive mapping of cloud provider deployment regions to electricity grid zones
- *
- * This mapping connects cloud provider region codes to the corresponding electricity
- * grid zones defined in electricity_maps_zones.yml. The grid zones are used to
- * determine the carbon intensity of electricity in each region.
- *
- * Grid zone codes follow the ISO 3166-1 alpha-2 standard for countries, with
- * additional regional codes for specific electricity grids (e.g., US-CAL-CISO for
- * California Independent System Operator).
- *
- * Last updated: 2025-11-12
- * Sources:
- * - AWS: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
- * - GCP: https://cloud.google.com/compute/docs/regions-zones
- * - Azure: https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/
- * - Vercel: https://vercel.com/docs/edge-network/regions
- * - Heroku: https://devcenter.heroku.com/articles/regions
- * - Netlify: https://docs.netlify.com/domains-https/custom-domains/configure-external-dns/
- */
-
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
