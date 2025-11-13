@@ -6,7 +6,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { Command } from 'commander';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
-import { createDataLake } from '@carbonara/core';
+import { createDataLake, createDeploymentService } from '@carbonara/core';
 import { loadProjectConfig } from '../utils/config.js';
 import { CarbonaraSWDAnalyzer } from '../analyzers/carbonara-swd.js';
 
@@ -17,10 +17,11 @@ interface AnalyzeOptions {
 }
 
 export async function analyzeCommand(toolId: string | undefined, url: string | undefined, options: AnalyzeOptions, command: Command) {
-  if (!toolId || !url) {
+  if (!toolId) {
     command.help();
     return;
   }
+
   const registry = getToolRegistry();
   await registry.refreshInstalledTools();
   const tool = registry.getTool(toolId);
@@ -75,35 +76,42 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
   const spinner = ora(`Running ${tool.name} analysis...`).start();
 
   try {
-    // Validate URL
-    try {
-      new URL(url);
-    } catch {
-      throw new Error('Invalid URL provided');
+    // Validate URL for tools that require it (skip for deployment-scan)
+    if (toolId !== 'deployment-scan') {
+      if (!url) {
+        throw new Error('URL parameter is required');
+      }
+      try {
+        new URL(url);
+      } catch {
+        throw new Error('Invalid URL provided');
+      }
     }
 
     spinner.text = `Analyzing with ${tool.name}...`;
-    
+
     let results: any;
-    
-    if (toolId === 'test-analyzer') {
-      results = await runTestAnalyzer(url, options, tool);
+
+    if (toolId === 'deployment-scan') {
+      results = await runDeploymentScan(url || '.', options, tool);
+    } else if (toolId === 'test-analyzer') {
+      results = await runTestAnalyzer(url!, options, tool);
     } else if (toolId === 'carbonara-swd') {
-      results = await runCarbonaraSWD(url, options, tool);
+      results = await runCarbonaraSWD(url!, options, tool);
     } else if (toolId.startsWith('if-')) {
-      results = await runImpactFramework(url, options, tool);
+      results = await runImpactFramework(url!, options, tool);
     } else {
-      results = await runGenericTool(url, options, tool);
+      results = await runGenericTool(url!, options, tool);
     }
 
     spinner.succeed(`${tool.name} analysis completed!`);
-    
+
     // Display results
     displayResults(results, tool, options.output);
 
-    // Save to database if requested
-    if (options.save) {
-      await saveToDatabase(toolId, url, results);
+    // Save to database if requested (skip for deployment-scan as it saves directly)
+    if (options.save && toolId !== 'deployment-scan') {
+      await saveToDatabase(toolId, url!, results);
     }
 
   } catch (error: any) {
@@ -115,14 +123,54 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
 async function runCarbonaraSWD(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   const analyzer = new CarbonaraSWDAnalyzer();
-  
+
   const analyzeOptions: any = {
     timeout: options.timeout ? parseInt(options.timeout.toString()) : 30000,
     gridIntensity: options.gridIntensity ? parseFloat(options.gridIntensity.toString()) : 473,
     returningVisitor: options.returningVisitor || false
   };
-  
+
   return await analyzer.analyze(url, analyzeOptions);
+}
+
+async function runDeploymentScan(dirPath: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+  // Get the data service and project info
+  const config = await loadProjectConfig();
+  const dataService = createDataLake(config?.database ? { dbPath: config.database.path } : undefined);
+  await dataService.initialize();
+
+  // If no path provided (dirPath is '.'), use the project root from the database
+  let scanPath = dirPath;
+  if (dirPath === '.' && config?.projectId) {
+    const project = await dataService.getProjectById(config.projectId);
+    if (project) {
+      scanPath = project.path;
+    }
+  }
+
+  // Create deployment service
+  const deploymentService = createDeploymentService(dataService);
+
+  // Scan directory for deployment configurations
+  const resolvedPath = path.resolve(scanPath);
+  const detections = await deploymentService.scanDirectory(resolvedPath);
+
+  // Save to database if requested
+  if (options.save && detections.length > 0) {
+    await deploymentService.saveDeployments(
+      detections,
+      config?.projectId,
+      resolvedPath
+    );
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    tool: 'deployment-scan',
+    path: scanPath,
+    deployments: detections,
+    count: detections.length
+  };
 }
 
 async function runGenericTool(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
@@ -252,7 +300,9 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
   }
 
   // Tool-specific result display logic
-  if (tool.id === 'carbonara-swd') {
+  if (tool.id === 'deployment-scan') {
+    displayDeploymentScanResults(results);
+  } else if (tool.id === 'carbonara-swd') {
     const analyzer = new CarbonaraSWDAnalyzer();
     console.log(analyzer.formatResults(results));
   } else if (tool.id.startsWith('if-')) {
@@ -262,6 +312,58 @@ function displayResults(results: any, tool: AnalysisTool, format: 'json' | 'tabl
   } else {
     // Generic display
     console.log(JSON.stringify(results, null, 2));
+  }
+}
+
+function displayDeploymentScanResults(results: any) {
+  console.log(chalk.green(`\n📊 Deployment Scan Results:`));
+  console.log(chalk.gray(`  Scanned directory: ${results.path}`));
+  console.log(chalk.gray(`  Total deployments found: ${results.count}\n`));
+
+  if (results.deployments.length === 0) {
+    console.log(chalk.yellow('  No deployment configurations detected.'));
+    return;
+  }
+
+  // Group deployments by provider
+  const byProvider: Record<string, any[]> = {};
+  for (const deployment of results.deployments) {
+    if (!byProvider[deployment.provider]) {
+      byProvider[deployment.provider] = [];
+    }
+    byProvider[deployment.provider].push(deployment);
+  }
+
+  // Display each provider's deployments
+  for (const [provider, deployments] of Object.entries(byProvider)) {
+    console.log(chalk.cyan(`  ☁️  ${provider.toUpperCase()}`));
+    for (const deployment of deployments) {
+      console.log(chalk.white(`    • ${deployment.name}`));
+      console.log(chalk.gray(`      Environment: ${deployment.environment}`));
+      if (deployment.region) {
+        console.log(chalk.gray(`      Region: ${deployment.region}`));
+      }
+      if (deployment.country) {
+        console.log(chalk.gray(`      Country: ${deployment.country}`));
+      }
+      if (deployment.grid_zone) {
+        console.log(chalk.gray(`      Grid Zone: ${deployment.grid_zone}`));
+      }
+      if (deployment.carbon_intensity !== null && deployment.carbon_intensity !== undefined) {
+        // Color code based on carbon intensity
+        let carbonColor = chalk.green;
+        if (deployment.carbon_intensity >= 500) {
+          carbonColor = chalk.red;
+        } else if (deployment.carbon_intensity >= 300) {
+          carbonColor = chalk.yellow;
+        } else if (deployment.carbon_intensity >= 100) {
+          carbonColor = chalk.blue;
+        }
+        console.log(chalk.gray(`      Carbon Intensity: ${carbonColor(`${deployment.carbon_intensity} gCO2/kWh`)}`));
+      }
+      console.log(chalk.gray(`      Config: ${path.relative(process.cwd(), deployment.config_file_path)}`));
+      console.log('');
+    }
   }
 }
 

@@ -134,6 +134,24 @@
         "command": "carbonara.deleteSemgrepResultsForFile",
         "title": "Delete Semgrep Results for File",
         "icon": "$(trash)"
+      },
+      {
+        "command": "carbonara.scanDeployments",
+        "title": "Scan for Deployments",
+        "icon": "$(search)"
+      },
+      {
+        "command": "carbonara.refreshDeployments",
+        "title": "Refresh Deployments",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "carbonara.showDeploymentDetails",
+        "title": "Show Deployment Details"
+      },
+      {
+        "command": "carbonara.openDeploymentConfig",
+        "title": "Open Deployment Configuration File"
       }
     ],
     "viewsContainers": {
@@ -161,6 +179,12 @@
           "id": "carbonara.toolsTree",
           "name": "Analysis Tools",
           "icon": "$(tools)",
+          "visibility": "visible"
+        },
+        {
+          "id": "carbonara.deploymentsTree",
+          "name": "Deployment Insights",
+          "icon": "$(cloud)",
           "visibility": "visible"
         }
       ]
@@ -200,6 +224,11 @@
         {
           "command": "carbonara.refreshTools",
           "when": "view == carbonara.toolsTree",
+          "group": "navigation"
+        },
+        {
+          "command": "carbonara.refreshDeployments",
+          "when": "view == carbonara.deploymentsTree",
           "group": "navigation"
         }
       ],

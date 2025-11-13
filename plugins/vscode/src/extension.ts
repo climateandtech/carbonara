@@ -9,8 +9,12 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawn } from "child_process";
 import { AssessmentTreeProvider } from "./assessment-tree-provider";
-import { DataTreeProvider, SemgrepFindingDecorationProvider } from "./data-tree-provider";
+import {
+  DataTreeProvider,
+  SemgrepFindingDecorationProvider,
+} from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
+import { DeploymentsTreeProvider } from "./deployments-tree-provider";
 import {
   initializeSemgrep,
   runSemgrepOnFile,
@@ -23,6 +27,7 @@ let carbonaraStatusBar: vscode.StatusBarItem;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
+let deploymentsTreeProvider: DeploymentsTreeProvider;
 
 let currentProjectPath: string | null = null;
 
@@ -54,6 +59,8 @@ export async function activate(context: vscode.ExtensionContext) {
   dataTreeProvider = new DataTreeProvider();
   console.log("🔧 Creating ToolsTreeProvider...");
   toolsTreeProvider = new ToolsTreeProvider();
+  console.log("🔧 Creating DeploymentsTreeProvider...");
+  deploymentsTreeProvider = new DeploymentsTreeProvider();
   console.log("🔧 Registering tree data providers...");
   vscode.window.registerTreeDataProvider(
     "carbonara.assessmentTree",
@@ -66,6 +73,10 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider(
     "carbonara.toolsTree",
     toolsTreeProvider
+  );
+  vscode.window.registerTreeDataProvider(
+    "carbonara.deploymentsTree",
+    deploymentsTreeProvider
   );
   console.log("✅ All tree providers registered");
 
@@ -148,6 +159,19 @@ export async function activate(context: vscode.ExtensionContext) {
         const selectedItems = items && items.length > 0 ? items : [item];
         dataTreeProvider.deleteSemgrepResultsForFiles(selectedItems);
       }
+    ),
+    vscode.commands.registerCommand("carbonara.scanDeployments", () =>
+      deploymentsTreeProvider.scanForDeployments()
+    ),
+    vscode.commands.registerCommand("carbonara.refreshDeployments", () =>
+      deploymentsTreeProvider.scanForDeployments()
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.showDeploymentDetails",
+      (deployment) => deploymentsTreeProvider.showDeploymentDetails(deployment)
+    ),
+    vscode.commands.registerCommand("carbonara.openDeploymentConfig", (deployment) =>
+      deploymentsTreeProvider.openDeploymentConfig(deployment)
     ),
   ];
 
@@ -297,7 +321,11 @@ async function runAssessment() {
 
   // Check if project is initialized
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+  const configPath = path.join(
+    projectPath,
+    ".carbonara",
+    "carbonara.config.json"
+  );
   if (!fs.existsSync(configPath)) {
     const answer = await vscode.window.showInformationMessage(
       "Project not initialized. Initialize now?",
@@ -397,7 +425,11 @@ async function viewTools() {
 
 async function showStatus() {
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+  const configPath = path.join(
+    projectPath,
+    ".carbonara",
+    "carbonara.config.json"
+  );
   if (!fs.existsSync(configPath)) {
     vscode.window.showInformationMessage(
       "No Carbonara project detected. Initialize one from the status bar or sidebar."
@@ -416,7 +448,11 @@ async function openConfig() {
   }
 
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+  const configPath = path.join(
+    projectPath,
+    ".carbonara",
+    "carbonara.config.json"
+  );
 
   if (fs.existsSync(configPath)) {
     const doc = await vscode.workspace.openTextDocument(configPath);
@@ -443,7 +479,11 @@ async function openCarbonaraProject() {
 
   // First check if current workspace already has a Carbonara project
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+  const configPath = path.join(
+    projectPath,
+    ".carbonara",
+    "carbonara.config.json"
+  );
   if (fs.existsSync(configPath)) {
     try {
       const configContent = fs.readFileSync(configPath, "utf-8");
@@ -623,7 +663,11 @@ async function openProjectFolder() {
 
   if (folderUri && folderUri[0]) {
     const projectPath = folderUri[0].fsPath;
-    const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+    const configPath = path.join(
+      projectPath,
+      ".carbonara",
+      "carbonara.config.json"
+    );
 
     if (fs.existsSync(configPath)) {
       try {
@@ -675,7 +719,11 @@ async function ensureLocalCarbonaraProject(
   projectType: string
 ): Promise<void> {
   try {
-    const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+    const configPath = path.join(
+      projectPath,
+      ".carbonara",
+      "carbonara.config.json"
+    );
     if (!fs.existsSync(configPath)) {
       const minimalConfig = {
         name: projectName,
@@ -740,7 +788,11 @@ function checkProjectStatus() {
   }
 
   const projectPath = getCurrentProjectPath();
-  const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+  const configPath = path.join(
+    projectPath,
+    ".carbonara",
+    "carbonara.config.json"
+  );
 
   if (fs.existsSync(configPath)) {
     carbonaraStatusBar.text = "$(check) Carbonara";
@@ -768,7 +820,11 @@ async function openSemgrepFile(filePath: string) {
   }
 }
 
-async function openSemgrepFinding(filePath: string, line: number, column: number) {
+async function openSemgrepFinding(
+  filePath: string,
+  line: number,
+  column: number
+) {
   try {
     const uri = vscode.Uri.file(filePath);
     const document = await vscode.workspace.openTextDocument(uri);

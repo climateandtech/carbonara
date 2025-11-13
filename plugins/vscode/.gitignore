@@ -11,6 +11,7 @@ src/test/e2e/playwright-report/
 src/test/e2e/screenshots/
 *.jpg
 *.jpeg
+src/test/e2e/temp-vscode-data/
 
 # VS Code
 .vscode/settings.json

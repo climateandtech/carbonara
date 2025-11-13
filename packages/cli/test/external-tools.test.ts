@@ -158,9 +158,9 @@ describe('External Tools - Generic Tests', () => {
         });
       } catch (error: any) {
         const stderr = error.stderr?.toString() || '';
-        
+
         // Should show help or missing argument message
-        expect(stderr).toMatch(/missing.*argument|help|usage/i);
+        expect(stderr).toMatch(/missing.*argument|help|usage|parameter.*required/i);
       }
     });
   });

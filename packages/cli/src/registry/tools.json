@@ -987,6 +987,85 @@
           "type": "string"
         }
       ]
+    },
+    {
+      "id": "deployment-scan",
+      "name": "Deployment Scanner",
+      "description": "Scan configuration files to detect deployment environments (AWS, GCP, Azure, Heroku, Vercel, Netlify)",
+      "command": {
+        "executable": "built-in",
+        "args": [],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "built-in",
+        "package": "built-in",
+        "global": false,
+        "instructions": "Built-in tool, no installation required"
+      },
+      "detection": {
+        "method": "built-in",
+        "target": "always-available"
+      },
+      "parameters": [
+        {
+          "name": "path",
+          "required": false,
+          "type": "string",
+          "description": "Directory path to scan (defaults to current directory)"
+        }
+      ],
+      "display": {
+        "category": "Infrastructure",
+        "icon": "🚀",
+        "groupName": "Deployment Analysis",
+        "entryTemplate": "🚀 Deployment Scan - {date}",
+        "descriptionTemplate": "{count} deployment(s) detected",
+        "fields": [
+          {
+            "key": "provider",
+            "label": "☁️ Provider",
+            "path": "data.deployments[*].provider",
+            "type": "string"
+          },
+          {
+            "key": "environment",
+            "label": "🏗️ Environment",
+            "path": "data.deployments[*].environment",
+            "type": "string"
+          },
+          {
+            "key": "region",
+            "label": "🌍 Region",
+            "path": "data.deployments[*].region",
+            "type": "string"
+          },
+          {
+            "key": "country",
+            "label": "🗺️ Country",
+            "path": "data.deployments[*].country",
+            "type": "string"
+          }
+        ]
+      },
+      "options": [
+        {
+          "flag": "-s, --save",
+          "description": "Save results to data lake",
+          "type": "boolean"
+        },
+        {
+          "flag": "-o, --output <format>",
+          "description": "Output format (json|table)",
+          "type": "string",
+          "default": "table"
+        },
+        {
+          "flag": "--path <directory>",
+          "description": "Directory path to scan (defaults to current directory)",
+          "type": "string"
+        }
+      ]
     }
   ]
 }
