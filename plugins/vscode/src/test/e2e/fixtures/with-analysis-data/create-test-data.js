@@ -4,12 +4,20 @@
 const path = require('path');
 const fs = require('fs');
 
-const dbPath = path.join(__dirname, 'carbonara.db');
+// Use .carbonara directory for database storage
+const carbonaraDir = path.join(__dirname, '.carbonara');
+const dbPath = path.join(carbonaraDir, 'carbonara.db');
 
-// Remove existing database
+// Remove existing database and directory
 if (fs.existsSync(dbPath)) {
   fs.unlinkSync(dbPath);
 }
+if (fs.existsSync(carbonaraDir)) {
+  fs.rmSync(carbonaraDir, { recursive: true, force: true });
+}
+
+// Create .carbonara directory
+fs.mkdirSync(carbonaraDir, { recursive: true });
 
 (async () => {
   const initSqlJs = require('sql.js');
