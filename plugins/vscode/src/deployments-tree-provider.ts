@@ -201,7 +201,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       // Look up carbon intensity from the carbon service
       let intensity = deployment.carbon_intensity;
       if ((!intensity || intensity === null) && deployment.country && this.carbonService) {
-        intensity = this.carbonService.getCarbonIntensity(deployment.country);
+        intensity = this.carbonService.getCarbonIntensityByCountry(deployment.country);
       }
 
       // Carbon intensity info
@@ -308,7 +308,28 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       return;
     }
 
-    const recommendations = await this.carbonService!.getRecommendations();
+    // Fetch deployments from assessment_data table
+    const assessmentData = await this.dataService!.getAssessmentData(
+      undefined,
+      'deployment-scan'
+    );
+
+    // Extract deployments from the most recent scan
+    let deployments: any[] = [];
+    if (assessmentData.length > 0) {
+      const latestScan = assessmentData[0]; // Most recent
+      const data = latestScan.data;
+      deployments = data.deployments || [];
+    }
+
+    if (deployments.length === 0) {
+      vscode.window.showInformationMessage(
+        "No deployments found. Please scan for deployments first."
+      );
+      return;
+    }
+
+    const recommendations = await this.carbonService!.getRecommendations(deployments);
 
     if (recommendations.length === 0) {
       vscode.window.showInformationMessage(

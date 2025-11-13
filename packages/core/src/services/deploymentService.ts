@@ -101,14 +101,13 @@ export class DeploymentService {
   }
 
   /**
-   * Get carbon intensity for a specific grid zone from YAML data
+   * Get carbon intensity for a specific grid zone from JSON data
    */
   private getCarbonIntensityForGridZone(gridZone: string): number | null {
     try {
-      const yaml = require('js-yaml');
-      const yamlPath = path.join(__dirname, '../data/electricity_zones.yml');
-      const fileContents = fs.readFileSync(yamlPath, 'utf8');
-      const zones = yaml.load(fileContents) as Array<{ zone_key: string; average_co2: number }>;
+      const jsonPath = path.join(__dirname, '../data/electricity_zones.json');
+      const fileContents = fs.readFileSync(jsonPath, 'utf8');
+      const zones = JSON.parse(fileContents) as Array<{ zone_key: string; average_co2: number }>;
 
       const zone = zones.find(z => z.zone_key === gridZone);
       return zone ? zone.average_co2 : null;

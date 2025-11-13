@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
 import { DataService } from '../data-service.js';
 import { getGridZoneForRegion, getRegionMapping, ALL_REGION_MAPPINGS } from '../data/region-to-grid-mapping.js';
 
@@ -52,13 +51,13 @@ export class CarbonIntensityService {
   }
 
   /**
-   * Load electricity grid zone data from YAML file
+   * Load electricity grid zone data from JSON file
    */
   private loadGridZoneData() {
     try {
-      const yamlPath = path.join(__dirname, '../data/electricity_zones.yml');
-      const fileContents = fs.readFileSync(yamlPath, 'utf8');
-      const zones = yaml.load(fileContents) as GridZone[];
+      const jsonPath = path.join(__dirname, '../data/electricity_zones.json');
+      const fileContents = fs.readFileSync(jsonPath, 'utf8');
+      const zones = JSON.parse(fileContents) as GridZone[];
 
       for (const zone of zones) {
         this.gridZones.set(zone.zone_key, zone);

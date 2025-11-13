@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-data",
+    "copy-data": "mkdir -p dist/data && cp src/data/electricity_zones.json dist/data/",
     "dev": "tsc --watch",
     "test": "vitest run"
   },
