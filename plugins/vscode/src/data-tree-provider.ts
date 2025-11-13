@@ -211,9 +211,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     // This prevents showing "Loading..." message during refresh
     if (this.coreServices && this.workspaceFolder) {
       try {
-        // Reload database from disk to pick up any changes made by other processes
-        await this.coreServices.dataService.reloadDatabase();
-        
+        // Load fresh data from database
         const newItems = await this.loadRootItemsAsync();
         // Only update cache and fire event if data actually changed
         const hasChanged =

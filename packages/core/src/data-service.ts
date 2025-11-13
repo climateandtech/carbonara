@@ -579,6 +579,35 @@ export class DataService {
     );
   }
 
+  async reloadDatabase(): Promise<void> {
+    if (!this.SQL) {
+      // If SQL.js isn't initialized, initialize it first
+      await this.initialize();
+      return;
+    }
+
+    if (!this.db) {
+      throw new Error("Database not initialized");
+    }
+
+    // Save current state first
+    this.saveDatabase();
+
+    // Reload from disk
+    let existingData: Buffer | undefined;
+    if (fs.existsSync(this.dbPath)) {
+      existingData = fs.readFileSync(this.dbPath);
+    }
+
+    if (existingData) {
+      // Close old database
+      this.db.close();
+      // Load new database from disk
+      this.db = new this.SQL.Database(existingData);
+    }
+    // If file doesn't exist, keep current in-memory database
+  }
+
   async close(): Promise<void> {
     if (this.db) {
       this.saveDatabase();
