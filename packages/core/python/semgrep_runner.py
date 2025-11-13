@@ -169,6 +169,7 @@ class SemgrepRunner:
             "--exclude", "__pycache__",
             "--exclude", ".venv",
             "--exclude", "venv",
+            "--exclude", ".carbonara",
         ]
         
         # Add target paths
