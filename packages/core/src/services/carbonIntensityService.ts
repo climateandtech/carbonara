@@ -1,4 +1,8 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as yaml from 'js-yaml';
 import { DataService } from '../data-service.js';
+import { getGridZoneForRegion, getRegionMapping, ALL_REGION_MAPPINGS } from '../data/region-to-grid-mapping.js';
 
 export interface CarbonIntensityData {
   country: string;
@@ -8,11 +12,25 @@ export interface CarbonIntensityData {
   updatedAt: string;
 }
 
+export interface GridZone {
+  zone_key: string;
+  country: string;
+  zone_name: string;
+  fallback_zone_key: string | null;
+  stable: boolean;
+  free: boolean;
+  average_co2: number;
+  low_average: boolean;
+}
+
 export interface CarbonRecommendation {
   deploymentId: number;
+  currentRegion: string;
+  currentGridZone: string;
   currentIntensity: number;
   suggestedProvider?: string;
   suggestedRegion?: string;
+  suggestedGridZone?: string;
   suggestedCountry?: string;
   suggestedIntensity?: number;
   potentialSavings?: number; // percentage
@@ -25,64 +43,66 @@ export interface CarbonRecommendation {
  */
 export class CarbonIntensityService {
   private dataService: DataService;
-  private staticData: Map<string, number>;
+  private gridZones: Map<string, GridZone>;
 
   constructor(dataService: DataService) {
     this.dataService = dataService;
-    this.staticData = new Map();
-    this.loadStaticData();
+    this.gridZones = new Map();
+    this.loadGridZoneData();
   }
 
   /**
-   * Load static carbon intensity data by country
-   * Data sourced from Ember Climate (2023 averages) and IEA
-   * Values in gCO2/kWh
+   * Load electricity grid zone data from YAML file
    */
-  private loadStaticData() {
-    // Nordic countries (very low carbon intensity due to hydro/nuclear/wind)
-    this.staticData.set('NO', 25);  // Norway - hydro
-    this.staticData.set('IS', 30);  // Iceland - geothermal/hydro
-    this.staticData.set('SE', 45);  // Sweden - hydro/nuclear
-    this.staticData.set('FI', 85);  // Finland - nuclear/renewable mix
+  private loadGridZoneData() {
+    try {
+      const yamlPath = path.join(__dirname, '../data/electricity_zones.yml');
+      const fileContents = fs.readFileSync(yamlPath, 'utf8');
+      const zones = yaml.load(fileContents) as GridZone[];
 
-    // Western Europe (low to medium)
-    this.staticData.set('FR', 70);  // France - nuclear
-    this.staticData.set('CH', 75);  // Switzerland - hydro/nuclear
-    this.staticData.set('AT', 110); // Austria
-    this.staticData.set('DK', 130); // Denmark - wind
-    this.staticData.set('BE', 150); // Belgium
-    this.staticData.set('GB', 250); // United Kingdom
-    this.staticData.set('NL', 380); // Netherlands
-    this.staticData.set('DE', 420); // Germany
-    this.staticData.set('IT', 350); // Italy
-    this.staticData.set('ES', 200); // Spain
+      for (const zone of zones) {
+        this.gridZones.set(zone.zone_key, zone);
+      }
 
-    // North America
-    this.staticData.set('CA', 150); // Canada - hydro dominant
-    this.staticData.set('US', 400); // USA - mixed, varies by region
-
-    // Asia Pacific
-    this.staticData.set('NZ', 120); // New Zealand - hydro/geothermal
-    this.staticData.set('BR', 150); // Brazil - hydro
-    this.staticData.set('JP', 480); // Japan
-    this.staticData.set('KR', 500); // South Korea
-    this.staticData.set('SG', 420); // Singapore
-    this.staticData.set('AU', 650); // Australia - coal heavy
-    this.staticData.set('IN', 700); // India - coal heavy
-    this.staticData.set('CN', 580); // China - coal heavy
-
-    // Middle East (typically high due to oil/gas)
-    this.staticData.set('AE', 450); // UAE
-
-    // South Africa
-    this.staticData.set('ZA', 850); // South Africa - coal heavy
+      console.log(`Loaded ${this.gridZones.size} electricity grid zones`);
+    } catch (error) {
+      console.error('Error loading electricity grid zone data:', error);
+      // Service will still work with empty data, but won't provide accurate intensities
+    }
   }
 
   /**
-   * Get carbon intensity for a specific country
+   * Get carbon intensity for a specific grid zone
    */
-  getCarbonIntensity(country: string): number | null {
-    return this.staticData.get(country.toUpperCase()) || null;
+  getCarbonIntensityByGridZone(gridZone: string): number | null {
+    const zone = this.gridZones.get(gridZone);
+    return zone ? zone.average_co2 : null;
+  }
+
+  /**
+   * Get carbon intensity for a specific country (uses country-level grid zone)
+   */
+  getCarbonIntensityByCountry(countryCode: string): number | null {
+    return this.getCarbonIntensityByGridZone(countryCode.toUpperCase());
+  }
+
+  /**
+   * Get carbon intensity for a specific provider region
+   */
+  getCarbonIntensityByProviderRegion(provider: string, region: string): number | null {
+    const gridZone = getGridZoneForRegion(provider, region);
+    if (!gridZone) {
+      return null;
+    }
+
+    return this.getCarbonIntensityByGridZone(gridZone);
+  }
+
+  /**
+   * Get detailed grid zone information
+   */
+  getGridZoneInfo(gridZone: string): GridZone | null {
+    return this.gridZones.get(gridZone) || null;
   }
 
   /**
@@ -96,153 +116,166 @@ export class CarbonIntensityService {
   }
 
   /**
-   * Get recommendations for lower-carbon deployment options
-   * NOTE: This method is deprecated as deployments are now stored in assessment_data
+   * Get recommendations for lower-carbon deployment options based on deployment data
    */
-  async getRecommendations(): Promise<CarbonRecommendation[]> {
-    // TODO: Refactor to work with assessment_data table
-    console.warn('getRecommendations is deprecated - deployments are now stored in assessment_data');
-    return [];
+  async getRecommendations(deploymentData: any[]): Promise<CarbonRecommendation[]> {
+    const recommendations: CarbonRecommendation[] = [];
+
+    for (const deployment of deploymentData) {
+      const recommendation = this.generateRecommendation(deployment);
+      if (recommendation) {
+        recommendations.push(recommendation);
+      }
+    }
+
+    return recommendations;
   }
 
   /**
    * Generate a recommendation for a specific deployment
-   * NOTE: This method is deprecated as deployments are now stored in assessment_data
    */
   private generateRecommendation(deployment: any): CarbonRecommendation | null {
-    const currentIntensity = deployment.carbon_intensity!;
+    const provider = deployment.provider;
+    const region = deployment.region;
 
-    // Find better alternatives based on provider
-    let suggestedRegion: string | null = null;
-    let suggestedCountry: string | null = null;
-    let suggestedIntensity: number | null = null;
-    let notes = '';
-
-    switch (deployment.provider) {
-      case 'aws':
-        const awsRecommendation = this.getAWSRecommendation(currentIntensity);
-        if (awsRecommendation) {
-          suggestedRegion = awsRecommendation.region;
-          suggestedCountry = awsRecommendation.country;
-          suggestedIntensity = awsRecommendation.intensity;
-          notes = awsRecommendation.notes;
-        }
-        break;
-
-      case 'gcp':
-        const gcpRecommendation = this.getGCPRecommendation(currentIntensity);
-        if (gcpRecommendation) {
-          suggestedRegion = gcpRecommendation.region;
-          suggestedCountry = gcpRecommendation.country;
-          suggestedIntensity = gcpRecommendation.intensity;
-          notes = gcpRecommendation.notes;
-        }
-        break;
-
-      case 'azure':
-        const azureRecommendation = this.getAzureRecommendation(currentIntensity);
-        if (azureRecommendation) {
-          suggestedRegion = azureRecommendation.region;
-          suggestedCountry = azureRecommendation.country;
-          suggestedIntensity = azureRecommendation.intensity;
-          notes = azureRecommendation.notes;
-        }
-        break;
-
-      default:
-        // For other providers, suggest moving to low-carbon regions
-        notes = 'Consider migrating to a provider with low-carbon regions (Norway, Sweden, France)';
+    if (!provider || !region) {
+      return null;
     }
 
-    if (!suggestedIntensity || suggestedIntensity >= currentIntensity) {
+    // Get current grid zone and intensity
+    const currentGridZone = getGridZoneForRegion(provider, region);
+    if (!currentGridZone) {
+      return null;
+    }
+
+    const currentIntensity = this.getCarbonIntensityByGridZone(currentGridZone);
+    if (!currentIntensity) {
+      return null;
+    }
+
+    // Find better alternatives within the same provider
+    const providerRecommendation = this.getProviderRecommendation(provider, currentIntensity);
+
+    if (!providerRecommendation) {
       return null; // No better option found
     }
 
-    const potentialSavings = ((currentIntensity - suggestedIntensity) / currentIntensity) * 100;
+    const potentialSavings = ((currentIntensity - providerRecommendation.intensity) / currentIntensity) * 100;
 
     return {
-      deploymentId: deployment.id,
+      deploymentId: deployment.id || 0,
+      currentRegion: region,
+      currentGridZone,
       currentIntensity,
-      suggestedProvider: deployment.provider,
-      suggestedRegion: suggestedRegion || undefined,
-      suggestedCountry: suggestedCountry || undefined,
-      suggestedIntensity,
+      suggestedProvider: provider,
+      suggestedRegion: providerRecommendation.region,
+      suggestedGridZone: providerRecommendation.gridZone,
+      suggestedCountry: providerRecommendation.country,
+      suggestedIntensity: providerRecommendation.intensity,
       potentialSavings: Math.round(potentialSavings),
-      notes
+      notes: providerRecommendation.notes
     };
   }
 
-  private getAWSRecommendation(currentIntensity: number): { region: string; country: string; intensity: number; notes: string } | null {
-    // AWS regions ranked by carbon intensity (low to high)
-    const lowCarbonRegions = [
-      { region: 'eu-north-1', country: 'SE', intensity: 45, notes: 'AWS Stockholm - powered by renewable energy' },
-      { region: 'ca-central-1', country: 'CA', intensity: 150, notes: 'AWS Canada - hydro-powered' },
-      { region: 'eu-west-2', country: 'GB', intensity: 250, notes: 'AWS London' },
-      { region: 'eu-west-1', country: 'IE', intensity: 300, notes: 'AWS Ireland' },
-      { region: 'us-west-2', country: 'US', intensity: 350, notes: 'AWS Oregon - renewable energy investments' }
-    ];
-
-    // Find the lowest carbon region that's better than current
-    for (const option of lowCarbonRegions) {
-      if (option.intensity < currentIntensity) {
-        return option;
-      }
+  /**
+   * Get recommendation for a specific provider
+   */
+  private getProviderRecommendation(provider: string, currentIntensity: number): {
+    region: string;
+    gridZone: string;
+    country: string;
+    intensity: number;
+    notes: string;
+  } | null {
+    const providerMappings = ALL_REGION_MAPPINGS[provider.toLowerCase() as keyof typeof ALL_REGION_MAPPINGS];
+    if (!providerMappings) {
+      return null;
     }
 
-    return null;
-  }
+    // Get all regions for this provider with their carbon intensities
+    const regionIntensities = Object.entries(providerMappings)
+      .map(([regionCode, mapping]) => {
+        const intensity = this.getCarbonIntensityByGridZone(mapping.gridZone);
+        return {
+          region: regionCode,
+          gridZone: mapping.gridZone,
+          country: mapping.country,
+          location: mapping.location,
+          intensity: intensity || Infinity,
+          notes: mapping.notes || ''
+        };
+      })
+      .filter(r => r.intensity !== Infinity && r.intensity < currentIntensity)
+      .sort((a, b) => a.intensity - b.intensity);
 
-  private getGCPRecommendation(currentIntensity: number): { region: string; country: string; intensity: number; notes: string } | null {
-    const lowCarbonRegions = [
-      { region: 'europe-north1', country: 'FI', intensity: 85, notes: 'GCP Finland - low-carbon grid' },
-      { region: 'northamerica-northeast1', country: 'CA', intensity: 150, notes: 'GCP Montreal - hydro-powered' },
-      { region: 'europe-west2', country: 'GB', intensity: 250, notes: 'GCP London' },
-      { region: 'europe-west1', country: 'BE', intensity: 150, notes: 'GCP Belgium' }
-    ];
-
-    for (const option of lowCarbonRegions) {
-      if (option.intensity < currentIntensity) {
-        return option;
-      }
+    if (regionIntensities.length === 0) {
+      return null;
     }
 
-    return null;
-  }
-
-  private getAzureRecommendation(currentIntensity: number): { region: string; country: string; intensity: number; notes: string } | null {
-    const lowCarbonRegions = [
-      { region: 'norwayeast', country: 'NO', intensity: 25, notes: 'Azure Norway - hydro-powered' },
-      { region: 'swedencentral', country: 'SE', intensity: 45, notes: 'Azure Sweden - renewable energy' },
-      { region: 'francecentral', country: 'FR', intensity: 70, notes: 'Azure France - nuclear-powered' },
-      { region: 'uksouth', country: 'GB', intensity: 250, notes: 'Azure UK South' }
-    ];
-
-    for (const option of lowCarbonRegions) {
-      if (option.intensity < currentIntensity) {
-        return option;
-      }
-    }
-
-    return null;
+    // Return the lowest carbon intensity region
+    const best = regionIntensities[0];
+    return {
+      region: best.region,
+      gridZone: best.gridZone,
+      country: best.country,
+      intensity: best.intensity,
+      notes: `${provider.toUpperCase()} ${best.location} - ${best.intensity} gCO2/kWh${best.notes ? ' - ' + best.notes : ''}`
+    };
   }
 
   /**
-   * Get all countries ranked by carbon intensity
+   * Get all grid zones ranked by carbon intensity
    */
-  getCountriesRankedByCarbonIntensity(): Array<{ country: string; intensity: number }> {
-    const ranked = Array.from(this.staticData.entries())
-      .map(([country, intensity]) => ({ country, intensity }))
+  getGridZonesRankedByCarbonIntensity(): Array<{ gridZone: string; zoneName: string; country: string; intensity: number }> {
+    const ranked = Array.from(this.gridZones.values())
+      .map(zone => ({
+        gridZone: zone.zone_key,
+        zoneName: zone.zone_name,
+        country: zone.country,
+        intensity: zone.average_co2
+      }))
       .sort((a, b) => a.intensity - b.intensity);
 
     return ranked;
   }
 
   /**
+   * Get lowest carbon regions for each provider
+   */
+  getLowestCarbonRegionsByProvider(): Record<string, Array<{ region: string; gridZone: string; country: string; intensity: number; location: string }>> {
+    const result: Record<string, Array<any>> = {};
+
+    for (const [providerName, mappings] of Object.entries(ALL_REGION_MAPPINGS)) {
+      const regionIntensities = Object.entries(mappings)
+        .map(([regionCode, mapping]) => {
+          const intensity = this.getCarbonIntensityByGridZone(mapping.gridZone);
+          return {
+            region: regionCode,
+            gridZone: mapping.gridZone,
+            country: mapping.country,
+            location: mapping.location,
+            intensity: intensity || Infinity
+          };
+        })
+        .filter(r => r.intensity !== Infinity)
+        .sort((a, b) => a.intensity - b.intensity)
+        .slice(0, 10); // Top 10 lowest carbon regions
+
+      result[providerName] = regionIntensities;
+    }
+
+    return result;
+  }
+
+  /**
    * Calculate estimated CO2 savings if recommendations are implemented
    * Assumes average workload of 1 kWh per day per deployment
    */
-  async calculatePotentialSavings(): Promise<{ totalKgCO2PerYear: number; recommendations: CarbonRecommendation[] }> {
-    const recommendations = await this.getRecommendations();
+  async calculatePotentialSavings(deploymentData: any[]): Promise<{
+    totalKgCO2PerYear: number;
+    recommendations: CarbonRecommendation[];
+  }> {
+    const recommendations = await this.getRecommendations(deploymentData);
     let totalSavings = 0;
 
     for (const rec of recommendations) {
@@ -256,6 +289,82 @@ export class CarbonIntensityService {
     return {
       totalKgCO2PerYear: totalSavings / 1000, // Convert to kg
       recommendations
+    };
+  }
+
+  /**
+   * Get carbon intensity comparison between multiple regions
+   */
+  compareRegions(comparisons: Array<{ provider: string; region: string }>): Array<{
+    provider: string;
+    region: string;
+    gridZone: string | null;
+    intensity: number | null;
+    location: string;
+  }> {
+    return comparisons.map(({ provider, region }) => {
+      const mapping = getRegionMapping(provider, region);
+      if (!mapping) {
+        return {
+          provider,
+          region,
+          gridZone: null,
+          intensity: null,
+          location: 'Unknown'
+        };
+      }
+
+      const intensity = this.getCarbonIntensityByGridZone(mapping.gridZone);
+
+      return {
+        provider,
+        region,
+        gridZone: mapping.gridZone,
+        intensity,
+        location: mapping.location
+      };
+    });
+  }
+
+  /**
+   * Get statistics about the grid zone data
+   */
+  getDataStatistics(): {
+    totalZones: number;
+    lowCarbonZones: number; // < 100 gCO2/kWh
+    mediumCarbonZones: number; // 100-500 gCO2/kWh
+    highCarbonZones: number; // > 500 gCO2/kWh
+    averageIntensity: number;
+    lowestIntensity: { zone: string; intensity: number };
+    highestIntensity: { zone: string; intensity: number };
+  } {
+    const zones = Array.from(this.gridZones.values());
+    const intensities = zones.map(z => z.average_co2);
+
+    const lowCarbonZones = zones.filter(z => z.average_co2 < 100).length;
+    const mediumCarbonZones = zones.filter(z => z.average_co2 >= 100 && z.average_co2 <= 500).length;
+    const highCarbonZones = zones.filter(z => z.average_co2 > 500).length;
+
+    const averageIntensity = intensities.reduce((sum, i) => sum + i, 0) / intensities.length;
+
+    const sorted = zones.sort((a, b) => a.average_co2 - b.average_co2);
+    const lowest = sorted[0];
+    const highest = sorted[sorted.length - 1];
+
+    return {
+      totalZones: zones.length,
+      lowCarbonZones,
+      mediumCarbonZones,
+      highCarbonZones,
+      averageIntensity: Math.round(averageIntensity),
+      lowestIntensity: {
+        zone: lowest.zone_key,
+        intensity: lowest.average_co2
+      },
+      highestIntensity: {
+        zone: highest.zone_key,
+        intensity: highest.average_co2
+      }
     };
   }
 }

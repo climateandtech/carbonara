@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { DataService } from '../data-service.js';
+import { getGridZoneForRegion, getRegionMapping } from '../data/region-to-grid-mapping.js';
 
 export interface DeploymentDetectionResult {
   name: string;
@@ -8,6 +9,8 @@ export interface DeploymentDetectionResult {
   provider: string;
   region: string | null;
   country: string | null;
+  grid_zone: string | null;
+  carbon_intensity: number | null;
   ip_address: string | null;
   detection_method: string;
   config_file_path: string;
@@ -62,7 +65,57 @@ export class DeploymentService {
       }
     }
 
-    return results;
+    // Enrich results with grid zone and carbon intensity data
+    return results.map(deployment => this.enrichDeploymentWithCarbonData(deployment));
+  }
+
+  /**
+   * Enrich a deployment with grid zone and carbon intensity information
+   */
+  private enrichDeploymentWithCarbonData(deployment: DeploymentDetectionResult): DeploymentDetectionResult {
+    if (!deployment.provider || !deployment.region) {
+      return deployment;
+    }
+
+    const mapping = getRegionMapping(deployment.provider, deployment.region);
+    if (!mapping) {
+      return deployment;
+    }
+
+    // Load carbon intensity from YAML file
+    const carbonIntensity = this.getCarbonIntensityForGridZone(mapping.gridZone);
+
+    return {
+      ...deployment,
+      grid_zone: mapping.gridZone,
+      carbon_intensity: carbonIntensity,
+      metadata: {
+        ...deployment.metadata,
+        grid_mapping: {
+          grid_zone: mapping.gridZone,
+          location: mapping.location,
+          notes: mapping.notes
+        }
+      }
+    };
+  }
+
+  /**
+   * Get carbon intensity for a specific grid zone from YAML data
+   */
+  private getCarbonIntensityForGridZone(gridZone: string): number | null {
+    try {
+      const yaml = require('js-yaml');
+      const yamlPath = path.join(__dirname, '../data/electricity_zones.yml');
+      const fileContents = fs.readFileSync(yamlPath, 'utf8');
+      const zones = yaml.load(fileContents) as Array<{ zone_key: string; average_co2: number }>;
+
+      const zone = zones.find(z => z.zone_key === gridZone);
+      return zone ? zone.average_co2 : null;
+    } catch (error) {
+      console.error('Error loading carbon intensity data:', error);
+      return null;
+    }
   }
 
   async saveDeployments(detections: DeploymentDetectionResult[], projectId?: number, source?: string): Promise<number[]> {
@@ -178,6 +231,8 @@ class AWSConfigParser implements ConfigParser {
           provider: 'aws',
           region: match[1],
           country: this.awsRegionToCountry(match[1]),
+          grid_zone: null, // Will be enriched by enrichDeploymentWithCarbonData
+          carbon_intensity: null, // Will be enriched by enrichDeploymentWithCarbonData
           ip_address: null,
           detection_method: 'config_file',
           config_file_path: filePath,
@@ -198,6 +253,8 @@ class AWSConfigParser implements ConfigParser {
           provider: 'aws',
           region: match[1],
           country: this.awsRegionToCountry(match[1]),
+          grid_zone: null,
+          carbon_intensity: null,
           ip_address: null,
           detection_method: 'config_file',
           config_file_path: filePath,
@@ -266,6 +323,8 @@ class TerraformParser implements ConfigParser {
         provider: 'gcp',
         region: match[1],
         country: this.gcpRegionToCountry(match[1]),
+        grid_zone: null,
+        carbon_intensity: null,
         ip_address: null,
         detection_method: 'config_file',
         config_file_path: filePath,
@@ -284,6 +343,8 @@ class TerraformParser implements ConfigParser {
           provider: 'azure',
           region: match[1],
           country: this.azureRegionToCountry(match[1]),
+          grid_zone: null,
+          carbon_intensity: null,
           ip_address: null,
           detection_method: 'config_file',
           config_file_path: filePath,
@@ -356,6 +417,8 @@ class GitHubActionsParser implements ConfigParser {
         provider: 'aws',
         region: match[1],
         country: this.awsRegionToCountry(match[1]),
+        grid_zone: null,
+        carbon_intensity: null,
         ip_address: null,
         detection_method: 'config_file',
         config_file_path: filePath,
@@ -396,6 +459,8 @@ class HerokuParser implements ConfigParser {
         provider: 'heroku',
         region: null,
         country: 'US', // Default to US, most common
+        grid_zone: null,
+        carbon_intensity: null,
         ip_address: null,
         detection_method: 'config_file',
         config_file_path: filePath,
@@ -429,6 +494,8 @@ class VercelParser implements ConfigParser {
           provider: 'vercel',
           region: region,
           country: this.vercelRegionToCountry(region),
+          grid_zone: null,
+          carbon_intensity: null,
           ip_address: null,
           detection_method: 'config_file',
           config_file_path: filePath,
@@ -473,6 +540,8 @@ class NetlifyParser implements ConfigParser {
         provider: 'netlify',
         region: null,
         country: null, // Global CDN
+        grid_zone: null,
+        carbon_intensity: null,
         ip_address: null,
         detection_method: 'config_file',
         config_file_path: filePath,
