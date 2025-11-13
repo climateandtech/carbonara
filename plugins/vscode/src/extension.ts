@@ -15,6 +15,7 @@ import {
 } from "./data-tree-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import { DeploymentsTreeProvider } from "./deployments-tree-provider";
+import { WelcomeTreeProvider } from "./welcome-tree-provider";
 import {
   initializeSemgrep,
   ensureDatabaseInitialized,
@@ -25,6 +26,7 @@ import {
 } from "./semgrep-integration";
 
 let carbonaraStatusBar: vscode.StatusBarItem;
+let welcomeTreeProvider: WelcomeTreeProvider;
 let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
@@ -37,6 +39,13 @@ let semgrepDiagnostics: vscode.DiagnosticCollection;
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log("Carbonara extension is now active!");
+
+  // Initialize context variable for Welcome view visibility
+  vscode.commands.executeCommand(
+    "setContext",
+    "carbonara.notInitialized",
+    true
+  );
 
   // Initialize Semgrep integration (now async)
   await initializeSemgrep(context);
@@ -56,6 +65,7 @@ export async function activate(context: vscode.ExtensionContext) {
   carbonaraStatusBar.show();
 
   // Create and register tree views
+  welcomeTreeProvider = new WelcomeTreeProvider();
   assessmentTreeProvider = new AssessmentTreeProvider();
   dataTreeProvider = new DataTreeProvider();
   console.log("🔧 Creating ToolsTreeProvider...");
@@ -63,6 +73,10 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log("🔧 Creating DeploymentsTreeProvider...");
   deploymentsTreeProvider = new DeploymentsTreeProvider();
   console.log("🔧 Registering tree data providers...");
+  vscode.window.registerTreeDataProvider(
+    "carbonara.welcomeTree",
+    welcomeTreeProvider
+  );
   vscode.window.registerTreeDataProvider(
     "carbonara.assessmentTree",
     assessmentTreeProvider
@@ -171,8 +185,9 @@ export async function activate(context: vscode.ExtensionContext) {
       "carbonara.showDeploymentDetails",
       (deployment) => deploymentsTreeProvider.showDeploymentDetails(deployment)
     ),
-    vscode.commands.registerCommand("carbonara.openDeploymentConfig", (deployment) =>
-      deploymentsTreeProvider.openDeploymentConfig(deployment)
+    vscode.commands.registerCommand(
+      "carbonara.openDeploymentConfig",
+      (deployment) => deploymentsTreeProvider.openDeploymentConfig(deployment)
     ),
   ];
 
@@ -195,18 +210,21 @@ export async function activate(context: vscode.ExtensionContext) {
         );
       }
     }
+    welcomeTreeProvider.refresh();
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
     toolsTreeProvider.refresh();
     checkProjectStatus();
   });
   watcher.onDidChange(() => {
+    welcomeTreeProvider.refresh();
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
     toolsTreeProvider.refresh();
     checkProjectStatus();
   });
   watcher.onDidDelete(() => {
+    welcomeTreeProvider.refresh();
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
     toolsTreeProvider.refresh();
@@ -329,6 +347,7 @@ async function initProject() {
   }
 
   // Ensure UI reflects the new project
+  welcomeTreeProvider.refresh();
   assessmentTreeProvider.refresh();
   dataTreeProvider.refresh();
   toolsTreeProvider.refresh();
@@ -674,6 +693,7 @@ async function searchWorkspaceForProjects() {
 
     // Refresh the tree views with the new project
     checkProjectStatus();
+    welcomeTreeProvider.refresh();
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
     toolsTreeProvider.refresh();
@@ -810,6 +830,11 @@ function checkProjectStatus() {
   if (!workspaceFolder) {
     carbonaraStatusBar.text = "$(pulse) Carbonara";
     carbonaraStatusBar.tooltip = "Open a workspace to use Carbonara";
+    vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.notInitialized",
+      false
+    );
     return;
   }
 
@@ -823,13 +848,27 @@ function checkProjectStatus() {
   if (fs.existsSync(configPath)) {
     carbonaraStatusBar.text = "$(check) Carbonara";
     carbonaraStatusBar.tooltip = "Carbonara project initialized";
+    // Set context: Carbonara IS initialized
+    vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.notInitialized",
+      false
+    );
     // Make sure views show project data state
+    welcomeTreeProvider.refresh();
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
     toolsTreeProvider.refresh();
   } else {
     carbonaraStatusBar.text = "$(pulse) Carbonara";
     carbonaraStatusBar.tooltip = "Click to initialize Carbonara project";
+    // Set context: Carbonara is NOT initialized
+    vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.notInitialized",
+      true
+    );
+    welcomeTreeProvider.refresh();
     assessmentTreeProvider.refresh();
     dataTreeProvider.refresh();
     toolsTreeProvider.refresh();

@@ -328,8 +328,8 @@ suite("DataTreeProvider Unit Tests", () => {
         const children = await noWorkspaceProvider.getChildren();
 
         assert.ok(Array.isArray(children));
-        assert.ok(children.length > 0);
-        // Should show some kind of message about no workspace
+        // Should return empty array to show welcome view
+        assert.strictEqual(children.length, 0);
       } finally {
         // Restore original workspace folders
         Object.defineProperty(vscode.workspace, "workspaceFolders", {
@@ -444,6 +444,70 @@ suite("DataTreeProvider Unit Tests", () => {
       const firstChild = children[0];
       
       assert.ok(firstChild instanceof DataItem);
+  suite("Initialization State Detection", () => {
+    test("should return empty array when Carbonara is not initialized", async () => {
+      const mockWorkspacePath = "/test/workspace";
+      const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+
+      // Mock a workspace folder without Carbonara config
+      Object.defineProperty(vscode.workspace, "workspaceFolders", {
+        value: [
+          {
+            uri: { fsPath: mockWorkspacePath },
+            name: "test-workspace",
+            index: 0,
+          },
+        ],
+        configurable: true,
+      });
+
+      try {
+        const uninitializedProvider = new DataTreeProvider();
+        const children = await uninitializedProvider.getChildren();
+
+        // Should return empty array to trigger welcome view
+        assert.ok(Array.isArray(children));
+        assert.strictEqual(
+          children.length,
+          0,
+          "Should return empty array when Carbonara is not initialized"
+        );
+      } finally {
+        Object.defineProperty(vscode.workspace, "workspaceFolders", {
+          value: originalWorkspaceFolders,
+          configurable: true,
+        });
+      }
+    });
+
+    test("should create action items with commands", () => {
+      const actionItem = new DataItem(
+        "Initialize Carbonara",
+        "Click to set up Carbonara in this workspace",
+        vscode.TreeItemCollapsibleState.None,
+        "action",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          command: "carbonara.initProject",
+          title: "Initialize Project",
+        }
+      );
+
+      assert.strictEqual(actionItem.label, "Initialize Carbonara");
+      assert.strictEqual(actionItem.type, "action");
+      assert.ok(actionItem.command);
+      assert.strictEqual(actionItem.command.command, "carbonara.initProject");
+      assert.strictEqual(actionItem.command.title, "Initialize Project");
+
+      // Check icon
+      assert.ok(actionItem.iconPath instanceof vscode.ThemeIcon);
+      assert.strictEqual(
+        (actionItem.iconPath as vscode.ThemeIcon).id,
+        "add"
+      );
     });
   });
 });

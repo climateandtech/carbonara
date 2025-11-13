@@ -66,7 +66,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
 
     getChildren(element?: AssessmentItem): Thenable<AssessmentItem[]> {
         if (!this.workspaceFolder) {
-            // No workspace open - return empty to show welcome view
+            // No workspace open - return empty
             return Promise.resolve([]);
         }
 
@@ -75,8 +75,16 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
         const configPath = path.join(projectPath, '.carbonara', 'carbonara.config.json');
 
         if (!fs.existsSync(configPath)) {
-            // Workspace exists but Carbonara is not initialized - return empty to show welcome view
-            return Promise.resolve([]);
+            // Workspace exists but Carbonara is not initialized
+            // Show a single item with description styling
+            return Promise.resolve([
+                new AssessmentItem(
+                    '',
+                    'Initialise Carbonara to access assessment questionnaire',
+                    vscode.TreeItemCollapsibleState.None,
+                    'description-text'
+                )
+            ]);
         }
 
         if (element) {

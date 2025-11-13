@@ -253,7 +253,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
   getChildren(element?: DataItem): DataItem[] | Promise<DataItem[]> {
     if (!this.workspaceFolder) {
-      // No workspace open - return empty to show welcome view
+      // No workspace open - return empty
       return [];
     }
 
@@ -265,8 +265,16 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     );
 
     if (!require("fs").existsSync(configPath)) {
-      // Workspace exists but Carbonara is not initialized - return empty to show welcome view
-      return [];
+      // Workspace exists but Carbonara is not initialized
+      // Show a single item with description styling
+      return [
+        new DataItem(
+          "",
+          "Initialise Carbonara to access analysis results",
+          vscode.TreeItemCollapsibleState.None,
+          "info"
+        ),
+      ];
     }
 
     if (!this.coreServices) {

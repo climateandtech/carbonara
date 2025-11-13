@@ -166,26 +166,34 @@
     "views": {
       "carbonara": [
         {
+          "id": "carbonara.welcomeTree",
+          "name": "Initialisation",
+          "when": "carbonara.notInitialized",
+          "visibility": "visible"
+        },
+        {
           "id": "carbonara.assessmentTree",
           "name": "CO2 Assessment",
-          "icon": "$(checklist)"
+          "icon": "$(checklist)",
+          "visibility": "collapsed"
         },
         {
           "id": "carbonara.dataTree",
           "name": "Data & Results",
-          "icon": "$(database)"
+          "icon": "$(database)",
+          "visibility": "collapsed"
         },
         {
           "id": "carbonara.toolsTree",
           "name": "Analysis Tools",
           "icon": "$(tools)",
-          "visibility": "visible"
+          "visibility": "collapsed"
         },
         {
           "id": "carbonara.deploymentsTree",
           "name": "Deployment Insights",
           "icon": "$(cloud)",
-          "visibility": "visible"
+          "visibility": "collapsed"
         }
       ]
     },
@@ -275,19 +283,8 @@
     },
     "viewsWelcome": [
       {
-        "view": "carbonara.assessmentTree",
-        "contents": "Carbonara has not yet been initialised for this workspace.\n\nInitialise Carbonara to enable the assessment questionnaire, the analysis tools and to view analysis results for this project.\n\n[Initialise Carbonara](command:carbonara.initProject)\n\nInitialise Carbonara to access assessment questionnaire",
-        "when": "workspaceFolderCount != 0"
-      },
-      {
-        "view": "carbonara.dataTree",
-        "contents": "Initialise Carbonara to access analysis results",
-        "when": "workspaceFolderCount != 0"
-      },
-      {
-        "view": "carbonara.toolsTree",
-        "contents": "Initialise Carbonara to access analysis tools",
-        "when": "workspaceFolderCount != 0"
+        "view": "carbonara.welcomeTree",
+        "contents": "Carbonara has not yet been initialised for this workspace.\n\nInitialise Carbonara to enable the assessment questionnaire, the analysis tools and to view analysis results for this project.\n\n[Initialise Carbonara](command:carbonara.initProject)"
       }
     ],
     "configuration": {
