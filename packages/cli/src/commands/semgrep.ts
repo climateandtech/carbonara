@@ -44,7 +44,7 @@ export async function semgrepCommand(
     process.exit(1);
   }
 
-  const spinner = ora("Running Semgrep analysis...").start();
+  const spinner = ora("Running Code scan").start();
 
   try {
     // Create service instance

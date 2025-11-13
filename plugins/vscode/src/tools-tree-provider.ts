@@ -65,7 +65,8 @@ export class ToolItem extends vscode.TreeItem {
 
     // Set context value for different actions
     if (tool.type === "built-in") {
-      this.contextValue = "builtin-tool";
+      // Special context for semgrep to show custom buttons
+      this.contextValue = tool.id === "semgrep" ? "builtin-tool-semgrep" : "builtin-tool";
     } else if (tool.isInstalled) {
       this.contextValue = "installed-tool";
     } else {

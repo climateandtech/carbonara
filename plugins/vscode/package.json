@@ -118,8 +118,13 @@
       },
       {
         "command": "carbonara.runSemgrep",
-        "title": "Run Semgrep on Current File",
-        "icon": "$(search)"
+        "title": "Scan current file",
+        "icon": "$(play)"
+      },
+      {
+        "command": "carbonara.scanAllFiles",
+        "title": "Scan all files",
+        "icon": "$(play)"
       },
       {
         "command": "carbonara.clearSemgrepResults",
@@ -207,6 +212,16 @@
         {
           "command": "carbonara.analyzeTool",
           "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.runSemgrep",
+          "when": "view == carbonara.toolsTree && viewItem == builtin-tool-semgrep",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.scanAllFiles",
+          "when": "view == carbonara.toolsTree && viewItem == builtin-tool-semgrep",
           "group": "inline"
         },
         {
