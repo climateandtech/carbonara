@@ -445,8 +445,8 @@ suite("DataTreeProvider Unit Tests", () => {
       
       assert.ok(firstChild instanceof DataItem);
   suite("Initialization State Detection", () => {
-    test("should return empty array when Carbonara is not initialized", async () => {
-      const mockWorkspacePath = "/test/workspace";
+    test("should return description item when Carbonara is not initialized", async () => {
+      const mockWorkspacePath = "/test/workspace-uninitialized";
       const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
 
       // Mock a workspace folder without Carbonara config
@@ -465,13 +465,15 @@ suite("DataTreeProvider Unit Tests", () => {
         const uninitializedProvider = new DataTreeProvider();
         const children = await uninitializedProvider.getChildren();
 
-        // Should return empty array to trigger welcome view
+        // Should return a single description item
         assert.ok(Array.isArray(children));
         assert.strictEqual(
           children.length,
-          0,
-          "Should return empty array when Carbonara is not initialized"
+          1,
+          "Should return single description item when Carbonara is not initialized"
         );
+        assert.strictEqual(children[0].label, "");
+        assert.strictEqual(children[0].description, "Initialise Carbonara to access analysis results");
       } finally {
         Object.defineProperty(vscode.workspace, "workspaceFolders", {
           value: originalWorkspaceFolders,

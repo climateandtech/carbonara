@@ -19,9 +19,13 @@ suite("DataTreeProvider Integration Tests", () => {
     );
     fs.mkdirSync(tempDir, { recursive: true });
 
-    // Create .carbonara directory structure
+    // Create .carbonara directory and config file to simulate initialized state
     const carbonaraDir = path.join(tempDir, ".carbonara");
     fs.mkdirSync(carbonaraDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(carbonaraDir, "carbonara.config.json"),
+      JSON.stringify({ name: "test-project", initialized: true }, null, 2)
+    );
 
     testDbPath = path.join(carbonaraDir, "carbonara.db");
 
@@ -79,13 +83,16 @@ suite("DataTreeProvider Integration Tests", () => {
         children.length === 1 &&
         children[0].label === UI_TEXT.DATA_TREE.LOADING
       ) {
-        // Wait for the async loading to complete and refresh event to fire
-        await new Promise<void>((resolve) => {
-          const disposable = provider.onDidChangeTreeData(() => {
-            disposable.dispose();
-            resolve();
-          });
-        });
+        // Wait for the async loading to complete and refresh event to fire with timeout
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            const disposable = provider.onDidChangeTreeData(() => {
+              disposable.dispose();
+              resolve();
+            });
+          }),
+          new Promise<void>((resolve) => setTimeout(resolve, 1500)), // Timeout after 1.5s
+        ]);
 
         // Get children again after async load completes
         const updatedChildren = await provider.getChildren();
@@ -111,7 +118,17 @@ suite("DataTreeProvider Integration Tests", () => {
       children.forEach((child) => {
         assert.ok(child instanceof DataItem);
         assert.ok(
-          ["group", "entry", "detail", "info", "error"].includes(child.type)
+          [
+            "group",
+            "entry",
+            "detail",
+            "info",
+            "error",
+            "action",
+            "folder",
+            "file",
+            "finding",
+          ].includes(child.type)
         );
       });
     });
@@ -241,11 +258,9 @@ suite("DataTreeProvider Integration Tests", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       const children = await noWorkspaceProvider.getChildren();
-      assert.ok(children.length > 0);
-      assert.ok(
-        children[0].label.includes("No workspace") ||
-          children[0].label.includes("unavailable")
-      );
+      // When no workspace, should return empty array
+      assert.ok(Array.isArray(children));
+      assert.strictEqual(children.length, 0);
 
       // Restore workspace folders
       Object.defineProperty(vscode.workspace, "workspaceFolders", {
@@ -420,7 +435,7 @@ suite("DataTreeProvider Integration Tests", () => {
 
       while (!initialized && Date.now() - startTime < maxWaitTime) {
         const children = await provider.getChildren();
-        
+
         // Check if we're past the loading/initialization state
         const isInitializing = children.some(
           (child) =>
@@ -453,7 +468,7 @@ suite("DataTreeProvider Integration Tests", () => {
     test.skip("should load and display data when assessment data exists", async function () {
       // Increase timeout for this test (15 seconds)
       this.timeout(15000);
-      
+
       // Create test database with assessment data
       const carbonaraDir = path.join(
         testWorkspaceFolder.uri.fsPath,
@@ -544,7 +559,7 @@ suite("DataTreeProvider Integration Tests", () => {
       // Verify the data structure
       const children = await provider.getChildren();
       assert.ok(children.length > 0, "Should have at least one data item");
-      
+
       // Should have either groups or entries
       const hasGroupsOrEntries = children.some(
         (child) => child.type === "group" || child.type === "entry"

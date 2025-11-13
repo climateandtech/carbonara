@@ -76,12 +76,24 @@ suite("Carbonara Extension Integration Tests", () => {
 
     // Check that no unexpected commands are registered
     // Filter out VSCode auto-generated tree view commands (.open, .focus, .resetViewLocation, .toggleVisibility, .removeView)
-    const vscodeGeneratedSuffixes = ['.open', '.focus', '.resetViewLocation', '.toggleVisibility', '.removeView'];
-    const treeViewPrefixes = ['carbonara.assessmentTree', 'carbonara.dataTree', 'carbonara.toolsTree', 'carbonara.deploymentsTree'];
+    const vscodeGeneratedSuffixes = [
+      ".open",
+      ".focus",
+      ".resetViewLocation",
+      ".toggleVisibility",
+      ".removeView",
+    ];
+    const treeViewPrefixes = [
+      "carbonara.assessmentTree",
+      "carbonara.dataTree",
+      "carbonara.toolsTree",
+      "carbonara.deploymentsTree",
+      "carbonara.welcomeTree",
+    ];
 
     const isVSCodeGeneratedCommand = (cmd: string) => {
-      return treeViewPrefixes.some(prefix =>
-        vscodeGeneratedSuffixes.some(suffix => cmd === prefix + suffix)
+      return treeViewPrefixes.some((prefix) =>
+        vscodeGeneratedSuffixes.some((suffix) => cmd === prefix + suffix)
       );
     };
 
