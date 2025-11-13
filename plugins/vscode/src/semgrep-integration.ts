@@ -13,21 +13,69 @@ import {
 
 const execAsync = promisify(exec);
 
-// Database service instance for persisting Semgrep results
+// Database service instance for the Carbonara database (stores results from all tools including Semgrep)
 let dataService: DataService | null = null;
 
-// Callback to refresh the Data & Results tree when Semgrep database updates
+// Callback to refresh the Data & Results tree when database updates
 let onDatabaseUpdateCallback: (() => void) | null = null;
 
 /**
- * Get the shared DataService instance used by Semgrep
+ * Get the shared Carbonara DataService instance
+ * Used by Semgrep and other tools to store results
  */
 export function getSemgrepDataService(): DataService | null {
   return dataService;
 }
 
 /**
- * Set a callback to be invoked when Semgrep database is updated
+ * Initialize or reinitialize the Carbonara database service
+ * Call this when a Carbonara project is created or when config is detected
+ */
+export async function ensureDatabaseInitialized(
+  workspacePath: string
+): Promise<void> {
+  try {
+    // If database service already exists and points to the same path, skip
+    const dbPath = path.join(workspacePath, ".carbonara", "carbonara.db");
+    if (dataService && dataService.getDbPath() === dbPath) {
+      console.log("Carbonara database already initialized at correct path");
+      return;
+    }
+
+    // Close existing database if any
+    if (dataService) {
+      await dataService.close();
+    }
+
+    // Create DataService instance
+    dataService = new DataService({ dbPath });
+
+    // Only initialize if project is initialized (has config file)
+    if (!dataService.isProjectInitialized()) {
+      console.log(
+        "Carbonara project not initialized yet. Skipping database initialization."
+      );
+      dataService = null;
+      return;
+    }
+
+    // Initialize Carbonara database
+    await dataService.initialize();
+    console.log(`Carbonara database initialized at: ${dbPath}`);
+
+    // Trigger refresh callback if set
+    if (onDatabaseUpdateCallback) {
+      onDatabaseUpdateCallback();
+    }
+  } catch (error) {
+    console.error("Failed to initialize Carbonara database:", error);
+    dataService = null;
+    throw error;
+  }
+}
+
+/**
+ * Set a callback to be invoked when the Carbonara database is updated
  */
 export function setOnDatabaseUpdateCallback(callback: () => void): void {
   onDatabaseUpdateCallback = callback;
@@ -194,34 +242,24 @@ async function runSemgrepViaCLI(
 export async function initializeSemgrep(
   context: vscode.ExtensionContext
 ): Promise<vscode.DiagnosticCollection> {
-  // Initialize database service for saving Semgrep results
+  // Initialize Carbonara database service if a project exists
+  // The database stores results from Semgrep and other tools
+  // Only initialize if a Carbonara project exists (has .carbonara/carbonara.config.json)
   try {
-    // Use workspace folder if available, otherwise use extension's global storage
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    let dbPath: string;
 
     if (workspaceFolder) {
-      // Store in workspace root
-      dbPath = path.join(workspaceFolder.uri.fsPath, "carbonara.db");
+      // Try to initialize Carbonara database if project exists
+      // This won't create the database if config doesn't exist
+      await ensureDatabaseInitialized(workspaceFolder.uri.fsPath);
     } else {
-      // No workspace open, use extension's global storage
-      dbPath = path.join(context.globalStorageUri.fsPath, "carbonara.db");
-      // Ensure directory exists
-      if (!fs.existsSync(context.globalStorageUri.fsPath)) {
-        fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
-      }
+      console.log(
+        "No workspace folder open. Carbonara database will be initialized when a project is created."
+      );
     }
-
-    dataService = new DataService({ dbPath });
-    await dataService.initialize();
-    console.log(
-      `Database service initialized for Semgrep results at: ${dbPath}`
-    );
   } catch (error) {
-    console.error("Failed to initialize database service:", error);
-    vscode.window.showWarningMessage(
-      "Failed to initialize Semgrep database. Results will not be persisted."
-    );
+    console.error("Failed to initialize Carbonara database:", error);
+    // Don't show warning to user - this is expected when no project is initialized
   }
 
   // Create diagnostics collection for Semgrep
@@ -473,7 +511,7 @@ async function runSemgrepAnalysis(
     // Apply diagnostics to the document
     applySemgrepDiagnostics(filePath, result.matches);
 
-    // Update database if saveToDatabase option is set
+    // Save results to Carbonara database if saveToDatabase option is set
     if (dataService && saveToDatabase) {
       try {
         // Convert file path to be relative to workspace if possible
@@ -486,7 +524,7 @@ async function runSemgrepAnalysis(
         // Delete old results for this file before inserting new ones
         await dataService.deleteSemgrepResultsByFile(relativeFilePath);
 
-        // Store new results (even if there are no matches, to record that the file was analyzed)
+        // Store new results in Carbonara database (even if there are no matches, to record that the file was analyzed)
         await dataService.storeSemgrepRun(
           result.matches,
           relativeFilePath,
@@ -497,11 +535,11 @@ async function runSemgrepAnalysis(
 
         if (result.matches.length > 0) {
           console.log(
-            `Saved to database: ${result.matches.length} Semgrep findings for ${relativeFilePath}`
+            `Saved to Carbonara database: ${result.matches.length} Semgrep findings for ${relativeFilePath}`
           );
         } else {
           console.log(
-            `Saved to database: No Semgrep findings for ${relativeFilePath} (all clean!)`
+            `Saved to Carbonara database: No Semgrep findings for ${relativeFilePath} (all clean!)`
           );
         }
 
@@ -510,7 +548,10 @@ async function runSemgrepAnalysis(
           onDatabaseUpdateCallback();
         }
       } catch (error) {
-        console.error("Failed to save Semgrep results to database:", error);
+        console.error(
+          "Failed to save Semgrep results to Carbonara database:",
+          error
+        );
       }
     }
 
@@ -606,7 +647,9 @@ export async function runSemgrepOnFile() {
   // Check if the document is a real file
   const filePath = editor.document.uri.fsPath;
   if (!filePath || editor.document.uri.scheme !== "file") {
-    vscode.window.showErrorMessage("Cannot scan this type of document. Please open a code file.");
+    vscode.window.showErrorMessage(
+      "Cannot scan this type of document. Please open a code file."
+    );
     return;
   }
 

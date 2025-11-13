@@ -66,37 +66,23 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
 
     getChildren(element?: AssessmentItem): Thenable<AssessmentItem[]> {
         if (!this.workspaceFolder) {
-            // Show options to initialize or open a project when no workspace
+            // No workspace open - return empty
+            return Promise.resolve([]);
+        }
+
+        // Check if Carbonara is initialized in the current workspace
+        const projectPath = this.getCurrentProjectPath();
+        const configPath = path.join(projectPath, '.carbonara', 'carbonara.config.json');
+
+        if (!fs.existsSync(configPath)) {
+            // Workspace exists but Carbonara is not initialized
+            // Show a single item with description styling
             return Promise.resolve([
                 new AssessmentItem(
-                    'No Carbonara Project',
-                    'Initialize a new project or open an existing one',
+                    '',
+                    'Initialise Carbonara to access assessment questionnaire',
                     vscode.TreeItemCollapsibleState.None,
-                    'no-project'
-                ),
-                new AssessmentItem(
-                    'Initialize Project',
-                    'Create a new Carbonara project in current workspace',
-                    vscode.TreeItemCollapsibleState.None,
-                    'init-action',
-                    undefined,
-                    undefined,
-                    {
-                        command: 'carbonara.initProject',
-                        title: 'Initialize Project'
-                    }
-                ),
-                new AssessmentItem(
-                    'Open Project',
-                    'Open an existing Carbonara project',
-                    vscode.TreeItemCollapsibleState.None,
-                    'open-action',
-                    undefined,
-                    undefined,
-                    {
-                        command: 'carbonara.openProject',
-                        title: 'Open Project'
-                    }
+                    'description-text'
                 )
             ]);
         }

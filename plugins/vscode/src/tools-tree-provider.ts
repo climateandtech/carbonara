@@ -105,7 +105,39 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
   }
 
   getChildren(element?: ToolItem): Thenable<ToolItem[]> {
-    // Always show tools, even without workspace folder
+    // Check if workspace is open
+    if (!this.workspaceFolder) {
+      // No workspace open - return empty
+      return Promise.resolve([]);
+    }
+
+    // Check if Carbonara is initialized
+    const configPath = path.join(
+      this.workspaceFolder.uri.fsPath,
+      ".carbonara",
+      "carbonara.config.json"
+    );
+
+    if (!fs.existsSync(configPath)) {
+      // Workspace exists but Carbonara is not initialized
+      // Show a single item with description styling
+      const descriptionItem = new ToolItem(
+        {
+          id: "not-initialized-description",
+          name: "",
+          description: "Initialise Carbonara to access analysis tools",
+          type: "built-in" as const,
+          command: "",
+          isInstalled: false,
+        },
+        vscode.TreeItemCollapsibleState.None
+      );
+      descriptionItem.iconPath = undefined; // No icon
+      descriptionItem.contextValue = "description-text";
+      return Promise.resolve([descriptionItem]);
+    }
+
+    // Always show tools
     if (element) {
       // No children for individual tools
       return Promise.resolve([]);

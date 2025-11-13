@@ -104,6 +104,16 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         "carbonara.config.json"
       );
 
+      // Check if Carbonara project is initialized
+      if (!require("fs").existsSync(configPath)) {
+        console.log(
+          "No Carbonara project detected. Core services will not be initialized."
+        );
+        this.coreServices = null;
+        this._onDidChangeTreeData.fire();
+        return;
+      }
+
       try {
         if (require("fs").existsSync(configPath)) {
           const config = JSON.parse(
@@ -146,7 +156,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       const dbInitPromise = dataService.initialize();
       const dbInitTimeout = setTimeout(() => {
-        console.warn("⚠️ Database initialization taking longer than expected (10s)...");
+        console.warn(
+          "⚠️ Database initialization taking longer than expected (10s)..."
+        );
       }, 10000);
 
       await dbInitPromise;
@@ -187,7 +199,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
           await this.coreServices.vscodeProvider.loadDataForProject(
             projectPath
           );
-        console.log(`✅ Test data load successful: ${testData.length} entries found`);
+        console.log(
+          `✅ Test data load successful: ${testData.length} entries found`
+        );
       } catch (testError) {
         console.error("⚠️ Test data load failed:", testError);
       }
@@ -239,10 +253,24 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
   getChildren(element?: DataItem): DataItem[] | Promise<DataItem[]> {
     if (!this.workspaceFolder) {
+      // No workspace open - return empty
+      return [];
+    }
+
+    // Check if Carbonara is initialized
+    const configPath = path.join(
+      this.workspaceFolder.uri.fsPath,
+      ".carbonara",
+      "carbonara.config.json"
+    );
+
+    if (!require("fs").existsSync(configPath)) {
+      // Workspace exists but Carbonara is not initialized
+      // Show a single item with description styling
       return [
         new DataItem(
-          "No workspace folder",
           "",
+          "Initialise Carbonara to access analysis results",
           vscode.TreeItemCollapsibleState.None,
           "info"
         ),
@@ -596,7 +624,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
       // Load assessment data - check coreServices is available
       if (!this.coreServices) {
-        console.warn("⚠️ Core services not initialized yet, returning loading state");
+        console.warn(
+          "⚠️ Core services not initialized yet, returning loading state"
+        );
         return [
           new DataItem(
             UI_TEXT.DATA_TREE.LOADING,
@@ -918,15 +948,22 @@ export class DataItem extends vscode.TreeItem {
       | "error"
       | "folder"
       | "file"
-      | "finding",
+      | "finding"
+      | "action",
     public readonly toolName?: string,
     public readonly entryId?: number,
     public readonly filePath?: string,
-    public readonly resultData?: any
+    public readonly resultData?: any,
+    command?: vscode.Command
   ) {
     super(label, collapsibleState);
     this.tooltip = description;
     this.description = description;
+
+    // Set command if provided
+    if (command) {
+      this.command = command;
+    }
 
     // Set stable ID to preserve tree state across refreshes
     // This allows VSCode to remember which items are expanded/collapsed
@@ -992,6 +1029,9 @@ export class DataItem extends vscode.TreeItem {
         break;
       case "info":
         this.iconPath = new vscode.ThemeIcon("info");
+        break;
+      case "action":
+        this.iconPath = new vscode.ThemeIcon("add");
         break;
     }
 

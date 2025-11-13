@@ -12,31 +12,47 @@ suite('ToolsTreeProvider Unit Tests', () => {
     setup(() => {
         // Mock workspace folders
         originalWorkspaceFolders = vscode.workspace.workspaceFolders;
-        
+
+        // Create a temporary test workspace folder
+        const tempDir = fs.mkdtempSync(path.join('/tmp', 'carbonara-tools-test-'));
+
+        // Create .carbonara directory and config file to simulate initialized state
+        const carbonaraDir = path.join(tempDir, '.carbonara');
+        fs.mkdirSync(carbonaraDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(carbonaraDir, 'carbonara.config.json'),
+            JSON.stringify({ name: 'test-project', initialized: true }, null, 2)
+        );
+
         // Create mock test workspace folder
         testWorkspaceFolder = {
-            uri: vscode.Uri.file('/test/workspace'),
+            uri: vscode.Uri.file(tempDir),
             name: 'test-workspace',
             index: 0
         };
-        
+
         Object.defineProperty(vscode.workspace, 'workspaceFolders', {
             value: [testWorkspaceFolder],
             configurable: true
         });
-        
+
         // Set CLI path for tests - point to the actual CLI in the monorepo
         const cliPath = path.join(__dirname, '..', '..', '..', '..', '..', 'packages', 'cli', 'dist', 'index.js');
         process.env.CARBONARA_CLI_PATH = cliPath;
-        
+
         // Set registry path for tests - point to the tools registry
         const registryPath = path.join(__dirname, '..', '..', '..', '..', '..', 'packages', 'cli', 'src', 'registry', 'tools.json');
         process.env.CARBONARA_REGISTRY_PATH = registryPath;
-        
+
         provider = new ToolsTreeProvider();
     });
 
     teardown(() => {
+        // Clean up temporary test workspace
+        if (testWorkspaceFolder && fs.existsSync(testWorkspaceFolder.uri.fsPath)) {
+            fs.rmSync(testWorkspaceFolder.uri.fsPath, { recursive: true, force: true });
+        }
+
         // Restore original workspace folders
         Object.defineProperty(vscode.workspace, 'workspaceFolders', {
             value: originalWorkspaceFolders,
