@@ -32,6 +32,47 @@ export interface ConfigParser {
   parse(filePath: string, content: string): DeploymentDetectionResult[];
 }
 
+// Shared region to country mapping functions
+function awsRegionToCountry(region: string): string | null {
+  const mapping: Record<string, string> = {
+    "us-east-1": "US",
+    "us-east-2": "US",
+    "us-west-1": "US",
+    "us-west-2": "US",
+    "af-south-1": "ZA",
+    "ap-east-1": "HK",
+    "ap-south-2": "IN",
+    "ap-southeast-3": "ID",
+    "ap-southeast-5": "MY",
+    "ap-southeast-4": "AU",
+    "ap-south-1": "IN",
+    "ap-southeast-6": "NZ",
+    "ap-northeast-3": "JP",
+    "ap-northeast-2": "KR",
+    "ap-southeast-1": "SG",
+    "ap-southeast-2": "AU",
+    "ap-east-2": "TW",
+    "ap-southeast-7": "TH",
+    "ap-northeast-1": "JP",
+    "ca-central-1": "CA",
+    "ca-west-1": "CA",
+    "eu-central-1": "DE",
+    "eu-west-1": "IE",
+    "eu-west-2": "GB",
+    "eu-south-1": "IT",
+    "eu-west-3": "FR",
+    "eu-south-2": "ES",
+    "eu-north-1": "SE",
+    "eu-central-2": "CH",
+    "il-central-1": "IL",
+    "mx-central-1": "MX",
+    "me-south-1": "BH",
+    "me-central-1": "AE",
+    "sa-east-1": "BR",
+  };
+  return mapping[region] || null;
+}
+
 export class DeploymentService {
   private dataService: DataService;
   private parsers: ConfigParser[] = [];
@@ -276,7 +317,7 @@ class AWSConfigParser implements ConfigParser {
           environment: this.inferEnvironment(filePath, content),
           provider: "aws",
           region: match[1],
-          country: this.awsRegionToCountry(match[1]),
+          country: awsRegionToCountry(match[1]),
           grid_zone: null, // Will be enriched by enrichDeploymentWithCarbonData
           carbon_intensity: null, // Will be enriched by enrichDeploymentWithCarbonData
           ip_address: null,
@@ -298,7 +339,7 @@ class AWSConfigParser implements ConfigParser {
           environment: this.inferEnvironment(filePath, content),
           provider: "aws",
           region: match[1],
-          country: this.awsRegionToCountry(match[1]),
+          country: awsRegionToCountry(match[1]),
           grid_zone: null,
           carbon_intensity: null,
           ip_address: null,
@@ -327,28 +368,6 @@ class AWSConfigParser implements ConfigParser {
       return "development";
     }
     return "unknown";
-  }
-
-  private awsRegionToCountry(region: string): string | null {
-    const mapping: Record<string, string> = {
-      "us-east-1": "US",
-      "us-east-2": "US",
-      "us-west-1": "US",
-      "us-west-2": "US",
-      "eu-west-1": "IE",
-      "eu-west-2": "GB",
-      "eu-west-3": "FR",
-      "eu-central-1": "DE",
-      "eu-north-1": "SE",
-      "ap-southeast-1": "SG",
-      "ap-southeast-2": "AU",
-      "ap-northeast-1": "JP",
-      "ap-northeast-2": "KR",
-      "ap-south-1": "IN",
-      "ca-central-1": "CA",
-      "sa-east-1": "BR",
-    };
-    return mapping[region] || null;
   }
 }
 
@@ -417,34 +436,104 @@ class TerraformParser implements ConfigParser {
 
   private gcpRegionToCountry(region: string): string | null {
     const mapping: Record<string, string> = {
-      "us-central1": "US",
-      "us-east1": "US",
-      "us-west1": "US",
+      "asia-east1": "TW",
+      "asia-east2": "HK",
+      "asia-northeast1": "JP",
+      "asia-northeast2": "JP",
+      "asia-northeast3": "KR",
+      "asia-south1": "IN",
+      "asia-south2": "IN",
+      "asia-southeast1": "SG",
+      "asia-southeast2": "ID",
+      "australia-southeast1": "AU",
+      "australia-southeast2": "AU",
+      "europe-central2": "PL",
+      "europe-north1": "FI",
+      "europe-southwest1": "ES",
       "europe-west1": "BE",
       "europe-west2": "GB",
       "europe-west3": "DE",
       "europe-west4": "NL",
-      "eu-north-1": "FI",
-      "asia-east1": "TW",
-      "asia-northeast1": "JP",
-      "ap-southeast-1": "SG",
+      "europe-west6": "CH",
+      "europe-west8": "IT",
+      "europe-west9": "FR",
+      "europe-west12": "IT",
+      "me-central1": "QA",
+      "me-west1": "IL",
+      "northamerica-northeast1": "CA",
+      "northamerica-northeast2": "CA",
+      "southamerica-east1": "BR",
+      "southamerica-east2": "CL-SEN",
+      "us-central1": "US",
+      "us-east1": "US",
+      "us-east4": "US",
+      "us-east5": "US",
+      "us-south1": "US",
+      "us-west1": "US",
+      "us-west2": "US",
+      "us-west3": "US",
+      "us-west4": "US",
     };
     return mapping[region] || null;
   }
 
   private azureRegionToCountry(region: string): string | null {
     const mapping: Record<string, string> = {
-      eastus: "US",
-      westus: "US",
-      northeurope: "IE",
-      westeurope: "NL",
-      uksouth: "GB",
-      francecentral: "FR",
-      germanywestcentral: "DE",
-      norwayeast: "NO",
-      swedencentral: "SE",
-      japaneast: "JP",
+      australiacentral: "AU",
+      australiacentral2: "AU",
       australiaeast: "AU",
+      australiasoutheast: "AU",
+      austriaeast: "AT",
+      belgiumcentral: "BE",
+      brazilsouth: "BR",
+      brazilsoutheast: "BR",
+      canadacentral: "CA",
+      canadaeast: "CA",
+      centralindia: "IN",
+      centralus: "US",
+      chilecentral: "CL-SEN",
+      eastasia: "HK",
+      eastus: "US",
+      eastus2: "US",
+      francecentral: "FR",
+      francesouth: "FR",
+      germanynorth: "DE",
+      germanywestcentral: "DE",
+      indonesiacentral: "ID",
+      israelcentral: "IL",
+      italynorth: "IT",
+      japaneast: "JP",
+      japanwest: "JP",
+      koreacentral: "KR",
+      koreasouth: "KR",
+      malaysiawest: "MY",
+      mexicocentral: "MX",
+      newzealandnorth: "NZ",
+      northcentralus: "US",
+      northeurope: "IE",
+      norwayeast: "NO",
+      norwaywest: "NO",
+      polandcentral: "PL",
+      qatarcentral: "QA",
+      southafricanorth: "ZA",
+      southafricawest: "ZA",
+      southcentralus: "US",
+      southindia: "IN",
+      southeastasia: "SG",
+      spaincentral: "ES",
+      swedencentral: "SE",
+      switzerlandnorth: "CH",
+      switzerlandwest: "CH",
+      uaecentral: "AE",
+      uaenorth: "AE",
+      uksouth: "GB",
+      ukwest: "GB",
+      westcentralus: "US",
+      westeurope: "NL",
+      westindia: "IN",
+      westus: "US",
+      westus2: "US",
+      westus3: "US",
     };
     return mapping[region] || null;
   }
@@ -468,7 +557,7 @@ class GitHubActionsParser implements ConfigParser {
         environment: "production",
         provider: "aws",
         region: match[1],
-        country: this.awsRegionToCountry(match[1]),
+        country: awsRegionToCountry(match[1]),
         grid_zone: null,
         carbon_intensity: null,
         ip_address: null,
@@ -480,17 +569,6 @@ class GitHubActionsParser implements ConfigParser {
     }
 
     return results;
-  }
-
-  private awsRegionToCountry(region: string): string | null {
-    // Reuse AWS mapping (could be shared utility)
-    const mapping: Record<string, string> = {
-      "us-east-1": "US",
-      "us-west-2": "US",
-      "eu-west-1": "IE",
-      "eu-central-1": "DE",
-    };
-    return mapping[region] || null;
   }
 }
 
@@ -565,12 +643,25 @@ class VercelParser implements ConfigParser {
   private vercelRegionToCountry(region: string): string | null {
     // Vercel region codes
     const mapping: Record<string, string> = {
-      iad1: "US",
-      sfo1: "US",
-      lhr1: "GB",
+      arn1: "SE",
+      bom1: "IN",
+      cdg1: "FR",
+      cle1: "US",
+      cpt1: "ZA",
+      dub1: "IE",
+      dxb1: "AE",
       fra1: "DE",
-      sin1: "SG",
+      gru1: "BR",
+      hkg1: "HK",
       hnd1: "JP",
+      iad1: "US",
+      icn1: "KR",
+      kix1: "JP",
+      lhr1: "GB",
+      pdx1: "US",
+      sfo1: "US",
+      sin1: "SG",
+      syd1: "AU",
     };
     return mapping[region] || null;
   }
