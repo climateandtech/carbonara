@@ -126,6 +126,9 @@ const filesWithDiagnostics = new Map<string, Set<number>>();
 // Cache for CLI availability check
 let cliAvailable: boolean | null = null;
 
+// Track the last focused valid code file
+let lastValidEditor: vscode.TextEditor | undefined;
+
 /**
  * Check if the carbonara CLI is available
  */
@@ -153,14 +156,21 @@ async function checkCarbonaraCLI(): Promise<boolean> {
  * Run semgrep using the carbonara CLI
  */
 async function runSemgrepViaCLI(
-  filePath: string
+  filePath: string,
+  options: {
+    timeout?: number;
+    maxBuffer?: number;
+  } = {}
 ): Promise<SemgrepResult | null> {
+  const timeout = options.timeout || 60000;
+  const maxBuffer = options.maxBuffer || 10 * 1024 * 1024; // 10MB default
+
   try {
     const { stdout, stderr } = await execAsync(
       `carbonara semgrep "${filePath}" --output json`,
       {
-        timeout: 60000,
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+        timeout,
+        maxBuffer,
       }
     );
 
@@ -204,7 +214,9 @@ export async function initializeSemgrep(
 
     dataService = new DataService({ dbPath });
     await dataService.initialize();
-    console.log(`Database service initialized for Semgrep results at: ${dbPath}`);
+    console.log(
+      `Database service initialized for Semgrep results at: ${dbPath}`
+    );
   } catch (error) {
     console.error("Failed to initialize database service:", error);
     vscode.window.showWarningMessage(
@@ -354,7 +366,12 @@ async function runSemgrepAnalysis(
     saveToDatabase?: boolean;
   } = {}
 ): Promise<SemgrepResult | null> {
-  const { showUI = false, outputChannel = null, useTempFile = true, saveToDatabase = false } = options;
+  const {
+    showUI = false,
+    outputChannel = null,
+    useTempFile = true,
+    saveToDatabase = false,
+  } = options;
   const filePath = editor.document.uri.fsPath;
   let tempFile: string | null = null;
 
@@ -445,7 +462,7 @@ async function runSemgrepAnalysis(
         });
         outputChannel.show();
         vscode.window.showErrorMessage(
-          "Semgrep analysis failed. Check Output for details."
+          "Code scan failed. Check Output for details."
         );
       } else {
         console.log("Semgrep analysis failed:", result.errors);
@@ -528,7 +545,7 @@ async function runSemgrepAnalysis(
       if (result.matches.length > 0) {
         vscode.window
           .showWarningMessage(
-            `Semgrep found ${result.stats.total_matches} issue(s). Underlines added to code.`,
+            `Code scan found ${result.stats.total_matches} issue(s). Underlines added to code.`,
             "View Output"
           )
           .then((selection) => {
@@ -537,7 +554,7 @@ async function runSemgrepAnalysis(
             }
           });
       } else {
-        vscode.window.showInformationMessage("Semgrep: No issues found!");
+        vscode.window.showInformationMessage("Code scan: No issues found!");
       }
     } else {
       console.log(
@@ -551,9 +568,7 @@ async function runSemgrepAnalysis(
     if (showUI && outputChannel) {
       outputChannel.appendLine(`\nError: ${errorMessage}`);
       outputChannel.show();
-      vscode.window.showErrorMessage(
-        `Semgrep analysis failed: ${errorMessage}`
-      );
+      vscode.window.showErrorMessage(`Code scan failed: ${errorMessage}`);
     } else {
       console.log("Semgrep analysis error:", error);
     }
@@ -576,9 +591,31 @@ async function runSemgrepAnalysis(
  * Run Semgrep analysis manually on the current file
  */
 export async function runSemgrepOnFile() {
-  const editor = vscode.window.activeTextEditor;
+  let editor = vscode.window.activeTextEditor;
+
+  // If the active editor is not a valid file (e.g., output channel), use the last valid editor
+  if (editor && editor.document.uri.scheme !== "file") {
+    editor = lastValidEditor;
+  }
+
   if (!editor) {
-    vscode.window.showErrorMessage("No file is currently open");
+    vscode.window.showErrorMessage("No code file is currently open");
+    return;
+  }
+
+  // Check if the document is a real file
+  const filePath = editor.document.uri.fsPath;
+  if (!filePath || editor.document.uri.scheme !== "file") {
+    vscode.window.showErrorMessage("Cannot scan this type of document. Please open a code file.");
+    return;
+  }
+
+  // Check if the file has a supported extension
+  const fileExtension = path.extname(filePath);
+  if (!SUPPORTED_SEMGREP_EXTENSIONS.includes(fileExtension)) {
+    vscode.window.showErrorMessage(
+      `Code scan does not support ${fileExtension} files. Supported extensions: ${SUPPORTED_SEMGREP_EXTENSIONS.slice(0, 10).join(", ")}...`
+    );
     return;
   }
 
@@ -587,7 +624,7 @@ export async function runSemgrepOnFile() {
   return vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: "Running Semgrep analysis...",
+      title: "Running Code scan",
       cancellable: false,
     },
     async () => {
@@ -597,6 +634,186 @@ export async function runSemgrepOnFile() {
         useTempFile: false,
         saveToDatabase: true, // Manual runs should save to database
       });
+    }
+  );
+}
+
+/**
+ * Run Semgrep analysis on all files in the workspace
+ */
+export async function scanAllFiles() {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage("No workspace folder open");
+    return;
+  }
+
+  const output = vscode.window.createOutputChannel("Carbonara Semgrep");
+  output.clear();
+
+  return vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "Scanning all files in workspace...",
+      cancellable: false,
+    },
+    async () => {
+      try {
+        const workspacePath = workspaceFolder.uri.fsPath;
+        output.appendLine(`Analyzing workspace: ${workspacePath}`);
+        output.appendLine(
+          "This may take a few minutes for large projects...\n"
+        );
+
+        // Check if carbonara CLI is available
+        const useCLI = await checkCarbonaraCLI();
+        let result: SemgrepResult | null = null;
+
+        if (useCLI) {
+          output.appendLine("Using carbonara CLI for analysis...");
+          result = await runSemgrepViaCLI(workspacePath, {
+            timeout: 300000, // 5 minutes for workspace scan
+            maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large workspaces
+          });
+        }
+
+        // Fall back to core library if CLI is not available or failed
+        if (!result) {
+          if (useCLI) {
+            output.appendLine("CLI failed, falling back to core library...");
+          } else {
+            output.appendLine("Using core library for analysis...");
+          }
+
+          // Create Semgrep service instance
+          const semgrep = createSemgrepService({
+            useBundledPython: false,
+            timeout: 300000, // 5 minutes for workspace scan
+          });
+
+          // Check setup before running
+          output.appendLine("Checking Semgrep setup...");
+          const setup = await semgrep.checkSetup();
+
+          if (!setup.isValid) {
+            output.appendLine("Semgrep setup issues detected:");
+            setup.errors.forEach((error) => {
+              output.appendLine(`  • ${error}`);
+            });
+            output.show();
+            vscode.window
+              .showErrorMessage(
+                "Semgrep is not properly configured. Check Output for details.",
+                "View Output"
+              )
+              .then((selection) => {
+                if (selection === "View Output") {
+                  output.show();
+                }
+              });
+            return;
+          }
+
+          output.appendLine("Running workspace analysis...");
+          result = await semgrep.analyzeDirectory(workspacePath);
+        }
+
+        if (!result.success) {
+          output.appendLine("\nAnalysis failed:");
+          result.errors.forEach((error) => {
+            output.appendLine(`  • ${error}`);
+          });
+          output.show();
+          vscode.window.showErrorMessage(
+            "Semgrep workspace analysis failed. Check Output for details."
+          );
+          return;
+        }
+
+        // Apply diagnostics for all matches
+        const fileGroups = new Map<string, SemgrepMatch[]>();
+        for (const match of result.matches) {
+          const matches = fileGroups.get(match.path) || [];
+          matches.push(match);
+          fileGroups.set(match.path, matches);
+        }
+
+        // Apply diagnostics to each file
+        for (const [filePath, matches] of fileGroups.entries()) {
+          const absolutePath = path.isAbsolute(filePath)
+            ? filePath
+            : path.join(workspacePath, filePath);
+          applySemgrepDiagnostics(absolutePath, matches);
+        }
+
+        // Save results to database
+        if (dataService) {
+          try {
+            // Group matches by file and save each file's results
+            for (const [filePath, matches] of fileGroups.entries()) {
+              const relativeFilePath = vscode.workspace.asRelativePath(
+                path.isAbsolute(filePath)
+                  ? filePath
+                  : path.join(workspacePath, filePath),
+                false
+              );
+
+              // Delete old results for this file
+              await dataService.deleteSemgrepResultsByFile(relativeFilePath);
+
+              // Calculate stats for this file
+              const fileStats = {
+                total_matches: matches.length,
+                error_count: matches.filter((m) => m.severity === "ERROR")
+                  .length,
+                warning_count: matches.filter((m) => m.severity === "WARNING")
+                  .length,
+                info_count: matches.filter((m) => m.severity === "INFO").length,
+                files_scanned: 1,
+              };
+
+              // Store results for this file
+              await dataService.storeSemgrepRun(
+                matches,
+                relativeFilePath,
+                fileStats,
+                undefined,
+                "vscode"
+              );
+            }
+
+            // Trigger Data & Results tree refresh
+            if (onDatabaseUpdateCallback) {
+              onDatabaseUpdateCallback();
+            }
+
+            output.appendLine("\nResults saved to database");
+          } catch (error) {
+            output.appendLine(
+              `\nWarning: Failed to save to database: ${error}`
+            );
+          }
+        }
+
+        // Display summary
+        output.appendLine(`\n${"=".repeat(50)}`);
+        output.appendLine("Workspace scan complete!");
+        output.appendLine(`Files scanned: ${result.stats.files_scanned}`);
+        output.appendLine(`Total findings: ${result.stats.total_matches}`);
+        output.appendLine(`  Errors: ${result.stats.error_count}`);
+        output.appendLine(`  Warnings: ${result.stats.warning_count}`);
+        output.appendLine(`  Info: ${result.stats.info_count}`);
+
+        vscode.window.showInformationMessage(
+          `Workspace scan complete: ${result.stats.files_scanned} files scanned, ${result.stats.total_matches} findings`
+        );
+      } catch (error) {
+        output.appendLine(`\nUnexpected error: ${error}`);
+        output.show();
+        vscode.window.showErrorMessage(
+          `Semgrep workspace scan failed: ${error}`
+        );
+      }
     }
   );
 }
@@ -645,6 +862,11 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
     clearTimeout(semgrepAnalysisTimer);
   }
 
+  // Skip if not a real file (e.g., output channels, virtual documents)
+  if (editor.document.uri.scheme !== "file") {
+    return;
+  }
+
   // Only analyze files with supported extensions
   const filePath = editor.document.uri.fsPath;
   const fileExtension = path.extname(filePath);
@@ -652,6 +874,9 @@ async function runSemgrepOnFileChange(editor: vscode.TextEditor) {
   if (!SUPPORTED_SEMGREP_EXTENSIONS.includes(fileExtension)) {
     return;
   }
+
+  // Track this as the last valid editor
+  lastValidEditor = editor;
 
   // Check file size - skip interactive linting for large files
   try {
@@ -710,7 +935,9 @@ async function runSemgrepOnFileSave(editor: vscode.TextEditor) {
   }
 
   // Always run analysis on save and update database
-  console.log(`Running Semgrep on save for ${path.basename(filePath)} (saving to DB)`);
+  console.log(
+    `Running Semgrep on save for ${path.basename(filePath)} (saving to DB)`
+  );
   await runSemgrepAnalysis(editor, {
     showUI: false,
     useTempFile: false,

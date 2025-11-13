@@ -89,7 +89,7 @@
         "fields": [
           {
             "key": "url",
-            "label": "🌐 Test URL", 
+            "label": "🌐 Test URL",
             "path": "data.url",
             "type": "url",
             "format": "domain-only"
@@ -351,12 +351,14 @@
                 "observe": ["webpage-impact"],
                 "compute": ["co2js"]
               },
-              "inputs": [{
-                "options": {
-                  "firstVisitPercentage": "{firstVisitPercentage}",
-                  "returnVisitPercentage": "{returnVisitPercentage}"
+              "inputs": [
+                {
+                  "options": {
+                    "firstVisitPercentage": "{firstVisitPercentage}",
+                    "returnVisitPercentage": "{returnVisitPercentage}"
+                  }
                 }
-              }]
+              ]
             }
           }
         }
@@ -693,8 +695,8 @@
     },
     {
       "id": "semgrep",
-      "name": "Semgrep",
-      "description": "Static analysis tool for finding bugs, detecting vulnerabilities, and enforcing code standards",
+      "name": "Code Scan",
+      "description": "Static code analysis for finding performance improvements",
       "vscodeCommand": "carbonara.runSemgrep",
       "command": {
         "executable": "built-in",

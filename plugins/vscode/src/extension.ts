@@ -14,6 +14,7 @@ import { ToolsTreeProvider } from "./tools-tree-provider";
 import {
   initializeSemgrep,
   runSemgrepOnFile,
+  scanAllFiles,
   clearSemgrepResults,
   setOnDatabaseUpdateCallback,
 } from "./semgrep-integration";
@@ -126,6 +127,7 @@ export async function activate(context: vscode.ExtensionContext) {
       toolsTreeProvider.analyzeTool(toolId)
     ),
     vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
+    vscode.commands.registerCommand("carbonara.scanAllFiles", scanAllFiles),
     vscode.commands.registerCommand(
       "carbonara.clearSemgrepResults",
       clearSemgrepResults

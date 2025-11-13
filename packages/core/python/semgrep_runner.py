@@ -158,8 +158,17 @@ class SemgrepRunner:
             "semgrep",
             "--config", str(config_path),
             "--json",
-            "--no-git-ignore",  # Don't skip files in .gitignore
             "--metrics=off",    # Disable metrics collection
+            # Exclude common directories
+            "--exclude", "node_modules",
+            "--exclude", "*.min.js",
+            "--exclude", "dist",
+            "--exclude", "build",
+            "--exclude", ".git",
+            "--exclude", "vendor",
+            "--exclude", "__pycache__",
+            "--exclude", ".venv",
+            "--exclude", "venv",
         ]
         
         # Add target paths
@@ -176,11 +185,14 @@ class SemgrepRunner:
         
         # Run Semgrep
         try:
+            # Use longer timeout for directory scans (5 minutes)
+            timeout = 300 if any(Path(t).is_dir() for t in targets) else 60
+
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=timeout
             )
             
             # Parse JSON output
@@ -200,7 +212,7 @@ class SemgrepRunner:
         except subprocess.TimeoutExpired:
             return SemgrepResult(
                 matches=[],
-                errors=["Semgrep execution timed out after 60 seconds"],
+                errors=[f"Semgrep execution timed out after {timeout} seconds"],
                 stats={},
                 success=False
             )
