@@ -55,6 +55,7 @@ suite("Carbonara Extension Integration Tests", () => {
       "carbonara.installTool",
       "carbonara.analyzeTool",
       "carbonara.runSemgrep",
+      "carbonara.scanAllFiles",
       "carbonara.clearSemgrepResults",
       "carbonara.openSemgrepFile",
       "carbonara.openSemgrepFinding",

@@ -19,6 +19,53 @@
  * - Netlify: https://docs.netlify.com/domains-https/custom-domains/configure-external-dns/
  */
 
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
+
+// ES module compatibility for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+interface ElectricityZone {
+  zone_key: string;
+  country: string;
+  zone_name: string;
+  average_co2: number;
+  fallback_zone_key?: string;
+}
+
+// Cache for electricity zones data
+let electricityZonesCache: ElectricityZone[] | null = null;
+
+/**
+ * Load electricity zones data from JSON file
+ */
+function loadElectricityZones(): ElectricityZone[] {
+  if (electricityZonesCache) {
+    return electricityZonesCache;
+  }
+
+  try {
+    const zonesPath = path.join(__dirname, "electricity_zones.json");
+    const zonesData = fs.readFileSync(zonesPath, "utf-8");
+    electricityZonesCache = JSON.parse(zonesData);
+    return electricityZonesCache!;
+  } catch (error) {
+    console.error("Failed to load electricity zones data:", error);
+    return [];
+  }
+}
+
+/**
+ * Get zone name for a given zone key from electricity_zones.json
+ */
+export function getZoneNameForGridZone(gridZone: string): string | undefined {
+  const zones = loadElectricityZones();
+  const zone = zones.find((z) => z.zone_key === gridZone);
+  return zone?.zone_name;
+}
+
 export interface RegionGridMapping {
   /** Cloud provider region code */
   region: string;
@@ -76,14 +123,14 @@ export const AWS_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "CA-ON",
     location: "Central Canada",
     country: "CA",
-    notes: "Ontario grid",
+    notes: "Ontario",
   },
   "ca-west-1": {
     region: "ca-west-1",
     gridZone: "CA-AB",
     location: "Calgary, Canada",
     country: "CA",
-    notes: "Alberta grid",
+    notes: "Alberta",
   },
 
   // South America
@@ -162,21 +209,21 @@ export const AWS_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "IN-WE",
     location: "Mumbai, India",
     country: "IN",
-    notes: "Western India grid",
+    notes: "Western India",
   },
   "ap-south-2": {
     region: "ap-south-2",
     gridZone: "IN-SO",
     location: "Hyderabad, India",
     country: "IN",
-    notes: "Southern India grid",
+    notes: "Southern India",
   },
   "ap-northeast-1": {
     region: "ap-northeast-1",
     gridZone: "JP-TK",
     location: "Tokyo, Japan",
     country: "JP",
-    notes: "Tokyo grid",
+    notes: "Tōkyō",
   },
   "ap-northeast-2": {
     region: "ap-northeast-2",
@@ -189,7 +236,7 @@ export const AWS_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "JP-KN",
     location: "Osaka, Japan",
     country: "JP",
-    notes: "Kansai grid",
+    notes: "Kansai",
   },
   "ap-southeast-1": {
     region: "ap-southeast-1",
@@ -202,7 +249,7 @@ export const AWS_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "AU-NSW",
     location: "Sydney, Australia",
     country: "AU",
-    notes: "New South Wales grid",
+    notes: "New South Wales",
   },
   "ap-southeast-3": {
     region: "ap-southeast-3",
@@ -215,7 +262,7 @@ export const AWS_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "AU-VIC",
     location: "Melbourne, Australia",
     country: "AU",
-    notes: "Victoria grid",
+    notes: "Victoria",
   },
   "ap-southeast-5": {
     region: "ap-southeast-5",
@@ -341,7 +388,7 @@ export const GCP_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "US-TEX-ERCO",
     location: "Dallas, Texas, USA",
     country: "US",
-    notes: "ERCOT",
+    notes: "Electric Reliability Council of Texas",
   },
   "us-west1": {
     region: "us-west1",
@@ -369,7 +416,7 @@ export const GCP_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "US-SW-AZPS",
     location: "Las Vegas, Nevada, USA",
     country: "US",
-    notes: "Arizona Public Service",
+    notes: "Arizona Public Service Company",
   },
 
   // Americas - North America - Canada
@@ -378,14 +425,14 @@ export const GCP_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
     gridZone: "CA-QC",
     location: "Montréal, Canada",
     country: "CA",
-    notes: "Québec grid",
+    notes: "Québec",
   },
   "northamerica-northeast2": {
     region: "northamerica-northeast2",
     gridZone: "CA-ON",
     location: "Toronto, Canada",
     country: "CA",
-    notes: "Ontario grid",
+    notes: "Ontario",
   },
 
   // Americas - North America - Mexico
@@ -1348,6 +1395,7 @@ export function getGridZoneForRegion(
 
 /**
  * Get full mapping details for a specific provider and region
+ * Automatically enriches the mapping with zone_name from electricity_zones.json
  */
 export function getRegionMapping(
   provider: string,
@@ -1361,11 +1409,22 @@ export function getRegionMapping(
     return null;
   }
 
-  return providerMappings[region] || null;
+  const mapping = providerMappings[region];
+  if (!mapping) {
+    return null;
+  }
+
+  // Enrich with zone_name from electricity_zones.json
+  const zoneName = getZoneNameForGridZone(mapping.gridZone);
+  return {
+    ...mapping,
+    notes: zoneName || mapping.notes,
+  };
 }
 
 /**
  * Get all regions for a specific provider
+ * Automatically enriches each mapping with zone_name from electricity_zones.json
  */
 export function getAllRegionsForProvider(
   provider: string
@@ -1378,5 +1437,12 @@ export function getAllRegionsForProvider(
     return [];
   }
 
-  return Object.values(providerMappings);
+  // Enrich each mapping with zone_name
+  return Object.values(providerMappings).map((mapping) => {
+    const zoneName = getZoneNameForGridZone(mapping.gridZone);
+    return {
+      ...mapping,
+      notes: zoneName || mapping.notes,
+    };
+  });
 }
