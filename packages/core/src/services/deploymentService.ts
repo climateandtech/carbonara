@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { DataService, Deployment } from '../data-service.js';
+import { DataService } from '../data-service.js';
 
 export interface DeploymentDetectionResult {
   name: string;
@@ -65,30 +65,49 @@ export class DeploymentService {
     return results;
   }
 
-  async saveDeployments(detections: DeploymentDetectionResult[]): Promise<number[]> {
+  async saveDeployments(detections: DeploymentDetectionResult[], projectId?: number, source?: string): Promise<number[]> {
     const ids: number[] = [];
 
-    for (const detection of detections) {
-      const id = await this.dataService.createDeployment({
-        name: detection.name,
-        environment: detection.environment,
-        provider: detection.provider,
-        region: detection.region,
-        country: detection.country,
-        ip_address: detection.ip_address,
-        detection_method: detection.detection_method,
-        config_file_path: detection.config_file_path,
-        config_type: detection.config_type,
-        carbon_intensity: null,
-        carbon_intensity_source: null,
-        carbon_intensity_updated_at: null,
-        status: 'active',
-        metadata: detection.metadata
-      });
+    // Store all detections as a single assessment_data entry
+    if (detections.length > 0) {
+      const assessmentData = {
+        deployments: detections,
+        total_count: detections.length,
+        providers: [...new Set(detections.map(d => d.provider))],
+        environments: [...new Set(detections.map(d => d.environment))],
+        scan_summary: {
+          total_deployments: detections.length,
+          by_provider: this.groupByProvider(detections),
+          by_environment: this.groupByEnvironment(detections),
+          config_types: [...new Set(detections.map(d => d.config_type))]
+        }
+      };
+
+      const id = await this.dataService.storeAssessmentData(
+        projectId,
+        'deployment-scan',
+        'infrastructure-analysis',
+        assessmentData,
+        source
+      );
       ids.push(id);
     }
 
     return ids;
+  }
+
+  private groupByProvider(detections: DeploymentDetectionResult[]): Record<string, number> {
+    return detections.reduce((acc, d) => {
+      acc[d.provider] = (acc[d.provider] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
+  private groupByEnvironment(detections: DeploymentDetectionResult[]): Record<string, number> {
+    return detections.reduce((acc, d) => {
+      acc[d.environment] = (acc[d.environment] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
   }
 
   private findFiles(dirPath: string, pattern: string): string[] {

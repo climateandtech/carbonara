@@ -1,4 +1,4 @@
-import { DataService, Deployment } from '../data-service.js';
+import { DataService } from '../data-service.js';
 
 export interface CarbonIntensityData {
   country: string;
@@ -87,54 +87,29 @@ export class CarbonIntensityService {
 
   /**
    * Update carbon intensity for all deployments that don't have it set
+   * NOTE: This method is deprecated as deployments are now stored in assessment_data
    */
   async updateDeploymentCarbonIntensities(): Promise<number> {
-    const deployments = await this.dataService.getAllDeployments();
-    let updated = 0;
-
-    for (const deployment of deployments) {
-      if (!deployment.carbon_intensity && deployment.country) {
-        const intensity = this.getCarbonIntensity(deployment.country);
-
-        if (intensity) {
-          await this.dataService.updateDeployment(deployment.id, {
-            carbon_intensity: intensity,
-            carbon_intensity_source: 'static',
-            carbon_intensity_updated_at: new Date().toISOString()
-          });
-          updated++;
-        }
-      }
-    }
-
-    return updated;
+    // TODO: Refactor to work with assessment_data table
+    console.warn('updateDeploymentCarbonIntensities is deprecated - deployments are now stored in assessment_data');
+    return 0;
   }
 
   /**
    * Get recommendations for lower-carbon deployment options
+   * NOTE: This method is deprecated as deployments are now stored in assessment_data
    */
   async getRecommendations(): Promise<CarbonRecommendation[]> {
-    const deployments = await this.dataService.getAllDeployments({ status: 'active' });
-    const recommendations: CarbonRecommendation[] = [];
-
-    for (const deployment of deployments) {
-      if (!deployment.carbon_intensity) {
-        continue;
-      }
-
-      const recommendation = this.generateRecommendation(deployment);
-      if (recommendation) {
-        recommendations.push(recommendation);
-      }
-    }
-
-    return recommendations;
+    // TODO: Refactor to work with assessment_data table
+    console.warn('getRecommendations is deprecated - deployments are now stored in assessment_data');
+    return [];
   }
 
   /**
    * Generate a recommendation for a specific deployment
+   * NOTE: This method is deprecated as deployments are now stored in assessment_data
    */
-  private generateRecommendation(deployment: Deployment): CarbonRecommendation | null {
+  private generateRecommendation(deployment: any): CarbonRecommendation | null {
     const currentIntensity = deployment.carbon_intensity!;
 
     // Find better alternatives based on provider

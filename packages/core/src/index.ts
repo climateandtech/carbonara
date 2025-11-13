@@ -9,8 +9,7 @@ export {
   createDataLake,
   type DatabaseConfig,
   type AssessmentDataEntry,
-  type Project,
-  type Deployment
+  type Project
 } from './data-service.js';
 export { SchemaService, type ToolDisplayField, type ToolDisplaySchema, type AnalysisToolSchema } from './schema-service.js';
 export { VSCodeDataProvider, type DataGroup, type DataEntry, type DataDetail } from './vscode-data-provider.js';

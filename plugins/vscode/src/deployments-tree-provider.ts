@@ -3,7 +3,6 @@ import * as path from "path";
 import * as fs from "fs";
 import {
   DataService,
-  Deployment,
   DeploymentService,
   CarbonIntensityService,
   createDeploymentService,
@@ -70,7 +69,8 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
     if (!element) {
       // Root level - show main actions and provider groups
-      const deployments = await this.dataService!.getAllDeployments({ status: 'active' });
+      // TODO: Update to use assessment_data table
+      const deployments: any[] = [];
 
       if (deployments.length === 0) {
         return [
@@ -236,7 +236,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
     // Show recommendations in a quick pick
     const items = recommendations.map(rec => {
-      const deployment = this.dataService!.getDeployment(rec.deploymentId);
+      // TODO: Update to use assessment_data table
       return {
         label: `${rec.potentialSavings}% reduction`,
         description: `${rec.suggestedRegion} (${rec.suggestedCountry})`,
@@ -256,7 +256,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     }
   }
 
-  async openDeploymentConfig(deployment: Deployment) {
+  async openDeploymentConfig(deployment: any) {
     if (!deployment.config_file_path) {
       vscode.window.showWarningMessage(
         `No configuration file path available for ${deployment.name}`
@@ -274,7 +274,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     }
   }
 
-  async showDeploymentDetails(deployment: Deployment) {
+  async showDeploymentDetails(deployment: any) {
     const panel = vscode.window.createWebviewPanel(
       'deploymentDetails',
       `Deployment: ${deployment.name}`,
@@ -287,7 +287,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     panel.webview.html = this.getDeploymentDetailsHtml(deployment, carbonBadge);
   }
 
-  private getDeploymentDetailsHtml(deployment: Deployment, carbonBadge: string): string {
+  private getDeploymentDetailsHtml(deployment: any, carbonBadge: string): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -389,8 +389,8 @@ class DeploymentTreeItem extends vscode.TreeItem {
     public readonly type: "info" | "action" | "provider" | "environment" | "deployment",
     commandStr?: string,
     contextValue?: string,
-    public readonly deployments?: Deployment[],
-    public readonly deployment?: Deployment,
+    public readonly deployments?: any[],
+    public readonly deployment?: any,
     public readonly customDescription?: string
   ) {
     super(label, collapsibleState);

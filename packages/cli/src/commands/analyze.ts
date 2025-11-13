@@ -134,7 +134,7 @@ async function runCarbonaraSWD(url: string, options: AnalyzeOptions, tool: Analy
 }
 
 async function runDeploymentScan(dirPath: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
-  // Get the data service
+  // Get the data service and project info
   const config = await loadProjectConfig();
   const dataService = createDataLake(config?.database ? { dbPath: config.database.path } : undefined);
   await dataService.initialize();
@@ -146,8 +146,12 @@ async function runDeploymentScan(dirPath: string, options: AnalyzeOptions, tool:
   const detections = await deploymentService.scanDirectory(path.resolve(dirPath));
 
   // Save to database if requested
-  if (options.save) {
-    await deploymentService.saveDeployments(detections);
+  if (options.save && detections.length > 0) {
+    await deploymentService.saveDeployments(
+      detections,
+      config?.projectId,
+      path.resolve(dirPath)
+    );
   }
 
   return {

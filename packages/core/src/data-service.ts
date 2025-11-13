@@ -38,26 +38,6 @@ export interface SemgrepResultRow {
   created_at: string;
 }
 
-export interface Deployment {
-  id: number;
-  name: string;
-  environment: string; // prod, staging, dev, etc.
-  provider: string; // aws, gcp, azure, heroku, vercel, etc.
-  region: string | null; // Cloud provider region code
-  country: string | null; // Country code (ISO 3166-1 alpha-2)
-  ip_address: string | null; // Server IP if available
-  detection_method: string; // config_file, user_input, ip_lookup, api
-  config_file_path: string | null; // Path to the config file where detected
-  config_type: string | null; // terraform, cloudformation, k8s, etc.
-  carbon_intensity: number | null; // gCO2/kWh if known
-  carbon_intensity_source: string | null; // static, electricitymaps, ember
-  carbon_intensity_updated_at: string | null;
-  status: string; // active, inactive, archived
-  metadata: any; // Additional provider-specific data
-  created_at: string;
-  updated_at: string;
-}
-
 export class DataService {
   private db: Database | null = null;
   private dbPath: string;
@@ -195,28 +175,6 @@ export class DataService {
         started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         completed_at DATETIME,
         FOREIGN KEY (project_id) REFERENCES projects (id)
-      )
-    `);
-
-    this.db!.run(`
-      CREATE TABLE IF NOT EXISTS deployments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        environment TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        region TEXT,
-        country TEXT,
-        ip_address TEXT,
-        detection_method TEXT NOT NULL,
-        config_file_path TEXT,
-        config_type TEXT,
-        carbon_intensity REAL,
-        carbon_intensity_source TEXT,
-        carbon_intensity_updated_at DATETIME,
-        status TEXT DEFAULT 'active',
-        metadata JSON,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -470,44 +428,6 @@ export class DataService {
     return result[0].values[0][0] as number;
   }
 
-  // Deployment methods
-  async createDeployment(
-    deployment: Omit<Deployment, "id" | "created_at" | "updated_at">
-  ): Promise<number> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    this.db.run(
-      `INSERT INTO deployments (
-        name, environment, provider, region, country, ip_address,
-        detection_method, config_file_path, config_type,
-        carbon_intensity, carbon_intensity_source, carbon_intensity_updated_at,
-        status, metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        deployment.name,
-        deployment.environment,
-        deployment.provider,
-        deployment.region,
-        deployment.country,
-        deployment.ip_address,
-        deployment.detection_method,
-        deployment.config_file_path,
-        deployment.config_type,
-        deployment.carbon_intensity,
-        deployment.carbon_intensity_source,
-        deployment.carbon_intensity_updated_at,
-        deployment.status,
-        JSON.stringify(deployment.metadata || {}),
-      ]
-    );
-
-    const result = this.db.exec("SELECT last_insert_rowid() as id");
-    const id = result[0].values[0][0] as number;
-
-    this.saveDatabase();
-    return id;
-  }
-
   /**
    * Get semgrep results for a specific file from assessment_data
    * Queries all runs and extracts matches for the specified file
@@ -634,6 +554,7 @@ export class DataService {
     );
   }
 
+<<<<<<< HEAD
   async updateDeployment(
     id: number,
     updates: Partial<Omit<Deployment, "id" | "created_at">>
@@ -824,6 +745,8 @@ export class DataService {
     // If file doesn't exist, keep current in-memory database
   }
 
+=======
+>>>>>>> 18bf299 (store data in assessment_data)
   async close(): Promise<void> {
     if (this.db) {
       this.saveDatabase();
