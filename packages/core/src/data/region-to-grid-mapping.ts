@@ -492,73 +492,73 @@ export const GCP_REGION_MAPPINGS: Record<string, RegionGridMapping> = {
   },
 
   // Asia Pacific
-  "ap-east-1": {
-    region: "ap-east-1",
+  "asia-east1": {
+    region: "asia-east1",
     gridZone: "TW",
     location: "Changhua County, Taiwan",
     country: "TW",
   },
-  "ap-east-2": {
-    region: "ap-east-2",
+  "asia-east2": {
+    region: "asia-east2",
     gridZone: "HK",
     location: "Hong Kong",
     country: "HK",
   },
-  "ap-northeast-1": {
-    region: "ap-northeast-1",
+  "asia-northeast1": {
+    region: "asia-northeast1",
     gridZone: "JP-TK",
     location: "Tokyo, Japan",
     country: "JP",
     notes: "Tokyo grid",
   },
-  "ap-northeast-2": {
-    region: "ap-northeast-2",
+  "asia-northeast2": {
+    region: "asia-northeast2",
     gridZone: "JP-KN",
     location: "Osaka, Japan",
     country: "JP",
     notes: "Kansai grid",
   },
-  "ap-northeast-3": {
-    region: "ap-northeast-3",
+  "asia-northeast3": {
+    region: "asia-northeast3",
     gridZone: "KR",
     location: "Seoul, South Korea",
     country: "KR",
   },
-  "ap-south-1": {
-    region: "ap-south-1",
+  "asia-south1": {
+    region: "asia-south1",
     gridZone: "IN-WE",
     location: "Mumbai, India",
     country: "IN",
     notes: "Western India grid",
   },
-  "ap-south-2": {
-    region: "ap-south-2",
+  "asia-south2": {
+    region: "asia-south2",
     gridZone: "IN-NO",
     location: "Delhi, India",
     country: "IN",
     notes: "Northern India grid",
   },
-  "ap-southeast-1": {
-    region: "ap-southeast-1",
+  "asia-southeast1": {
+    region: "asia-southeast1",
     gridZone: "SG",
     location: "Jurong West, Singapore",
     country: "SG",
   },
-  "ap-southeast-3": {
-    region: "ap-southeast-3",
+  "asia-southeast2": {
+    region: "asia-southeast2",
     gridZone: "ID",
     location: "Jakarta, Indonesia",
     country: "ID",
   },
-  "ap-southeast-2": {
-    region: "ap-southeast-2",
+  "australia-southeast1": {
+    region: "australia-southeast1",
     gridZone: "AU-NSW",
     location: "Sydney, Australia",
     country: "AU",
     notes: "New South Wales grid",
   },
-  "ap-southeast-4": {
-    region: "ap-southeast-4",
+  "australia-southeast2": {
+    region: "australia-southeast2",
     gridZone: "AU-VIC",
     location: "Melbourne, Australia",
     country: "AU",

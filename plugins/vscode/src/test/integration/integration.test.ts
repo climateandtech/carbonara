@@ -61,7 +61,6 @@ suite("Carbonara Extension Integration Tests", () => {
       "carbonara.deleteSemgrepResultsForFile",
       "carbonara.scanDeployments",
       "carbonara.refreshDeployments",
-      "carbonara.showCarbonRecommendations",
       "carbonara.showDeploymentDetails",
       "carbonara.openDeploymentConfig",
     ];

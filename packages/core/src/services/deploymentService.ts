@@ -94,7 +94,7 @@ export class DeploymentService {
       return deployment;
     }
 
-    // Load carbon intensity from YAML file
+    // Load carbon intensity from JSON file
     const carbonIntensity = this.getCarbonIntensityForGridZone(
       mapping.gridZone
     );
@@ -127,7 +127,7 @@ export class DeploymentService {
       }>;
 
       const zone = zones.find((z) => z.zone_key === gridZone);
-      return zone ? zone.average_co2 : null;
+      return zone ? Math.round(zone.average_co2) : null;
     } catch (error) {
       console.error("Error loading carbon intensity data:", error);
       return null;

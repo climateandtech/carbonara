@@ -4,9 +4,7 @@ import * as fs from "fs";
 import {
   DataService,
   DeploymentService,
-  CarbonIntensityService,
-  createDeploymentService,
-  createCarbonIntensityService
+  createDeploymentService
 } from "@carbonara/core";
 
 export class DeploymentsTreeProvider implements vscode.TreeDataProvider<DeploymentTreeItem> {
@@ -17,7 +15,6 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
   private dataService: DataService | null = null;
   private deploymentService: DeploymentService | null = null;
-  private carbonService: CarbonIntensityService | null = null;
   private projectId: number | undefined = undefined;
 
   constructor() {}
@@ -50,7 +47,6 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       this.dataService = new DataService({ dbPath });
       await this.dataService.initialize();
       this.deploymentService = createDeploymentService(this.dataService);
-      this.carbonService = createCarbonIntensityService(this.dataService);
     }
 
     return true;
@@ -203,14 +199,9 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         );
       }
 
-      // Look up carbon intensity from the carbon service
-      let intensity = deployment.carbon_intensity;
-      if ((!intensity || intensity === null) && deployment.country && this.carbonService) {
-        intensity = this.carbonService.getCarbonIntensityByCountry(deployment.country);
-      }
-
       // Carbon intensity info - shown as description (muted/smaller)
-      if (intensity !== null && intensity !== undefined) {
+      if (deployment.carbon_intensity !== null && deployment.carbon_intensity !== undefined) {
+        const intensity = deployment.carbon_intensity;
         const carbonBadge = this.getCarbonBadge(intensity);
         children.push(
           new DeploymentTreeItem(
@@ -314,65 +305,6 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         }
       }
     );
-  }
-
-  async showRecommendations() {
-    const initialized = await this.initializeServices();
-    if (!initialized) {
-      vscode.window.showErrorMessage("Carbonara project not initialized");
-      return;
-    }
-
-    // Fetch deployments from assessment_data table
-    const assessmentData = await this.dataService!.getAssessmentData(
-      undefined,
-      'deployment-scan'
-    );
-
-    // Extract deployments from the most recent scan
-    let deployments: any[] = [];
-    if (assessmentData.length > 0) {
-      const latestScan = assessmentData[0]; // Most recent
-      const data = latestScan.data;
-      deployments = data.deployments || [];
-    }
-
-    if (deployments.length === 0) {
-      vscode.window.showInformationMessage(
-        "No deployments found. Please scan for deployments first."
-      );
-      return;
-    }
-
-    const recommendations = await this.carbonService!.getRecommendations(deployments);
-
-    if (recommendations.length === 0) {
-      vscode.window.showInformationMessage(
-        "No recommendations available. Your deployments are already in low-carbon regions!"
-      );
-      return;
-    }
-
-    // Show recommendations in a quick pick
-    const items = recommendations.map(rec => {
-      // TODO: Update to use assessment_data table
-      return {
-        label: `${rec.potentialSavings}% reduction`,
-        description: `${rec.suggestedRegion} (${rec.suggestedCountry})`,
-        detail: rec.notes,
-        recommendation: rec
-      };
-    });
-
-    const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: "Carbon reduction recommendations for your deployments"
-    });
-
-    if (selected) {
-      vscode.window.showInformationMessage(
-        `Migrate to ${selected.description} to reduce carbon emissions by ${selected.recommendation.potentialSavings}%`
-      );
-    }
   }
 
   async openDeploymentConfig(deployment: any) {

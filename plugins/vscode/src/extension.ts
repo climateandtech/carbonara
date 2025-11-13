@@ -166,9 +166,6 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("carbonara.refreshDeployments", () =>
       deploymentsTreeProvider.scanForDeployments()
     ),
-    vscode.commands.registerCommand("carbonara.showCarbonRecommendations", () =>
-      deploymentsTreeProvider.showRecommendations()
-    ),
     vscode.commands.registerCommand(
       "carbonara.showDeploymentDetails",
       (deployment) => deploymentsTreeProvider.showDeploymentDetails(deployment)

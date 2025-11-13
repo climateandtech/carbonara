@@ -33,14 +33,6 @@ export {
   type ConfigParser
 } from './services/deploymentService.js';
 
-// Carbon intensity service exports
-export {
-  CarbonIntensityService,
-  createCarbonIntensityService,
-  type CarbonIntensityData,
-  type CarbonRecommendation
-} from './services/carbonIntensityService.js';
-
 // Factory functions for easy setup
 export const createDataService = (config?: { dbPath?: string }) => new DataService(config);
 export const createSchemaService = () => new SchemaService();

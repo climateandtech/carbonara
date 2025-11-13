@@ -146,11 +146,6 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "carbonara.showCarbonRecommendations",
-        "title": "Show Carbon Recommendations",
-        "icon": "$(lightbulb)"
-      },
-      {
         "command": "carbonara.showDeploymentDetails",
         "title": "Show Deployment Details"
       },
@@ -233,11 +228,6 @@
         },
         {
           "command": "carbonara.refreshDeployments",
-          "when": "view == carbonara.deploymentsTree",
-          "group": "navigation"
-        },
-        {
-          "command": "carbonara.showCarbonRecommendations",
           "when": "view == carbonara.deploymentsTree",
           "group": "navigation"
         }
