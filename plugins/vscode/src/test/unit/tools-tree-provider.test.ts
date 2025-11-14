@@ -120,7 +120,7 @@ suite("ToolsTreeProvider Unit Tests", () => {
       const mockRegistryWithOnlyBuiltIn = {
         tools: [
           {
-            id: "co2-assessment",
+            id: "assessment-questionnaire",
             name: "assessment questionnaire",
             description:
               "Interactive CO2 sustainability assessment questionnaire",

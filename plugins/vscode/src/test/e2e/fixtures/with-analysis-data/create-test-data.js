@@ -103,7 +103,7 @@ fs.mkdirSync(carbonaraDir, { recursive: true });
   db.run(
     `
     INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
-    VALUES (1, 'co2-assessment', 'questionnaire', ?, 'test', '2025-01-15T09:15:00.000Z')
+    VALUES (1, 'assessment-questionnaire', 'questionnaire', ?, 'test', '2025-01-15T09:15:00.000Z')
   `,
     [
       JSON.stringify({

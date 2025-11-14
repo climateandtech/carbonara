@@ -112,12 +112,14 @@ describe("Carbonara CLI - Tests", () => {
         }
       );
       expect(result).toContain("Analysis Tools Registry");
-      // Should show at least the co2-assessment tool from our registry
-      expect(result).toContain("co2-assessment");
+      // Should show at least the assessment-questionnaire tool from our registry
+      expect(result).toContain("assessment-questionnaire");
     } catch (error: any) {
       // If registry loading fails, check that it's trying to load tools
       if (error.stderr) {
-        expect(error.stderr.toString()).toContain("Failed to load tool schemas");
+        expect(error.stderr.toString()).toContain(
+          "Failed to load tool schemas"
+        );
       } else {
         // Command succeeded but didn't show expected content - this is OK for now
         console.log(

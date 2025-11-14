@@ -6,8 +6,8 @@ import { z } from "zod";
 import { createDataLake } from "@carbonara/core";
 import { loadProjectConfig } from "../utils/config.js";
 
-// CO2 Assessment Schema
-const CO2AssessmentSchema = z.object({
+// Assessment Questionnaire Schema
+const AssessmentQuestionnaireSchema = z.object({
   projectOverview: z.object({
     projectType: z.enum(["Mobile App", "Web App", "API", "Other"]).optional(),
     expectedUsers: z.enum([
@@ -103,7 +103,7 @@ export async function assessCommand(options: AssessOptions) {
     }
 
     // Validate the assessment data
-    const validated = CO2AssessmentSchema.parse(assessmentData);
+    const validated = AssessmentQuestionnaireSchema.parse(assessmentData);
 
     // Calculate CO2 impact score
     const impactScore = calculateCO2Impact(validated);
@@ -479,7 +479,9 @@ async function runInteractiveAssessment() {
   };
 }
 
-function calculateCO2Impact(data: z.infer<typeof CO2AssessmentSchema>): number {
+function calculateCO2Impact(
+  data: z.infer<typeof AssessmentQuestionnaireSchema>
+): number {
   let score = 0;
 
   // Traffic impact
@@ -511,7 +513,7 @@ function calculateCO2Impact(data: z.infer<typeof CO2AssessmentSchema>): number {
 }
 
 function generateAssessmentReport(
-  data: z.infer<typeof CO2AssessmentSchema>,
+  data: z.infer<typeof AssessmentQuestionnaireSchema>,
   impactScore: number
 ) {
   console.log(chalk.green("\n Assessment Report"));
