@@ -681,7 +681,8 @@ export async function runSemgrepOnFile() {
       cancellable: false,
     },
     async () => {
-      await runSemgrepAnalysis(editor, {
+      // editor is guaranteed to be defined here due to earlier checks
+      await runSemgrepAnalysis(editor!, {
         showUI: true,
         outputChannel: output,
         useTempFile: false,
