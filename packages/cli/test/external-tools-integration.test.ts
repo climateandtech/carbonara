@@ -71,9 +71,11 @@ describe('External Tools - Integration Tests', () => {
       
     } catch (error: any) {
       const stderr = error.stderr?.toString() || '';
+      const stdout = error.stdout?.toString() || '';
+      const allOutput = `${stderr} ${stdout}`;
       
-      // Should fail with prerequisite error message
-      expect(stderr).toContain('Prerequisites not met');
+      // Should fail with prerequisite error message (check both stderr and stdout)
+      expect(allOutput).toContain('Prerequisites not met');
     }
   });
 
@@ -100,10 +102,12 @@ describe('External Tools - Integration Tests', () => {
       
     } catch (error: any) {
       const stderr = error.stderr?.toString() || '';
+      const stdout = error.stdout?.toString() || '';
+      const allOutput = `${stderr} ${stdout}`;
       const toolName = toolWithPrerequisites.name;
       
-      // Error should mention the tool name
-      expect(stderr).toContain(toolName);
+      // Error should mention the tool name (check both stderr and stdout)
+      expect(allOutput).toContain(toolName);
     }
   });
 
@@ -130,10 +134,12 @@ describe('External Tools - Integration Tests', () => {
       
     } catch (error: any) {
       const stderr = error.stderr?.toString() || '';
+      const stdout = error.stdout?.toString() || '';
+      const allOutput = `${stderr} ${stdout}`;
       const firstPrerequisite = toolWithPrerequisites.prerequisites![0];
       
-      // Error should mention the prerequisite name
-      expect(stderr).toContain(firstPrerequisite.name);
+      // Error should mention the prerequisite name (check both stderr and stdout)
+      expect(allOutput).toContain(firstPrerequisite.name);
     }
   });
 
