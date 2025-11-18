@@ -45,26 +45,188 @@ describe('External Tools - Integration Tests', () => {
     fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
   }
 
-  test('external tools should handle analyze command with project creation', async () => {
-    // Set test-wide timeout for CI environment
+  test('external tools with prerequisites should fail with prerequisite error when prerequisites not met', async () => {
     vi.setConfig({ testTimeout: 30000 });
     
     createTestProject();
     
     const externalTools = getExternalTools();
-    const toolsToTest = externalTools.slice(0, 1); // Test one tool to avoid long runtime
+    // Find a tool with prerequisites (e.g., GreenFrame requires Docker)
+    const toolWithPrerequisites = externalTools.find(tool => tool.prerequisites && tool.prerequisites.length > 0);
+    
+    if (!toolWithPrerequisites) {
+      // Skip if no tool with prerequisites exists
+      return;
+    }
+    
+    try {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
+        encoding: 'utf8',
+        stdio: 'pipe',
+        timeout: 20000
+      });
+      
+      // Should not reach here - command should fail
+      expect.fail('Command should have failed due to missing prerequisites');
+      
+    } catch (error: any) {
+      const stderr = error.stderr?.toString() || '';
+      
+      // Should fail with prerequisite error message
+      expect(stderr).toContain('Prerequisites not met');
+    }
+  });
+
+  test('external tools with prerequisites should include prerequisite name in error message', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    const externalTools = getExternalTools();
+    const toolWithPrerequisites = externalTools.find(tool => tool.prerequisites && tool.prerequisites.length > 0);
+    
+    if (!toolWithPrerequisites) {
+      return;
+    }
+    
+    try {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
+        encoding: 'utf8',
+        stdio: 'pipe',
+        timeout: 20000
+      });
+      
+      expect.fail('Command should have failed due to missing prerequisites');
+      
+    } catch (error: any) {
+      const stderr = error.stderr?.toString() || '';
+      const toolName = toolWithPrerequisites.name;
+      
+      // Error should mention the tool name
+      expect(stderr).toContain(toolName);
+    }
+  });
+
+  test('external tools with prerequisites should include missing prerequisite details in error message', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    const externalTools = getExternalTools();
+    const toolWithPrerequisites = externalTools.find(tool => tool.prerequisites && tool.prerequisites.length > 0);
+    
+    if (!toolWithPrerequisites) {
+      return;
+    }
+    
+    try {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
+        encoding: 'utf8',
+        stdio: 'pipe',
+        timeout: 20000
+      });
+      
+      expect.fail('Command should have failed due to missing prerequisites');
+      
+    } catch (error: any) {
+      const stderr = error.stderr?.toString() || '';
+      const firstPrerequisite = toolWithPrerequisites.prerequisites![0];
+      
+      // Error should mention the prerequisite name
+      expect(stderr).toContain(firstPrerequisite.name);
+    }
+  });
+
+  test('external tools with prerequisites should include setup instructions in error message', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    const externalTools = getExternalTools();
+    const toolWithPrerequisites = externalTools.find(tool => 
+      tool.prerequisites && 
+      tool.prerequisites.length > 0 && 
+      tool.prerequisites[0].setupInstructions
+    );
+    
+    if (!toolWithPrerequisites) {
+      return;
+    }
+    
+    try {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
+        encoding: 'utf8',
+        stdio: 'pipe',
+        timeout: 20000
+      });
+      
+      expect.fail('Command should have failed due to missing prerequisites');
+      
+    } catch (error: any) {
+      const stdout = error.stdout?.toString() || '';
+      const firstPrerequisite = toolWithPrerequisites.prerequisites![0];
+      
+      // Should include setup instructions
+      expect(stdout).toContain('Setup:');
+    }
+  });
+
+  test('external tools without prerequisites should fail with installation or analysis error when prerequisites are met', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    const externalTools = getExternalTools();
+    // Find a tool without prerequisites
+    const toolWithoutPrerequisites = externalTools.find(tool => !tool.prerequisites || tool.prerequisites.length === 0);
+    
+    if (!toolWithoutPrerequisites) {
+      // Skip if all tools have prerequisites
+      return;
+    }
+    
+    try {
+      execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithoutPrerequisites.id} https://example.com --save`, { 
+        encoding: 'utf8',
+        stdio: 'pipe',
+        timeout: 20000
+      });
+      
+      // If it succeeds, that's fine - tool is installed and prerequisites are met
+      // Just verify it doesn't fail with prerequisite error
+      expect(true).toBe(true);
+      
+    } catch (error: any) {
+      const stderr = error.stderr?.toString() || '';
+      
+      // Should NOT fail with prerequisite error
+      expect(stderr).not.toContain('Prerequisites not met');
+      
+      // Should fail with installation or analysis error instead
+      const hasInstallationError = stderr.includes('not installed') || 
+                                   stderr.includes('Install it with');
+      const hasAnalysisError = stderr.includes('analysis failed') ||
+                              stderr.includes('Unknown analysis tool');
+      
+      expect(hasInstallationError || hasAnalysisError).toBe(true);
+    }
+  });
+
+  test('external tools should create database when analyze succeeds with --save flag', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    const externalTools = getExternalTools();
+    const toolsToTest = externalTools.slice(0, 1);
     
     for (const tool of toolsToTest) {
       try {
-        // Run analyze command with --save (should create project in database)
-        const result = execSync(`cd "${testDir}" && node "${cliPath}" analyze ${tool.id} https://example.com --save`, { 
+        execSync(`cd "${testDir}" && node "${cliPath}" analyze ${tool.id} https://example.com --save`, { 
           encoding: 'utf8',
           stdio: 'pipe',
           timeout: 20000
         });
-        
-        // Should either succeed or fail gracefully
-        expect(result).toBeTruthy();
         
         // If it succeeded, should have created database at the correct .carbonara/ path
         const dbPath = path.join(testDir, '.carbonara', 'carbonara.db');
@@ -72,7 +234,33 @@ describe('External Tools - Integration Tests', () => {
           // Database was created - verify it has content
           const dbSize = fs.statSync(dbPath).size;
           expect(dbSize).toBeGreaterThan(0);
-          
+        }
+        
+      } catch (error: any) {
+        // If command fails (prerequisites, installation, etc.), skip database check
+        // This test only verifies database creation when command succeeds
+      }
+    }
+  });
+
+  test('external tools should create project in database when analyze succeeds with --save flag', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    const externalTools = getExternalTools();
+    const toolsToTest = externalTools.slice(0, 1);
+    
+    for (const tool of toolsToTest) {
+      try {
+        execSync(`cd "${testDir}" && node "${cliPath}" analyze ${tool.id} https://example.com --save`, { 
+          encoding: 'utf8',
+          stdio: 'pipe',
+          timeout: 20000
+        });
+        
+        const dbPath = path.join(testDir, '.carbonara', 'carbonara.db');
+        if (fs.existsSync(dbPath)) {
           // Verify project was created in database
           const initSqlJs = require('sql.js');
           const SQL = await initSqlJs();
@@ -92,22 +280,8 @@ describe('External Tools - Integration Tests', () => {
         }
         
       } catch (error: any) {
-        const stderr = error.stderr?.toString() || '';
-        const stdout = error.stdout?.toString() || '';
-        
-        // Should fail gracefully with appropriate error message
-        const hasInstallationError = stderr.includes('not installed') || 
-                                   stderr.includes('Install it with') ||
-                                   stderr.includes('installation');
-        
-        const hasAnalysisError = stderr.includes('analysis failed') ||
-                               stderr.includes('Tool') ||
-                               stderr.includes('Error') ||
-                               stdout.includes('analysis failed');
-        
-        const hasUnknownTool = stderr.includes('Unknown analysis tool');
-        
-        expect(hasInstallationError || hasAnalysisError || hasUnknownTool).toBe(true);
+        // If command fails, skip project check
+        // This test only verifies project creation when command succeeds
       }
     }
   });
