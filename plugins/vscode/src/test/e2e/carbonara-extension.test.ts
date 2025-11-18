@@ -317,29 +317,26 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       // ASSERTION: Analysis Tools section must be visible
       await expect(toolsSection).toBeVisible({ timeout: 10000 });
 
-      // Step 3: Check Analysis Tools state and ensure it's expanded
-
-      // Look for the chevron icon to determine current state
-      const chevronRight = toolsSection.locator(".codicon-chevron-right"); // Collapsed
-      const chevronDown = toolsSection.locator(".codicon-chevron-down"); // Expanded
-
-      const isCollapsed = await chevronRight.isVisible({ timeout: 1000 });
-      const isExpanded = await chevronDown.isVisible({ timeout: 1000 });
-
-      if (isExpanded) {
-      } else if (isCollapsed) {
-        // Click the chevron icon directly to expand
-        await chevronRight.click();
+      // Step 3: Ensure Analysis Tools section is expanded
+      // Always click the section header to ensure it's expanded
+      // This is more reliable than checking chevron state
+      await toolsSection.click();
+      await vscode.window.waitForTimeout(2000);
+      
+      // Click again if needed (sometimes first click doesn't expand)
+      const chevronDown = toolsSection.locator(".codicon-chevron-down");
+      const chevronRight = toolsSection.locator(".codicon-chevron-right");
+      const isStillCollapsed = await chevronRight.isVisible({ timeout: 1000 }).catch(() => false);
+      
+      if (isStillCollapsed) {
+        // Still collapsed, click again
+        await toolsSection.click();
         await vscode.window.waitForTimeout(2000);
-
-        // Verify it expanded
-        const nowExpanded = await chevronDown.isVisible({ timeout: 3000 });
-      } else {
-        // Don't click anything - might already be in the right state
       }
 
-      // Step 4: After clicking, wait for tree content to appear
-      await vscode.window.waitForTimeout(1000);
+      // Step 4: Wait for tree content to appear after expansion
+      // Give more time for the tree to render
+      await vscode.window.waitForTimeout(3000);
 
       // Debug: Check what sections are visible now
       const allSections = vscode.window.locator(".pane-header");
@@ -349,182 +346,62 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         const sectionTexts = await allSections.allTextContents();
       }
 
-      // Get tools tree using deterministic selector (no fallbacks!)
-
-      const toolsTree = vscode.window
-        .locator(
-          '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
-        )
-        .last();
-
-      await expect(toolsTree).toBeVisible();
-
-      const allRows = toolsTree.locator(".monaco-list-row");
-
-      // Debug: Check what we find in the Analysis Tools section
-      const rowCount = await allRows.count();
-
-      if (rowCount > 0) {
-        const rowTexts = await allRows.allTextContents();
-
-        // Now we should see either tools or our informative "No analysis tools available" message
-        // This helps differentiate between collapsed (no content) vs expanded but no tools
-      } else {
-      }
-
-      // Step 6: Verify installed tools (from registry: 1 built-in tool)
-
-      const installedTools = toolsTree
-        .locator(".monaco-list-row")
-        .filter({ hasText: "Built-in" });
-
-      // ASSERTION: Must have exactly 1 installed tool (Test Analyzer in test environment)
-      await expect(installedTools).toHaveCount(1, { timeout: 5000 });
-
-      const installedTexts = await installedTools.allTextContents();
-
-      // ASSERTION: Must be Test Analyzer (test-only tool)
-      expect(installedTexts[0]).toContain("Test Analyzer");
-
-      // Step 7: Verify uninstalled tools (from registry: 2 external tools)
-
-      const uninstalledTools = toolsTree
-        .locator(".monaco-list-row")
-        .filter({ hasText: "Not installed" });
-
-      // ASSERTION: Must have exactly 2 uninstalled tools (GreenFrame + Impact Framework)
-      await expect(uninstalledTools).toHaveCount(2, { timeout: 5000 });
-
-      const uninstalledTexts = await uninstalledTools.allTextContents();
-
-      // ASSERTION: Must contain GreenFrame tool
-      const hasGreenFrame = uninstalledTexts.some((text) =>
-        text.includes("GreenFrame")
+      // Get tools tree using deterministic selector
+      // Try to find the tree that's associated with the Analysis Tools section
+      // First, get all trees in the Carbonara view
+      const allTrees = vscode.window.locator(
+        '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
       );
-      expect(hasGreenFrame).toBe(true);
-
-      // ASSERTION: Must contain Impact Framework tool
-      const hasImpactFramework = uninstalledTexts.some((text) =>
-        text.includes("Impact Framework")
-      );
-      expect(hasImpactFramework).toBe(true);
-
-      // Step 8: Verify total matches registry (1 + 2 = 3 tools)
-      const totalTools = await toolsTree.locator(".monaco-list-row").count();
-
-      // ASSERTION: Total must be exactly 3 tools from registry
-      expect(totalTools).toBe(3);
-
-      // Step 9: Test the Test Analyzer functionality
-
-      // Click on the Test Analyzer tool to execute it
-      const testAnalyzerRow = toolsTree
-        .locator(".monaco-list-row")
-        .filter({ hasText: "Test Analyzer" });
-      await expect(testAnalyzerRow).toBeVisible();
-
-      // Click the Test Analyzer row to trigger analysis
-      await testAnalyzerRow.click();
-
-      // Wait for URL input dialog to appear
-      await vscode.window.waitForTimeout(1000);
-
-      // Look for the input box and enter a test URL
-      const inputBox = vscode.window.locator(
-        'input[placeholder*="https://example.com"], .quick-input-box input'
-      );
-      await expect(inputBox).toBeVisible({ timeout: 5000 });
-
-      const testUrl = "https://test-site.example.com";
-      await inputBox.fill(testUrl);
-
-      // Press Enter to confirm
-      await inputBox.press("Enter");
-
-      // Wait for analysis completion notification
-
-      // Look for the completion notification or wait longer for CLI to finish
-      try {
-        // Wait for either success or failure notification using UI constants
-        const successNotification = vscode.window
-          .locator(SELECTORS.NOTIFICATIONS.TOAST)
-          .filter({ hasText: "analysis completed" });
-        const failureNotification = vscode.window
-          .locator(SELECTORS.NOTIFICATIONS.TOAST)
-          .filter({ hasText: UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED });
-
-        // Wait up to 10 seconds for one of these notifications
-        await Promise.race([
-          successNotification.waitFor({ timeout: 10000 }),
-          failureNotification.waitFor({ timeout: 10000 }),
-        ]);
-
-        // Check which notification appeared
-        const hasSuccess = await successNotification.isVisible();
-        const hasFailure = await failureNotification.isVisible();
-
-        if (hasSuccess) {
-        } else if (hasFailure) {
-          // FAIL THE TEST: Analysis should succeed for test analyzer
-          expect(hasFailure).toBe(false);
-          return; // Exit early since analysis failed
-        } else {
+      
+      // Wait for at least one tree to be visible
+      await expect(allTrees.first()).toBeVisible({ timeout: 10000 });
+      
+      // Count how many trees we have
+      const treeCount = await allTrees.count();
+      
+      // The Analysis Tools tree should be one of them - try to find it by checking content
+      // If we have 3 sections (CO2 Assessment, Data & Results, Analysis Tools), 
+      // the Analysis Tools tree should be the last one (index 2) or we can find it by content
+      let toolsTree = allTrees.last();
+      
+      // Verify it's the right tree by checking if it has tool-related content
+      // Wait a bit more for content to load
+      await vscode.window.waitForTimeout(2000);
+      
+      // Try to find the tree that contains "Test Analyzer" or "Built-in" text
+      let foundToolsTree = false;
+      for (let i = 0; i < treeCount; i++) {
+        const tree = allTrees.nth(i);
+        const rows = tree.locator(".monaco-list-row");
+        const rowCount = await rows.count();
+        if (rowCount > 0) {
+          const rowTexts = await rows.allTextContents();
+          // Check if this tree contains tool-related content
+          const hasToolContent = rowTexts.some(text => 
+            text.includes("Test Analyzer") || 
+            text.includes("Built-in") || 
+            text.includes("Not installed") ||
+            text.includes("GreenFrame") ||
+            text.includes("Impact Framework")
+          );
+          if (hasToolContent) {
+            toolsTree = tree;
+            foundToolsTree = true;
+            break;
+          }
         }
-
-        // ASSERTION: Analysis must succeed (no failure notification should be visible)
-        expect(hasFailure).toBe(false);
-      } catch (error) {
-        // Fallback: wait additional time for CLI process to complete
-        await vscode.window.waitForTimeout(3000);
+      }
+      
+      // If we didn't find it by content, try using the last tree (should be Analysis Tools if 3 sections)
+      if (!foundToolsTree) {
+        if (treeCount >= 3) {
+          toolsTree = allTrees.nth(2); // Third tree (0-indexed: CO2 Assessment=0, Data & Results=1, Analysis Tools=2)
+        } else {
+          toolsTree = allTrees.last(); // Fallback to last tree
+        }
       }
 
-      // Wait additional time for data to be saved to database after analysis completes
-      await vscode.window.waitForTimeout(5000);
-
-      // ASSERTION: Analysis Tools section must be visible
-      await expect(toolsSection).toBeVisible({ timeout: 10000 });
-
-      // Step 3: Check Analysis Tools state and ensure it's expanded
-
-      // Look for the chevron icon to determine current state
-      const chevronRight = toolsSection.locator(".codicon-chevron-right"); // Collapsed
-      const chevronDown = toolsSection.locator(".codicon-chevron-down"); // Expanded
-
-      const isCollapsed = await chevronRight.isVisible({ timeout: 1000 });
-      const isExpanded = await chevronDown.isVisible({ timeout: 1000 });
-
-      if (isExpanded) {
-      } else if (isCollapsed) {
-        // Click the chevron icon directly to expand
-        await chevronRight.click();
-        await vscode.window.waitForTimeout(2000);
-
-        // Verify it expanded
-        const nowExpanded = await chevronDown.isVisible({ timeout: 3000 });
-      } else {
-        // Don't click anything - might already be in the right state
-      }
-
-      // Step 4: After clicking, wait for tree content to appear
-      await vscode.window.waitForTimeout(1000);
-
-      // Debug: Check what sections are visible now
-      const allSections = vscode.window.locator(".pane-header");
-      const sectionCount = await allSections.count();
-
-      if (sectionCount > 0) {
-        const sectionTexts = await allSections.allTextContents();
-      }
-
-      // Get tools tree using deterministic selector (no fallbacks!)
-
-      const toolsTree = vscode.window
-        .locator(
-          '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
-        )
-        .last();
-
-      await expect(toolsTree).toBeVisible();
+      await expect(toolsTree).toBeVisible({ timeout: 10000 });
 
       const allRows = toolsTree.locator(".monaco-list-row");
 
@@ -654,10 +531,26 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       const dataSection = vscode.window
         .locator(".pane-header")
         .filter({ hasText: "Data & Results" });
-      await expect(dataSection).toBeVisible();
+      await expect(dataSection).toBeVisible({ timeout: 10000 });
 
-      // Click on Data & Results section to ensure it's expanded and active
-      await dataSection.click();
+      // Check if Data & Results section is expanded, and click only if collapsed
+      const dataChevronRight = dataSection.locator(".codicon-chevron-right");
+      const dataChevronDown = dataSection.locator(".codicon-chevron-down");
+      const isDataCollapsed = await dataChevronRight.isVisible({ timeout: 1000 }).catch(() => false);
+      const isDataExpanded = await dataChevronDown.isVisible({ timeout: 1000 }).catch(() => false);
+      
+      // Only click if it's collapsed (not expanded)
+      if (isDataCollapsed && !isDataExpanded) {
+        await dataSection.click();
+        await vscode.window.waitForTimeout(2000);
+      } else if (!isDataExpanded) {
+        // State unclear, click once to ensure it's expanded
+        await dataSection.click();
+        await vscode.window.waitForTimeout(2000);
+      }
+      
+      // Wait for the data tree to render
+      await vscode.window.waitForTimeout(2000);
 
       // Step 11: Manually refresh the data tree to ensure latest results are loaded
 
@@ -686,23 +579,18 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
 
       // Get the data tree using the section title approach (no fallbacks!)
       // We need to target specifically the "Data & Results" section, not "CO2 Assessment"
-
-      // Click on the Data & Results header to ensure it's expanded
-      const dataResultsHeader = vscode.window
-        .locator(".pane-header")
-        .filter({ hasText: "Data & Results" });
-      await dataResultsHeader.click();
+      // Note: We already expanded it above, no need to click again
 
       // Debug: Let's examine ALL 3 tree sections to see which one has the analysis results
 
-      const allTrees = vscode.window.locator(
+      const allDataTrees = vscode.window.locator(
         '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
       );
-      const treeCount = await allTrees.count();
+      const dataTreeCount = await allDataTrees.count();
 
       // Examine each tree individually
-      for (let i = 0; i < treeCount; i++) {
-        const tree = allTrees.nth(i);
+      for (let i = 0; i < dataTreeCount; i++) {
+        const tree = allDataTrees.nth(i);
         const treeRows = tree.locator(".monaco-list-row");
         const rowCount = await treeRows.count();
 
@@ -712,12 +600,13 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       }
 
       // Now try to find the tree with analysis results (not questionnaire data)
+      // Simplified approach matching the original working version
 
       let dataTree: Locator | null = null;
       let foundAnalysisTree = false;
 
-      for (let i = 0; i < treeCount; i++) {
-        const tree = allTrees.nth(i);
+      for (let i = 0; i < dataTreeCount; i++) {
+        const tree = allDataTrees.nth(i);
         const treeRows = tree.locator(".monaco-list-row");
         const rowCount = await treeRows.count();
 
@@ -746,7 +635,7 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       }
 
       if (!foundAnalysisTree) {
-        dataTree = allTrees.nth(1);
+        dataTree = allDataTrees.nth(1);
       }
 
       await expect(dataTree!).toBeVisible();
@@ -769,7 +658,6 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         );
 
         // Look for actual analysis result indicators from our test
-
         dataTexts.forEach((text, i) => {});
 
         const hasTestAnalysisResults = dataTexts.some((text) => {

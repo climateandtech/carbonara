@@ -359,7 +359,6 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     throw new Error(`Tool ${tool.id} does not have a manifest template configured`);
   }
 
-<<<<<<< HEAD
   // Load project and get CO2 variables for intelligent defaults
   let co2Variables: any = {};
   try {
