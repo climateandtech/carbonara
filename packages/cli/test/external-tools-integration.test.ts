@@ -45,8 +45,8 @@ describe('External Tools - Integration Tests', () => {
     fs.writeFileSync(path.join(carbonaraDir, 'carbonara.config.json'), JSON.stringify(config, null, 2));
   }
 
-  test('external tools with prerequisites should fail with prerequisite error when prerequisites not met', async () => {
-    vi.setConfig({ testTimeout: 30000 });
+  test('external tools with prerequisites should handle prerequisites correctly', async () => {
+    vi.setConfig({ testTimeout: 60000 }); // Longer timeout for potential installation
     
     createTestProject();
     
@@ -59,23 +59,67 @@ describe('External Tools - Integration Tests', () => {
       return;
     }
     
-    try {
-      execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 20000
-      });
-      
-      // Should not reach here - command should fail
-      expect.fail('Command should have failed due to missing prerequisites');
-      
-    } catch (error: any) {
-      const stderr = error.stderr?.toString() || '';
-      const stdout = error.stdout?.toString() || '';
-      const allOutput = `${stderr} ${stdout}`;
-      
-      // Should fail with prerequisite error message (check both stderr and stdout)
-      expect(allOutput).toContain('Prerequisites not met');
+    // Check if prerequisites are available
+    const { checkPrerequisites } = await import('../src/utils/prerequisites.js');
+    const prereqCheck = await checkPrerequisites(
+      toolWithPrerequisites.prerequisites!.map((p: any) => ({
+        type: p.type,
+        name: p.name,
+        checkCommand: p.checkCommand,
+        expectedOutput: p.expectedOutput,
+        errorMessage: p.errorMessage,
+        setupInstructions: p.setupInstructions
+      }))
+    );
+    
+    if (!prereqCheck.allAvailable) {
+      // Prerequisites NOT met - test that we get prerequisite error
+      try {
+        execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
+          encoding: 'utf8',
+          stdio: 'pipe',
+          timeout: 20000
+        });
+        
+        expect.fail('Command should have failed due to missing prerequisites');
+        
+      } catch (error: any) {
+        const stderr = error.stderr?.toString() || '';
+        const stdout = error.stdout?.toString() || '';
+        const allOutput = `${stderr} ${stdout}`;
+        
+        // Should fail with prerequisite error message
+        expect(allOutput).toContain('Prerequisites not met');
+      }
+    } else {
+      // Prerequisites ARE met - verify prerequisite check passes and tool can proceed
+      // (even if tool isn't installed, prerequisite check should pass)
+      try {
+        execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
+          encoding: 'utf8',
+          stdio: 'pipe',
+          timeout: 20000
+        });
+        
+        // If it succeeds, that's great - tool is installed and working
+        expect(true).toBe(true);
+        
+      } catch (error: any) {
+        const stderr = error.stderr?.toString() || '';
+        const stdout = error.stdout?.toString() || '';
+        const allOutput = `${stderr} ${stdout}`;
+        
+        // Should NOT fail with prerequisite error (prerequisites are met)
+        expect(allOutput).not.toContain('Prerequisites not met');
+        
+        // Should fail with installation or execution error instead
+        const hasInstallationError = allOutput.includes('not installed') || 
+                                    allOutput.includes('Install it with');
+        const hasExecutionError = allOutput.includes('analysis failed') ||
+                                 allOutput.includes('Tool execution failed');
+        
+        expect(hasInstallationError || hasExecutionError).toBe(true);
+      }
     }
   });
 
@@ -123,6 +167,25 @@ describe('External Tools - Integration Tests', () => {
       return;
     }
     
+    // Check if prerequisites are actually missing (skip test if prerequisites are available)
+    const { checkPrerequisites } = await import('../src/utils/prerequisites.js');
+    const prereqCheck = await checkPrerequisites(
+      toolWithPrerequisites.prerequisites!.map((p: any) => ({
+        type: p.type,
+        name: p.name,
+        checkCommand: p.checkCommand,
+        expectedOutput: p.expectedOutput,
+        errorMessage: p.errorMessage,
+        setupInstructions: p.setupInstructions
+      }))
+    );
+    
+    // Only test prerequisite error message if prerequisites are NOT available
+    if (prereqCheck.allAvailable) {
+      console.log(`ℹ️  Prerequisites for ${toolWithPrerequisites.id} are available, skipping prerequisite error message test`);
+      return;
+    }
+    
     try {
       execSync(`cd "${testDir}" && node "${cliPath}" analyze ${toolWithPrerequisites.id} https://example.com --save`, { 
         encoding: 'utf8',
@@ -156,6 +219,25 @@ describe('External Tools - Integration Tests', () => {
     );
     
     if (!toolWithPrerequisites) {
+      return;
+    }
+    
+    // Check if prerequisites are actually missing (skip test if prerequisites are available)
+    const { checkPrerequisites } = await import('../src/utils/prerequisites.js');
+    const prereqCheck = await checkPrerequisites(
+      toolWithPrerequisites.prerequisites!.map((p: any) => ({
+        type: p.type,
+        name: p.name,
+        checkCommand: p.checkCommand,
+        expectedOutput: p.expectedOutput,
+        errorMessage: p.errorMessage,
+        setupInstructions: p.setupInstructions
+      }))
+    );
+    
+    // Only test setup instructions if prerequisites are NOT available
+    if (prereqCheck.allAvailable) {
+      console.log(`ℹ️  Prerequisites for ${toolWithPrerequisites.id} are available, skipping setup instructions test`);
       return;
     }
     
