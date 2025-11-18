@@ -19,6 +19,7 @@ export interface AssessmentField {
     required: boolean;
     options?: { label: string; value: string }[];
     value?: any;
+    defaultValue?: any;
 }
 
 export class AssessmentTreeProvider implements vscode.TreeDataProvider<AssessmentItem> {
@@ -243,6 +244,31 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
                         { label: 'High budget', value: 'high' }
                       ]
                     }
+                ]
+            },
+            {
+                id: 'hardware-config',
+                label: '💻 Hardware Configuration',
+                description: 'Hardware settings for CPU monitoring and Impact Framework tools',
+                status: 'pending',
+                fields: [
+                    { id: 'cpuTdp', label: 'CPU TDP (watts)', type: 'number', required: true, defaultValue: 100 },
+                    { id: 'totalVcpus', label: 'Total vCPUs', type: 'number', required: true, defaultValue: 8 },
+                    { id: 'allocatedVcpus', label: 'Allocated vCPUs', type: 'number', required: true, defaultValue: 2 },
+                    { id: 'gridCarbonIntensity', label: 'Grid Carbon Intensity (gCO2e/kWh)', type: 'number', required: true, defaultValue: 750 }
+                ]
+            },
+            {
+                id: 'monitoring-config',
+                label: '📊 Monitoring Configuration',
+                description: 'Monitoring preferences for Impact Framework analysis',
+                status: 'pending',
+                fields: [
+                    { id: 'enableCpuMonitoring', label: 'Enable CPU Monitoring', type: 'boolean', required: true, defaultValue: true },
+                    { id: 'enableE2eMonitoring', label: 'Enable E2E Monitoring', type: 'boolean', required: true, defaultValue: false },
+                    { id: 'e2eTestCommand', label: 'E2E Test Command', type: 'input', required: false, defaultValue: 'npx cypress run' },
+                    { id: 'scrollToBottom', label: 'Scroll to Bottom', type: 'boolean', required: true, defaultValue: false },
+                    { id: 'firstVisitPercentage', label: 'First Visit Percentage', type: 'number', required: true, defaultValue: 0.9 }
                 ]
             }
         ];
