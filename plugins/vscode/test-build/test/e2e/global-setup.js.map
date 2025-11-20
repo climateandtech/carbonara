@@ -1,0 +1,1 @@
+{"version":3,"file":"global-setup.js","sourceRoot":"","sources":["../../../src/test/e2e/global-setup.ts"],"names":[],"mappings":";;AAAA,+DAA2D;AAE3D,KAAK,UAAU,WAAW;IACxB,OAAO,CAAC,GAAG,CAAC,+DAA+D,CAAC,CAAC;IAC7E,MAAM,gCAAc,CAAC,UAAU,EAAE,CAAC;AACpC,CAAC;AAED,kBAAe,WAAW,CAAC"}

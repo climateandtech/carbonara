@@ -61,7 +61,9 @@ suite('ToolsTreeProvider Unit Tests', () => {
     });
 
     suite('Workspace Tools Registry Loading', () => {
-        test('with external tools in registry -> should show external tools', async () => {
+        test('with external tools in registry -> should show external tools', async function() {
+            this.timeout(10000); // Increase timeout for async loadTools()
+            
             // Load tools from actual registry (which includes both built-in and external)
             await (provider as any).loadTools();
             

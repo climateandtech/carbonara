@@ -117,6 +117,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "carbonara.viewToolInstructions",
+        "title": "View Installation Instructions",
+        "icon": "$(book)"
+      },
+      {
         "command": "carbonara.runSemgrep",
         "title": "Scan current file",
         "icon": "$(play)"
@@ -247,6 +252,11 @@
           "group": "inline"
         },
         {
+          "command": "carbonara.viewToolInstructions",
+          "when": "view == carbonara.toolsTree && viewItem == uninstalled-tool",
+          "group": "inline"
+        },
+        {
           "command": "carbonara.analyzeTool",
           "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
           "group": "inline"
@@ -342,7 +352,7 @@
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",
-    "test:local": "node ./dist/test/runTest.js",
+    "test:local": "node ./out/test/runTest.js",
     "test:ci-check": "if [ \"$CI\" = \"true\" ]; then echo 'Skipping VSCode tests in CI environment'; exit 0; else npm run test:local; fi",
     "test:ui": "playwright test e2e --workers=1",
     "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
@@ -360,7 +370,7 @@
     "@carbonara/core": "file:../../packages/core"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0",
+    "@playwright/test": "^1.55.1",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "22.9.0",

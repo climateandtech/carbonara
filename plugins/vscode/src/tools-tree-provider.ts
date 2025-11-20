@@ -7,6 +7,7 @@ import { UI_TEXT } from "./constants/ui-text";
 export interface AnalysisTool {
   id: string;
   name: string;
+  displayName?: string;
   description: string;
   type: "external" | "built-in";
   command: string;
@@ -14,6 +15,7 @@ export interface AnalysisTool {
   installation?: {
     type: "npm" | "pip" | "binary";
     package: string;
+    global?: boolean;
     instructions?: string;
   };
   detection?: {
@@ -27,6 +29,14 @@ export interface AnalysisTool {
     default?: any;
   }>;
   isInstalled?: boolean;
+  prerequisites?: Array<{
+    type: string;
+    name: string;
+    checkCommand: string;
+    expectedOutput?: string;
+    errorMessage: string;
+    setupInstructions?: string;
+  }>;
 }
 
 export class ToolItem extends vscode.TreeItem {
@@ -35,7 +45,14 @@ export class ToolItem extends vscode.TreeItem {
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly command?: vscode.Command
   ) {
-    super(tool.name, collapsibleState);
+    // Use displayName from tools.json if available, otherwise use name
+    // Append "(Installed)" if the tool is installed and not built-in
+    let displayName = tool.displayName || tool.name;
+    if (tool.type === "external" && tool.isInstalled) {
+      displayName = `${displayName} (Installed)`;
+    }
+    
+    super(displayName, collapsibleState);
 
     this.tooltip = tool.description;
     this.description =
@@ -45,23 +62,7 @@ export class ToolItem extends vscode.TreeItem {
           ? "Installed"
           : "Not installed";
 
-    // Set icon based on installation status
-    if (tool.type === "built-in") {
-      this.iconPath = new vscode.ThemeIcon(
-        "check",
-        new vscode.ThemeColor("charts.green")
-      );
-    } else if (tool.isInstalled) {
-      this.iconPath = new vscode.ThemeIcon(
-        "check",
-        new vscode.ThemeColor("charts.green")
-      );
-    } else {
-      this.iconPath = new vscode.ThemeIcon(
-        "circle-outline",
-        new vscode.ThemeColor("charts.orange")
-      );
-    }
+
 
     // Set context value for different actions
     if (tool.type === "built-in") {
@@ -278,11 +279,17 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           return {
             id: tool.id,
             name: tool.name,
+            displayName: tool.displayName,
             description: tool.description,
             type: isBuiltIn ? "built-in" : "external",
             command: tool.command?.executable || tool.command,
             vscodeCommand: tool.vscodeCommand,
-            installation: tool.installation,
+            installation: tool.installation ? {
+              type: tool.installation.type,
+              package: tool.installation.package,
+              global: tool.installation.global,
+              instructions: tool.installation.instructions,
+            } : undefined,
             detection: tool.detection,
             isInstalled,
           };
@@ -348,14 +355,21 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         this.tools = registry.tools.map((tool: any) => ({
           id: tool.id,
           name: tool.name,
+          displayName: tool.displayName,
           description: tool.description,
           type:
             tool.installation?.type === "built-in" ? "built-in" : "external",
           command: tool.command?.executable || tool.command,
           vscodeCommand: tool.vscodeCommand,
-          installation: tool.installation,
+          installation: tool.installation ? {
+            type: tool.installation.type,
+            package: tool.installation.package,
+            global: tool.installation.global,
+            instructions: tool.installation.instructions,
+          } : undefined,
           detection: tool.detection,
           isInstalled: tool.installation?.type === "built-in" ? true : false,
+          prerequisites: tool.prerequisites,
         }));
 
         // Check installation status for external tools
@@ -386,8 +400,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
     try {
       if (tool.detection.method === "command") {
-        const command = tool.detection.target.split(" ")[0];
-        await this.runCommand(command, ["--version"]);
+        // Run the full detection target command, not just the first word
+        const command = tool.detection.target;
+        await this.runCommand("sh", ["-c", command]);
         return true;
       }
       // Add other detection methods as needed
@@ -400,6 +415,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
   public async installTool(toolId: string): Promise<void> {
     const tool = this.tools.find((t) => t.id === toolId);
     if (!tool || tool.type === "built-in") {
+      vscode.window.showErrorMessage(`Tool ${toolId} not found or is built-in`);
       return;
     }
 
@@ -410,31 +426,141 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return;
     }
 
-    try {
-      vscode.window.showInformationMessage(`Installing ${tool.name}...`);
-
-      if (tool.installation.type === "npm") {
-        await this.runCommand("npm", [
-          "install",
-          "-g",
-          tool.installation.package,
-        ]);
-        vscode.window.showInformationMessage(
-          `${tool.name} installed successfully!`
-        );
-      } else {
-        vscode.window.showInformationMessage(
-          `Please install ${tool.name} manually: ${tool.installation.instructions || "See documentation"}`
-        );
-      }
-
-      // Refresh to update installation status
-      this.refresh();
-    } catch (error: any) {
+    // Store installation config to avoid TypeScript issues
+    const installation = tool.installation;
+    if (!installation) {
       vscode.window.showErrorMessage(
-        `Failed to install ${tool.name}: ${error.message}`
+        `No installation configuration found for ${tool.name}`
       );
+      return;
     }
+
+    try {
+      // Show progress notification
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Installing ${tool.name}...`,
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ increment: 0, message: "Starting installation..." });
+
+          if (installation.type === "npm") {
+            // Split package string by spaces to handle multiple packages
+            const packages = installation.package.split(" ").filter(p => p.trim().length > 0);
+            const npmArgs = ["install"];
+            if (installation.global !== false) {
+              npmArgs.push("-g");
+            }
+            npmArgs.push(...packages);
+            
+            progress.report({ increment: 30, message: `Installing packages: ${packages.join(", ")}` });
+            
+            // Run npm install with better error handling
+            try {
+              await this.runCommand("npm", npmArgs);
+              progress.report({ increment: 100, message: "Installation complete!" });
+              vscode.window.showInformationMessage(
+                `${tool.name} installed successfully!`
+              );
+            } catch (npmError: any) {
+              // Extract more detailed error information
+              const errorDetails = npmError.message || String(npmError);
+              throw new Error(`npm install failed: ${errorDetails}`);
+            }
+          } else {
+            vscode.window.showInformationMessage(
+              `Please install ${tool.name} manually: ${installation.instructions || "See documentation"}`
+            );
+            return;
+          }
+
+          // Refresh to update installation status
+          progress.report({ increment: 90, message: "Refreshing tool status..." });
+          this.refresh();
+        }
+      );
+    } catch (error: any) {
+      // Show detailed error with option to view instructions
+      const errorMessage = error.message || String(error);
+      console.error(`Installation error for ${tool.name}:`, error);
+      
+      const viewInstructions = "View Instructions";
+      const result = await vscode.window.showErrorMessage(
+        `Failed to install ${tool.name}: ${errorMessage}`,
+        viewInstructions
+      );
+      
+      if (result === viewInstructions) {
+        vscode.commands.executeCommand("carbonara.viewToolInstructions", toolId);
+      }
+    }
+  }
+
+  public getToolInstallationInstructionsMarkdown(toolId: string): string {
+    // Try to find the tool by ID
+    let tool = this.tools.find((t) => t.id === toolId);
+    
+    // If not found, try loading tools synchronously (if possible) or return helpful error
+    if (!tool) {
+      console.log(`Tool not found: ${toolId}. Available tools: ${this.tools.map(t => t.id).join(', ')}`);
+      return `# Installation Instructions\n\nTool "${toolId}" not found in registry.\n\nAvailable tools: ${this.tools.map(t => t.id).join(', ')}`;
+    }
+    
+    if (!tool.installation) {
+      return `# Installation Instructions\n\nNo installation instructions available for ${tool.name}.`;
+    }
+
+    let markdown = `# ${tool.name}\n\n`;
+    
+    if (tool.description) {
+      markdown += `${tool.description}\n\n`;
+    }
+
+    markdown += `## Installation\n\n`;
+
+    if (tool.installation.type === "npm") {
+      const packages = tool.installation.package.split(" ").filter(p => p.trim().length > 0);
+      markdown += `**Installation Type:** npm\n\n`;
+      markdown += `**Packages:**\n`;
+      packages.forEach(pkg => {
+        markdown += `- \`${pkg}\`\n`;
+      });
+      markdown += `\n**Command:**\n\`\`\`bash\nnpm install -g ${packages.join(" ")}\n\`\`\`\n\n`;
+    } else if (tool.installation.type === "pip") {
+      markdown += `**Installation Type:** pip\n\n`;
+      markdown += `**Command:**\n\`\`\`bash\npip install ${tool.installation.global ? "--user " : ""}${tool.installation.package}\n\`\`\`\n\n`;
+    } else {
+      markdown += `**Installation Type:** ${tool.installation.type}\n\n`;
+    }
+
+    if (tool.installation.instructions) {
+      markdown += `## Manual Installation Instructions\n\n`;
+      markdown += `${tool.installation.instructions}\n\n`;
+    }
+
+    if (tool.detection) {
+      markdown += `## Detection\n\n`;
+      markdown += `**Method:** ${tool.detection.method}\n\n`;
+      if (tool.detection.target) {
+        markdown += `**Detection Command:**\n\`\`\`bash\n${tool.detection.target}\n\`\`\`\n\n`;
+      }
+    }
+
+    if (tool.prerequisites && tool.prerequisites.length > 0) {
+      markdown += `## Prerequisites\n\n`;
+      tool.prerequisites.forEach((prereq: any) => {
+        markdown += `### ${prereq.name}\n\n`;
+        markdown += `**Type:** ${prereq.type}\n\n`;
+        if (prereq.setupInstructions) {
+          markdown += `**Setup:** ${prereq.setupInstructions}\n\n`;
+        }
+        markdown += `**Check Command:**\n\`\`\`bash\n${prereq.checkCommand}\n\`\`\`\n\n`;
+      });
+    }
+
+    return markdown;
   }
 
   public async analyzeTool(toolId: string): Promise<void> {
@@ -548,9 +674,30 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       // Refresh data tree to show new results
       vscode.commands.executeCommand("carbonara.refreshData");
     } catch (error: any) {
-      vscode.window.showErrorMessage(
-        `${UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED} ${error.message}`
-      );
+      const errorMessage = error.message || String(error);
+      const errorOutput = error.stderr || error.stdout || '';
+      const fullError = errorMessage + (errorOutput ? '\n' + errorOutput : '');
+      
+      // Check if error is related to missing prerequisites
+      if (fullError.includes('Prerequisites not met') || 
+          fullError.includes('Docker is required') ||
+          fullError.includes('Cannot connect to the Docker daemon') ||
+          fullError.includes('docker daemon')) {
+        // Show error message with button to view instructions
+        const action = await vscode.window.showErrorMessage(
+          `${UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED} Prerequisites not met for ${tool.name}`,
+          'View Installation Instructions'
+        );
+        
+        if (action === 'View Installation Instructions') {
+          // Use existing command to open installation instructions
+          await vscode.commands.executeCommand('carbonara.viewToolInstructions', tool.id);
+        }
+      } else {
+        vscode.window.showErrorMessage(
+          `${UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED} ${errorMessage}`
+        );
+      }
     }
   }
 
@@ -679,9 +826,13 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
   }
 
-  private runCommand(command: string, args: string[]): Promise<string> {
+  private runCommand(command: string, args: string[], cwd?: string): Promise<string> {
     return new Promise((resolve, reject) => {
+      // Use workspace folder as cwd if available, otherwise use provided cwd or undefined
+      const workingDir = cwd || this.workspaceFolder?.uri.fsPath;
+      
       const process = spawn(command, args, {
+        cwd: this.workspaceFolder?.uri.fsPath,
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
       });

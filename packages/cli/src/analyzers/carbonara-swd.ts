@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import chalk from 'chalk';
+import execa from 'execa';
 
 export interface CarbonaraSWDResult {
   url: string;
@@ -83,12 +84,61 @@ export class CarbonaraSWDAnalyzer {
   private static readonly RETURNING_VISITOR_PERCENTAGE = 0.25;      // 25% of visitors are returning
   private static readonly RETURNING_VISITOR_DATA_PERCENTAGE = 0.02; // Load only 2% of original data
 
+  /**
+   * Ensures Playwright browsers are installed, installing them if necessary
+   */
+  private async ensureBrowsersInstalled(): Promise<void> {
+    try {
+      // Try to get the executable path - this will throw if browsers aren't installed
+      const executablePath = chromium.executablePath();
+      
+      // Check if the executable actually exists
+      const fs = await import('fs');
+      if (fs.existsSync(executablePath)) {
+        return; // Browsers are installed
+      }
+    } catch (error: any) {
+      // Browser not installed, continue to installation
+    }
+
+    // Browsers not installed, install them automatically
+    console.log(chalk.yellow('📦 Playwright browsers not found. Installing chromium...'));
+    console.log(chalk.gray('   This is a one-time setup for the built-in SWD analyzer.'));
+    
+    try {
+      const { stdout, stderr } = await execa('npx', ['playwright', 'install', 'chromium'], {
+        stdio: 'pipe',
+        timeout: 300000 // 5 minutes timeout for installation
+      });
+      
+      if (stderr && !stderr.includes('Installing')) {
+        // Some warnings are normal, but check for actual errors
+        console.log(chalk.gray(stderr));
+      }
+      
+      console.log(chalk.green('✅ Playwright browsers installed successfully!'));
+    } catch (error: any) {
+      const errorMessage = error.message || String(error);
+      const errorOutput = error.stderr || error.stdout || '';
+      
+      throw new Error(
+        `Failed to install Playwright browsers automatically.\n` +
+        `Error: ${errorMessage}\n` +
+        `${errorOutput ? errorOutput + '\n' : ''}` +
+        `Please run manually: npx playwright install chromium`
+      );
+    }
+  }
+
   async analyze(url: string, options: { 
     timeout?: number;
     gridIntensity?: number;
     returningVisitor?: boolean;
   } = {}): Promise<CarbonaraSWDResult> {
     const startTime = Date.now();
+    
+    // Ensure Playwright browsers are installed (built-in tool requirement)
+    await this.ensureBrowsersInstalled();
     
     console.log(chalk.blue(`🔍 Analyzing ${url}...`));
     

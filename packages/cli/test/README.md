@@ -35,6 +35,17 @@ Generic integration tests for external tools:
 - **Error Handling**: Tests graceful failures when tools not installed
 - **Manifest Generation**: Tests tools with manifest templates
 
+### `tools-sanity.test.ts`
+
+Sanity tests for tool registry configuration (runs in CI):
+
+- **Installation Commands**: Validates npm/pip package names, installation command structure
+- **Detection Commands**: Validates detection command syntax and safety
+- **Command Structure**: Validates command executables and arguments
+- **Package Name Validation**: Ensures npm package names follow conventions
+- **Command Execution Safety**: Checks for dangerous operations in commands
+- **Consistency Checks**: Validates consistency between installation and detection methods
+
 ## Test Philosophy
 
 1. **Synchronous Testing**: Uses `execSync` instead of complex async process management
@@ -65,6 +76,7 @@ All tests currently pass:
 - ✅ data --list should handle missing database gracefully
 - ✅ External tools configuration validation (9 tests)
 - ✅ External tools integration testing (10 tests)
+- ✅ Tools registry sanity checks (15 tests)
 
 ## Testing Strategy
 

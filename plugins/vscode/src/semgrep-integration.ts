@@ -178,6 +178,14 @@ let cliAvailable: boolean | null = null;
 let lastValidEditor: vscode.TextEditor | undefined;
 
 /**
+ * Reset the CLI availability cache (call after CLI installation)
+ */
+export function resetCLIAvailabilityCache(): void {
+  cliAvailable = null;
+  console.log("CLI availability cache reset");
+}
+
+/**
  * Check if the carbonara CLI is available
  */
 async function checkCarbonaraCLI(): Promise<boolean> {
@@ -262,9 +270,11 @@ export async function initializeSemgrep(
     // Don't show warning to user - this is expected when no project is initialized
   }
 
-  // Create diagnostics collection for Semgrep
-  semgrepDiagnostics = vscode.languages.createDiagnosticCollection("semgrep");
-  context.subscriptions.push(semgrepDiagnostics);
+  // Create diagnostics collection for Semgrep (if not already created)
+  if (!semgrepDiagnostics) {
+    semgrepDiagnostics = vscode.languages.createDiagnosticCollection("semgrep");
+    context.subscriptions.push(semgrepDiagnostics);
+  }
 
   // Set up automatic Semgrep analysis on file focus change
   context.subscriptions.push(
@@ -671,7 +681,8 @@ export async function runSemgrepOnFile() {
       cancellable: false,
     },
     async () => {
-      await runSemgrepAnalysis(editor, {
+      // editor is guaranteed to be defined here due to earlier checks
+      await runSemgrepAnalysis(editor!, {
         showUI: true,
         outputChannel: output,
         useTempFile: false,
