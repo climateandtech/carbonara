@@ -34,16 +34,39 @@ export class VSCodeDataProvider {
     this.schemaService = schemaService;
   }
 
+  /**
+   * Load assessment data for a project
+   *
+   * CRITICAL: Data loading behavior
+   * - Loads ALL assessment_data entries from the database, regardless of project_id
+   * - Assessment data can exist without a project record (project_id can be NULL)
+   * - However, for data to display correctly in the extension, a project record
+   *   should exist in the projects table with matching project_id
+   *
+   * Data flow:
+   * 1. Look up project by path (optional, for logging)
+   * 2. Load all assessment_data entries (no filtering by project_id)
+   * 3. Return entries for display in tree view
+   *
+   * Note: If data exists but project doesn't, data won't display. Ensure projects
+   * table has a record matching the project_id in assessment_data entries.
+   */
   async loadDataForProject(projectPath: string): Promise<AssessmentDataEntry[]> {
     try {
       // Try to find project, but don't require it to exist
       const project = await this.dataService.getProject(projectPath);
+      console.log(`[VSCodeDataProvider] Project lookup for path "${projectPath}":`, project ? `Found (ID: ${project.id})` : 'Not found');
       
       // Load all assessment data regardless of whether project exists
       // Assessment data can exist without a project record (project_id can be NULL)
-      return await this.dataService.getAssessmentData();
+      const allData = await this.dataService.getAssessmentData();
+      console.log(`[VSCodeDataProvider] Loaded ${allData.length} assessment data entries`);
+      if (allData.length > 0) {
+        console.log(`[VSCodeDataProvider] Tool names:`, allData.map(d => d.tool_name).join(', '));
+      }
+      return allData;
     } catch (error) {
-      console.error('Failed to load data for project:', error);
+      console.error('[VSCodeDataProvider] Failed to load data for project:', error);
       return [];
     }
   }

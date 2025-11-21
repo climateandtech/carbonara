@@ -42,6 +42,7 @@ export class DataService {
   private db: Database | null = null;
   private dbPath: string;
   private SQL: any = null;
+  private dbExistedOnInit: boolean = false;
 
   constructor(config: DatabaseConfig = {}) {
     this.dbPath =
@@ -87,10 +88,15 @@ export class DataService {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    // Try to load existing database file
+    // CRITICAL: Track if database file existed before initialization
+    // This prevents overwriting existing databases with empty in-memory state
+    // when close() is called during instance switching (e.g., window reload)
     let existingData: Buffer | undefined;
     if (fs.existsSync(this.dbPath)) {
       existingData = fs.readFileSync(this.dbPath);
+      this.dbExistedOnInit = true;
+    } else {
+      this.dbExistedOnInit = false;
     }
 
     // Create or load database
@@ -195,8 +201,21 @@ export class DataService {
       )
     `);
 
-    // Save initial database
-    this.saveDatabase();
+    // CRITICAL FIX: Do NOT save database here on initialization
+    //
+    // Previous behavior: saveDatabase() was called here, which overwrote the
+    // existing database file with the in-memory state. When the extension reloaded:
+    // 1. Existing database file was loaded into memory (with data)
+    // 2. Tables were created/verified (no data loss yet)
+    // 3. saveDatabase() was called, writing in-memory state to disk
+    // 4. If in-memory database was empty/incomplete, it overwrote the file
+    //
+    // New behavior: Database is only saved when:
+    // - Explicit data modifications occur (createProject, saveAssessmentData, etc.)
+    // - close() is called AND database has data (see close() method)
+    //
+    // This ensures existing databases are never overwritten with empty state
+    // this.saveDatabase();
   }
 
   async createProject(
@@ -627,9 +646,50 @@ export class DataService {
 
   async close(): Promise<void> {
     if (this.db) {
-      this.saveDatabase();
+      // CRITICAL FIX: Conditional save to prevent data loss
+      //
+      // Problem: When ensureDatabaseInitialized() switches instances (e.g., on window reload),
+      // it calls close() on the old instance. Previously, close() always saved, which could
+      // overwrite an existing database file with an empty in-memory database.
+      //
+      // Solution: Only save if:
+      // 1. Database has data (projects or assessment_data exist), OR
+      // 2. Database didn't exist when initialized (new database, safe to save)
+      //
+      // This prevents overwriting existing database files with empty state when just
+      // switching instances during extension reload.
+      const hasData = this.hasData();
+      if (hasData || !this.dbExistedOnInit) {
+        this.saveDatabase();
+      }
       this.db.close();
       this.db = null;
+    }
+  }
+
+  /**
+   * Check if database contains any data (projects or assessment_data).
+   * Used by close() to determine if it's safe to save the database.
+   * 
+   * CRITICAL: This prevents overwriting existing database files with empty
+   * in-memory state when switching instances during extension reload.
+   */
+  private hasData(): boolean {
+    if (!this.db) return false;
+    try {
+      // Check if we have any projects or assessment data
+      const projects = this.db.exec("SELECT COUNT(*) as count FROM projects");
+      const assessmentData = this.db.exec("SELECT COUNT(*) as count FROM assessment_data");
+
+      const projectCount = projects.length > 0 && projects[0].values.length > 0
+        ? projects[0].values[0][0] : 0;
+      const dataCount = assessmentData.length > 0 && assessmentData[0].values.length > 0
+        ? assessmentData[0].values[0][0] : 0;
+
+      return (projectCount as number) > 0 || (dataCount as number) > 0;
+    } catch (error) {
+      // If tables don't exist yet, consider it empty
+      return false;
     }
   }
 }

@@ -114,6 +114,24 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         return;
       }
 
+      // CRITICAL: Database path resolution from carbonara.config.json
+      //
+      // Required config format (.carbonara/carbonara.config.json):
+      // {
+      //   "name": "project-name",
+      //   "projectId": 1,
+      //   "database": {
+      //     "path": ".carbonara/carbonara.db"  // Relative to workspace root, or absolute
+      //   },
+      //   "tools": {}
+      // }
+      //
+      // The database.path can be:
+      // - Relative: Resolved relative to workspace root (e.g., ".carbonara/carbonara.db")
+      // - Absolute: Used as-is (e.g., "/path/to/database.db")
+      // - Omitted: Defaults to ".carbonara/carbonara.db" in workspace root
+      //
+      // This format matches the test fixtures to ensure consistent behavior.
       try {
         if (require("fs").existsSync(configPath)) {
           const config = JSON.parse(
@@ -128,6 +146,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
                   config.database.path
                 );
           } else {
+            // Fallback to default path if config.database.path is not specified
             dbPath = path.join(
               this.workspaceFolder.uri.fsPath,
               ".carbonara",
