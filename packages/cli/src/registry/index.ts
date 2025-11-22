@@ -40,6 +40,15 @@ export interface AnalysisTool {
   }>;
   manifestTemplate?: any; // For Impact Framework tools
   display?: any; // For display configuration
+  prerequisites?: Array<{
+    type: string;
+    name: string;
+    checkCommand: string;
+    expectedOutput?: string;
+    errorMessage: string;
+    setupInstructions?: string;
+  }>;
+  displayName?: string; // Display name override (e.g., "Impact Framework" for IF tools)
 }
 
 export interface ToolRegistry {
