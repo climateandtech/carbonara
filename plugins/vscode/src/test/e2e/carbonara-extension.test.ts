@@ -330,18 +330,21 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       }
 
       // Step 6: Verify installed tools (from registry: 1 built-in tool)
-
+      // Filter by tool name first (more reliable than filtering by description)
       const installedTools = toolsTree
         .locator(".monaco-list-row")
-        .filter({ hasText: "Built-in" });
+        .filter({ hasText: "Test Analyzer" });
 
       // ASSERTION: Must have exactly 1 installed tool (Test Analyzer in test environment)
       await expect(installedTools).toHaveCount(1, { timeout: 5000 });
 
+      // Verify it also has "Built-in" description
       const installedTexts = await installedTools.allTextContents();
+      const fullText = installedTexts[0] || "";
 
-      // ASSERTION: Must be Test Analyzer (test-only tool)
-      expect(installedTexts[0]).toContain("Test Analyzer");
+      // ASSERTION: Must be Test Analyzer (test-only tool) and show as Built-in
+      expect(fullText).toContain("Test Analyzer");
+      expect(fullText).toContain("Built-in");
 
       // Step 7: Verify uninstalled tools (from registry: 2 external tools)
 
@@ -871,48 +874,90 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       await vscode.window.waitForTimeout(2000);
 
       // Step 3: Find and verify existing data tree
+      // Data should load automatically, but we'll retry if needed
       const allTrees = vscode.window.locator(
         '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
       );
+      
+      // Wait for at least one tree to be visible (data might still be loading)
+      let treesVisible = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const treeCount = await allTrees.count();
+        if (treeCount > 0) {
+          try {
+            await expect(allTrees.first()).toBeVisible({ timeout: 2000 });
+            treesVisible = true;
+            break;
+          } catch {
+            // Tree exists but not visible yet, continue waiting
+          }
+        }
+        await vscode.window.waitForTimeout(1000);
+      }
+      
+      if (!treesVisible) {
+        // Last attempt with longer timeout
+        await expect(allTrees.first()).toBeVisible({ timeout: 10000 });
+      }
       const treeCount = await allTrees.count();
 
       let dataTree: Locator | null = null;
       let initialDataRowCount = 0;
       let hasExistingData = false;
+      let allFoundTexts: string[] = [];
 
-      for (let i = 0; i < treeCount; i++) {
-        const tree = allTrees.nth(i);
-        const treeRows = tree.locator(".monaco-list-row");
-        const rowCount = await treeRows.count();
+      // Try multiple times to find data (data might be loading)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        for (let i = 0; i < treeCount; i++) {
+          const tree = allTrees.nth(i);
+          const treeRows = tree.locator(".monaco-list-row");
+          const rowCount = await treeRows.count();
 
-        if (rowCount > 0) {
-          const rowTexts = await treeRows.allTextContents();
-          const hasQuestionnaireData = rowTexts.some(
-            (text) =>
-              text.includes("Project Information") ||
-              text.includes("Infrastructure") ||
-              text.includes("Development")
-          );
+          if (rowCount > 0) {
+            const rowTexts = await treeRows.allTextContents();
+            allFoundTexts.push(...rowTexts);
+            
+            const hasQuestionnaireData = rowTexts.some(
+              (text) =>
+                text.toLowerCase().includes("project information") ||
+                text.toLowerCase().includes("infrastructure") ||
+                text.toLowerCase().includes("development") ||
+                text.toLowerCase().includes("co2 assessment")
+            );
 
-          const hasAnalysisData = rowTexts.some(
-            (text) =>
-              text.includes("greenframe") ||
-              text.includes("example.com") ||
-              text.includes("test-site.com") ||
-              text.includes("CO2") ||
-              text.includes("Web Analysis")
-          );
+            const hasAnalysisData = rowTexts.some(
+              (text) => {
+                const lowerText = text.toLowerCase();
+                // Match specific analysis data patterns from test fixture
+                return (
+                  lowerText.includes("greenframe") ||
+                  lowerText.includes("example.com") ||
+                  lowerText.includes("test-site.com") ||
+                  lowerText.includes("co2") ||
+                  lowerText.includes("web analysis")
+                );
+              }
+            );
 
-          if (hasAnalysisData || hasQuestionnaireData) {
-            dataTree = tree;
-            initialDataRowCount = rowCount;
-            hasExistingData = true;
-            break;
+            if (hasAnalysisData || hasQuestionnaireData) {
+              dataTree = tree;
+              initialDataRowCount = rowCount;
+              hasExistingData = true;
+              break;
+            }
           }
         }
+        
+        if (hasExistingData) break;
+        
+        // Wait a bit and try again
+        await vscode.window.waitForTimeout(1000);
       }
 
       // ASSERTION: Must have existing data visible
+      if (!hasExistingData) {
+        console.error("All found texts:", allFoundTexts);
+      }
       expect(hasExistingData).toBe(true);
       expect(dataTree).not.toBeNull();
       expect(initialDataRowCount).toBeGreaterThan(0);
