@@ -435,17 +435,111 @@ suite("DataTreeProvider Unit Tests", () => {
     });
 
     test("getChildren should return items with string labels when coreServices is null", async () => {
-      const children = await provider.getChildren();
-      const firstChild = children[0];
+      // Create a temporary directory with config file to test the coreServices === null path
+      const fs = require("fs");
+      const path = require("path");
+      const tempDir = path.join("/tmp", `carbonara-test-${Date.now()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
+      const carbonaraDir = path.join(tempDir, ".carbonara");
+      fs.mkdirSync(carbonaraDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(carbonaraDir, "carbonara.config.json"),
+        JSON.stringify({ name: "test-project" }, null, 2)
+      );
 
-      assert.ok(typeof firstChild.label === "string");
+      const mockWorkspaceFolder = {
+        uri: vscode.Uri.file(tempDir),
+        name: "test",
+        index: 0,
+      };
+      Object.defineProperty(vscode.workspace, "workspaceFolders", {
+        value: [mockWorkspaceFolder],
+        configurable: true,
+      });
+
+      try {
+        // Create a new provider with workspace but no coreServices
+        const testProvider = new DataTreeProvider();
+        // Ensure coreServices is null and prevent async initialization
+        (testProvider as any).coreServices = null;
+        (testProvider as any).workspaceFolder = mockWorkspaceFolder;
+        // Prevent async initialization from interfering
+        (testProvider as any).initializeCoreServices = () => Promise.resolve();
+
+        // Wait a bit to ensure provider is set up
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        
+        const children = testProvider.getChildren();
+        // getChildren can return array or Promise, handle both
+        const resolvedChildren = Array.isArray(children) ? children : await children;
+        
+        // Assertion 1: Should return at least one item
+        assert.ok(resolvedChildren.length > 0, `Should return at least one item when coreServices is null, got ${resolvedChildren.length} items`);
+        
+        // Assertion 2: First child should exist
+        assert.ok(resolvedChildren[0] !== undefined, "First child should exist");
+        
+        // Assertion 3: First child should have a string label
+        const firstChild = resolvedChildren[0];
+        assert.ok(typeof firstChild.label === "string", `First child label should be a string, got ${typeof firstChild.label}`);
+      } finally {
+        // Cleanup
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
     });
 
     test("getChildren should return DataItem instances when coreServices is null", async () => {
-      const children = await provider.getChildren();
-      const firstChild = children[0];
+      // Create a temporary directory with config file to test the coreServices === null path
+      const fs = require("fs");
+      const path = require("path");
+      const tempDir = path.join("/tmp", `carbonara-test-${Date.now()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
+      const carbonaraDir = path.join(tempDir, ".carbonara");
+      fs.mkdirSync(carbonaraDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(carbonaraDir, "carbonara.config.json"),
+        JSON.stringify({ name: "test-project" }, null, 2)
+      );
 
-      assert.ok(firstChild instanceof DataItem);
+      const mockWorkspaceFolder = {
+        uri: vscode.Uri.file(tempDir),
+        name: "test",
+        index: 0,
+      };
+      Object.defineProperty(vscode.workspace, "workspaceFolders", {
+        value: [mockWorkspaceFolder],
+        configurable: true,
+      });
+
+      try {
+        // Create a new provider with workspace but no coreServices
+        const testProvider = new DataTreeProvider();
+        // Ensure coreServices is null and prevent async initialization
+        (testProvider as any).coreServices = null;
+        (testProvider as any).workspaceFolder = mockWorkspaceFolder;
+        // Prevent async initialization from interfering
+        (testProvider as any).initializeCoreServices = () => Promise.resolve();
+
+        // Wait a bit to ensure provider is set up
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        
+        const children = testProvider.getChildren();
+        // getChildren can return array or Promise, handle both
+        const resolvedChildren = Array.isArray(children) ? children : await children;
+        
+        // Assertion 1: Should return at least one item
+        assert.ok(resolvedChildren.length > 0, `Should return at least one item when coreServices is null, got ${resolvedChildren.length} items`);
+        
+        // Assertion 2: First child should exist
+        assert.ok(resolvedChildren[0] !== undefined, "First child should exist");
+        
+        // Assertion 3: First child should be a DataItem instance
+        const firstChild = resolvedChildren[0];
+        assert.ok(firstChild instanceof DataItem, `First child should be a DataItem instance, got ${firstChild?.constructor?.name || typeof firstChild}`);
+      } finally {
+        // Cleanup
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
     });
   });
 
