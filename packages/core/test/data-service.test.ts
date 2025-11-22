@@ -147,6 +147,105 @@ describe('DataService', () => {
     });
   });
 
+  describe('Database Initialization (Integration Test)', () => {
+    it('should load existing database file instead of creating new one', async () => {
+      // This test verifies that initialize() loads existing databases
+      // and never overwrites them with empty state
+      // 
+      // Scenario:
+      // 1. CLI creates database and writes data
+      // 2. VSCode extension calls initialize() on existing database
+      // 3. Extension should load existing data, not create empty database
+
+      // Step 1: Create database with data (simulating CLI)
+      const projectId = await dataService.createProject('Existing DB Test', '/test/existing');
+      
+      const testData = {
+        url: 'https://existing.example.com',
+        result: 'loaded from disk'
+      };
+
+      const dataId = await dataService.storeAssessmentData(
+        projectId,
+        'test-analyzer',
+        'web-analysis',
+        testData
+      );
+      expect(dataId).toBeGreaterThan(0);
+
+      // Save and close (simulating CLI closing)
+      await dataService.close();
+
+      // Verify file exists with data
+      expect(fs.existsSync(testDbPath)).toBe(true);
+      const fileSizeBeforeInit = fs.statSync(testDbPath).size;
+      expect(fileSizeBeforeInit).toBeGreaterThan(0);
+
+      // Step 2: Simulate VSCode extension initializing on existing database
+      const extensionDataService = new DataService({ dbPath: testDbPath });
+      await extensionDataService.initialize();
+
+      // Step 3: Verify existing data was loaded (not overwritten)
+      const loadedData = await extensionDataService.getAssessmentData(projectId);
+      expect(loadedData).toHaveLength(1);
+      expect(loadedData[0].id).toBe(dataId);
+      expect(loadedData[0].data.url).toBe('https://existing.example.com');
+      expect(loadedData[0].data.result).toBe('loaded from disk');
+
+      // Verify database file still exists and wasn't corrupted
+      expect(fs.existsSync(testDbPath)).toBe(true);
+      const fileSizeAfterInit = fs.statSync(testDbPath).size;
+      expect(fileSizeAfterInit).toBe(fileSizeBeforeInit);
+
+      // Verify dbExistedOnInit flag is set correctly
+      // (This prevents close() from overwriting on instance switch)
+      const dbExisted = (extensionDataService as any).dbExistedOnInit;
+      expect(dbExisted).toBe(true);
+
+      await extensionDataService.close();
+    });
+
+    it('should create new database when file does not exist', async () => {
+      // This test verifies that initialize() creates a new in-memory database
+      // when the file doesn't exist (for new projects)
+      // Note: The file is only written to disk when close() is called with data
+
+      // Use a new path that doesn't exist
+      const newDbPath = path.join('/tmp', `test-new-db-${Date.now()}.db`);
+      
+      // Clean up if it somehow exists
+      if (fs.existsSync(newDbPath)) {
+        fs.unlinkSync(newDbPath);
+      }
+
+      const newDataService = new DataService({ dbPath: newDbPath });
+      await newDataService.initialize();
+
+      // Verify database file does NOT exist yet (only in-memory)
+      expect(fs.existsSync(newDbPath)).toBe(false);
+
+      // Verify it's a new empty database (no data)
+      const projects = await newDataService.getAllProjects();
+      expect(projects).toHaveLength(0);
+
+      // Verify dbExistedOnInit flag is false for new databases
+      const dbExisted = (newDataService as any).dbExistedOnInit;
+      expect(dbExisted).toBe(false);
+
+      // Add some data and close to create the file
+      const projectId = await newDataService.createProject('New Project', '/test/new');
+      await newDataService.close();
+
+      // Now the file should exist
+      expect(fs.existsSync(newDbPath)).toBe(true);
+
+      // Clean up
+      if (fs.existsSync(newDbPath)) {
+        fs.unlinkSync(newDbPath);
+      }
+    });
+  });
+
   describe('Database Reloading (Integration Test)', () => {
     it('should reload database from disk without overwriting data', async () => {
       // This test verifies the fix for the reloadDatabase() bug where it would

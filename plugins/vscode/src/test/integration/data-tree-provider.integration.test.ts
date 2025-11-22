@@ -28,6 +28,31 @@ suite("DataTreeProvider Integration Tests", () => {
     );
 
     testDbPath = path.join(carbonaraDir, "carbonara.db");
+    
+    // Create an empty database file so the test can verify "No data available" message
+    // (instead of "Database not found")
+    const initSqlJs = require('sql.js');
+    const SQL = await initSqlJs();
+    const db = new SQL.Database();
+    
+    // Create minimal schema (just projects table to make it a valid database)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        metadata JSON,
+        co2_variables JSON
+      )
+    `);
+    
+    // Save empty database to file
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(testDbPath, buffer);
+    db.close();
 
     testWorkspaceFolder = {
       uri: vscode.Uri.file(tempDir),
@@ -45,7 +70,31 @@ suite("DataTreeProvider Integration Tests", () => {
     provider = new DataTreeProvider();
 
     // Give more time for core services to initialize and avoid race conditions
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Wait for core services to initialize (they check for database file)
+    let initialized = false;
+    const maxWaitTime = 5000; // 5 seconds
+    const startTime = Date.now();
+    
+    while (!initialized && Date.now() - startTime < maxWaitTime) {
+      const children = await provider.getChildren();
+      // Check if we're past the loading state
+      const hasLoading = children.some(
+        (child) => child.label === UI_TEXT.DATA_TREE.LOADING
+      );
+      const hasDatabaseError = children.some(
+        (child) => child.label === "❌ Database not found"
+      );
+      const hasNoData = children.some(
+        (child) => child.label === UI_TEXT.DATA_TREE.NO_DATA
+      );
+      
+      if (!hasLoading && (hasDatabaseError || hasNoData)) {
+        initialized = true;
+        break;
+      }
+      
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
 
     // Restore original workspace folders
     Object.defineProperty(vscode.workspace, "workspaceFolders", {
@@ -192,7 +241,13 @@ suite("DataTreeProvider Integration Tests", () => {
         refreshFired = true;
       });
 
+      // Wait a bit to ensure listener is set up
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       await provider.refresh();
+
+      // Wait a bit for the event to fire
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       assert.strictEqual(refreshFired, true);
       disposable.dispose();
