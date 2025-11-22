@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "execa": "^5.1.1",
     "sql.js": "1.13.0"
   },
   "devDependencies": {

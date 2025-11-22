@@ -9,6 +9,8 @@ import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake, createDeploymentService } from '@carbonara/core';
 import { loadProjectConfig, getProjectRoot } from '../utils/config.js';
 import { CarbonaraSWDAnalyzer } from '../analyzers/carbonara-swd.js';
+import { checkPrerequisites, Prerequisite } from '@carbonara/core';
+import { IsolatedToolExecutor } from '../utils/tool-executor.js';
 
 interface AnalyzeOptions {
   save: boolean;
@@ -71,6 +73,36 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     console.log(chalk.gray('\nOr run:'));
     console.log(chalk.white(`carbonara tools install ${toolId}`));
     process.exit(1);
+  }
+
+  // Check prerequisites before execution
+  if (tool.prerequisites && tool.prerequisites.length > 0) {
+    const prerequisites: Prerequisite[] = tool.prerequisites.map((p: any) => ({
+      type: p.type,
+      name: p.name,
+      checkCommand: p.checkCommand,
+      expectedOutput: p.expectedOutput,
+      errorMessage: p.errorMessage,
+      setupInstructions: p.setupInstructions
+    }));
+
+    const prereqCheck = await checkPrerequisites(prerequisites);
+    
+    if (!prereqCheck.allAvailable) {
+      console.error(chalk.red(`\n❌ Prerequisites not met for ${tool.name}:`));
+      console.error('');
+      prereqCheck.missing.forEach(({ prerequisite, error }) => {
+        console.error(chalk.red(`   • ${prerequisite.name}: ${error}`));
+        if (prerequisite.setupInstructions) {
+          console.error('');
+          console.error(chalk.yellow(`   📋 Setup Instructions:`));
+          console.error(chalk.yellow(`      ${prerequisite.setupInstructions}`));
+          console.error('');
+        }
+      });
+      console.error(chalk.blue(`\n💡 Tip: You can view detailed installation instructions in the VSCode extension's Tools view.`));
+      process.exit(1);
+    }
   }
 
   const spinner = ora(`Running ${tool.name} analysis...`).start();
@@ -236,16 +268,32 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
   // Replace placeholders in command args
   const args = tool.command.args.map(arg => arg.replace('{url}', url));
   
-  const result = await execa(tool.command.executable, args, {
-    stdio: 'pipe'
-  });
+  // Use isolated execution for external tools to prevent workspace context interference
+  const executor = new IsolatedToolExecutor();
+  try {
+    await executor.createIsolatedEnvironment();
+    
+    const result = await executor.execute({
+      command: tool.command.executable,
+      args: args,
+      stdio: 'pipe'
+    });
 
-  if (tool.command.outputFormat === 'json') {
-    return JSON.parse(result.stdout);
-  } else if (tool.command.outputFormat === 'yaml') {
-    return yaml.load(result.stdout);
-  } else {
-    return { output: result.stdout };
+    // Check for execution errors
+    if (result.exitCode !== 0) {
+      const errorMessage = result.stderr || result.stdout || 'Unknown error';
+      throw new Error(`Tool execution failed: ${errorMessage}`);
+    }
+
+    if (tool.command.outputFormat === 'json') {
+      return JSON.parse(result.stdout);
+    } else if (tool.command.outputFormat === 'yaml') {
+      return yaml.load(result.stdout);
+    } else {
+      return { output: result.stdout };
+    }
+  } finally {
+    executor.cleanup();
   }
 }
 
@@ -306,15 +354,33 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   // Create manifest from template with placeholder replacement
   const manifest = JSON.parse(JSON.stringify(tool.manifestTemplate)); // Deep clone
   
+  // Get values for placeholders
+  const scrollToBottom = options.scrollToBottom ?? co2Variables.monitoringConfig?.scrollToBottom ?? false;
+  const firstVisitPercentage = options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9;
+  const returnVisitPercentage = 1 - firstVisitPercentage;
+  const testCommand = options.testCommand ?? co2Variables.monitoringConfig?.e2eTestCommand ?? 'npm test';
+  
   // Replace placeholders in manifest with intelligent defaults from assessment data
   const replacePlaceholders = (obj: any): any => {
     if (typeof obj === 'string') {
+      // If the entire string is a placeholder, return the actual value (boolean/number)
+      if (obj === '{scrollToBottom}') {
+        return scrollToBottom;
+      }
+      if (obj === '{firstVisitPercentage}') {
+        return firstVisitPercentage;
+      }
+      if (obj === '{returnVisitPercentage}') {
+        return returnVisitPercentage;
+      }
+      
+      // Otherwise, replace placeholders within strings
       return obj
         .replace('{url}', url)
-        .replace('{scrollToBottom}', (options.scrollToBottom ?? co2Variables.monitoringConfig?.scrollToBottom ?? false).toString())
-        .replace('{firstVisitPercentage}', (options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9).toString())
-        .replace('{returnVisitPercentage}', (1 - (options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9)).toString())
-        .replace('{testCommand}', (options.testCommand ?? co2Variables.monitoringConfig?.e2eTestCommand ?? 'npm test').toString());
+        .replace('{testCommand}', testCommand)
+        .replace('{scrollToBottom}', scrollToBottom.toString())
+        .replace('{firstVisitPercentage}', firstVisitPercentage.toString())
+        .replace('{returnVisitPercentage}', returnVisitPercentage.toString());
     } else if (Array.isArray(obj)) {
       return obj.map(replacePlaceholders);
     } else if (obj && typeof obj === 'object') {
@@ -357,16 +423,45 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   fs.writeFileSync(manifestPath, yaml.dump(processedManifest));
 
   // Run Impact Framework analysis
-  await execa('if-run', [
-    '--manifest', manifestPath,
-    '--output', outputPath
-  ], {
-    stdio: 'pipe'
-  });
+  try {
+    const result = await execa('if-run', [
+      '--manifest', manifestPath,
+      '--output', outputPath
+    ], {
+      stdio: 'pipe',
+      reject: false // Don't throw on non-zero exit
+    });
 
-  // Check if output file exists
-  if (!fs.existsSync(outputPath)) {
-    throw new Error(`Output file not created at ${outputPath}`);
+    // Check exit code
+    if (result.exitCode !== 0) {
+      const errorMsg = result.stderr || result.stdout || 'Unknown error';
+      throw new Error(`if-run failed with exit code ${result.exitCode}: ${errorMsg}`);
+    }
+
+    // Check if output file exists
+    if (!fs.existsSync(outputPath)) {
+      // Provide more context about what might have gone wrong
+      const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+      throw new Error(
+        `Output file not created at ${outputPath}\n` +
+        `if-run exit code: ${result.exitCode}\n` +
+        `if-run stdout: ${result.stdout || '(empty)'}\n` +
+        `if-run stderr: ${result.stderr || '(empty)'}\n` +
+        `Manifest file: ${manifestPath}\n` +
+        `Temp directory: ${tempDir}`
+      );
+    }
+  } catch (error: any) {
+    // If it's already our formatted error, re-throw it
+    if (error.message && error.message.includes('Output file not created')) {
+      throw error;
+    }
+    // Otherwise, wrap the error with more context
+    throw new Error(
+      `Failed to run Impact Framework analysis: ${error.message}\n` +
+      `Manifest: ${manifestPath}\n` +
+      `Output: ${outputPath}`
+    );
   }
 
   // Parse results and convert to JSON

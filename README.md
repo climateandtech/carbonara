@@ -209,6 +209,11 @@ npm run test:ui              # Playwright E2E tests
 npm run package             # Create .vsix
 ```
 
+**Note**: The extension build process (`copy-deps` script) copies dependencies from the CLI and Core packages into the extension's `dist` folder. If you encounter errors like `Cannot find module '@carbonara/cli/dist/utils/prerequisites.js'`, ensure:
+1. The CLI package is built: `cd packages/cli && npm run build`
+2. The extension is rebuilt: `cd plugins/vscode && npm run build`
+3. Reload the VSCode window after rebuilding
+
 ### Testing
 ```bash
 npm test                     # All tests
