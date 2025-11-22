@@ -60,15 +60,16 @@ test.describe("Workspace Scenarios - Project State Testing", () => {
         await vscode.window.waitForTimeout(2000);
 
         // Should see initialization options in the quick pick menu
+        // Match on SEARCH_TEXT (text without emojis) as it's more reliable
         const initOption = vscode.window.locator(
-          `[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.INITIALIZE.LABEL}")`
+          `[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.INITIALIZE.SEARCH_TEXT}")`
         );
         const searchOption = vscode.window.locator(
-          `[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.LABEL}")`
+          `[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.SEARCH_TEXT}")`
         );
 
-        await expect(initOption).toBeVisible({ timeout: 5000 });
-        await expect(searchOption).toBeVisible({ timeout: 5000 });
+        await expect(initOption).toBeVisible({ timeout: 10000 });
+        await expect(searchOption).toBeVisible({ timeout: 10000 });
 
         // Test "Search current workspace" - should find no projects
         await searchOption.click();

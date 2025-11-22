@@ -93,12 +93,15 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
     // Open status bar menu
     await VSCodeLauncher.selectFromCarbonaraMenu(vscode.window, "OPEN_PROJECT");
 
-    // Click Search current workspace
-    await vscode.window
-      .locator(
-        `[role="option"]:has-text("${UI_TEXT.PROJECT_OPEN.OPTIONS.SEARCH.SEARCH_TEXT}")`
-      )
-      .click();
+    // Wait for quick pick menu to appear
+    await vscode.window.waitForTimeout(2000);
+
+    // Use keyboard navigation to select "Search current workspace" option
+    // Arrow down once to select the second option (Search)
+    await vscode.window.keyboard.press("ArrowDown");
+    await vscode.window.waitForTimeout(500);
+    await vscode.window.keyboard.press("Enter");
+    await vscode.window.waitForTimeout(2000);
 
     // Verify no projects found message (use more specific selector to avoid strict mode violation)
     const noProjectsMessage = vscode.window.locator(

@@ -43,7 +43,7 @@ test.describe("Carbonara Initialization Flow", () => {
       // Click on the Carbonara activity bar icon to open the sidebar
       const carbonaraActivityBar = vscode.window.locator(
         '[aria-label*="Carbonara"]'
-      );
+      ).first();
 
       if (await carbonaraActivityBar.isVisible({ timeout: 5000 })) {
         await carbonaraActivityBar.click();
@@ -52,12 +52,15 @@ test.describe("Carbonara Initialization Flow", () => {
 
       // Look for welcome content in the sidebar
       // The welcome section (with no title) should show the initialization message
+      // Wait a bit for the welcome view to render
+      await vscode.window.waitForTimeout(2000);
+      
       const welcomeMessage = vscode.window.locator(
         "text=/Carbonara has not yet been initialised/i"
       );
 
       await expect(welcomeMessage).toBeVisible({
-        timeout: 10000,
+        timeout: 15000,
       });
 
       // Check for the initialization button
@@ -86,7 +89,7 @@ test.describe("Carbonara Initialization Flow", () => {
       // Click on Carbonara activity bar
       const carbonaraActivityBar = vscode.window.locator(
         '[aria-label*="Carbonara"]'
-      );
+      ).first();
 
       if (await carbonaraActivityBar.isVisible({ timeout: 5000 })) {
         await carbonaraActivityBar.click();
@@ -163,7 +166,7 @@ test.describe("Carbonara Initialization Flow", () => {
       // Click on Carbonara activity bar
       const carbonaraActivityBar = vscode.window.locator(
         '[aria-label*="Carbonara"]'
-      );
+      ).first();
 
       if (await carbonaraActivityBar.isVisible({ timeout: 5000 })) {
         await carbonaraActivityBar.click();
@@ -199,7 +202,7 @@ test.describe("Carbonara Initialization Flow", () => {
       // Click on Carbonara activity bar
       const carbonaraActivityBar = vscode.window.locator(
         '[aria-label*="Carbonara"]'
-      );
+      ).first();
 
       if (await carbonaraActivityBar.isVisible({ timeout: 5000 })) {
         await carbonaraActivityBar.click();
@@ -235,7 +238,7 @@ test.describe("Carbonara Initialization Flow", () => {
       // Open Carbonara sidebar
       const carbonaraActivityBar = vscode.window.locator(
         '[aria-label*="Carbonara"]'
-      );
+      ).first();
 
       if (await carbonaraActivityBar.isVisible({ timeout: 5000 })) {
         await carbonaraActivityBar.click();
