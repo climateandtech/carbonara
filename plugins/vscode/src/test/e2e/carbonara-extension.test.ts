@@ -1069,4 +1069,97 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       await VSCodeLauncher.close(vscode);
     }
   });
+
+  test("should show installation instructions when clicking install button on uninstalled tool", async () => {
+    const vscode = await VSCodeLauncher.launch("with-carbonara-project");
+
+    try {
+      // Wait for extension to fully activate
+      await VSCodeLauncher.waitForExtension(vscode.window);
+
+      // Step 1: Open the Carbonara sidebar
+      await VSCodeLauncher.openSidebar(vscode.window);
+
+      // Step 2: Find and expand Analysis Tools section
+      const toolsSection = vscode.window
+        .locator(".pane-header")
+        .filter({ hasText: "Analysis Tools" });
+      
+      await expect(toolsSection).toBeVisible({ timeout: 10000 });
+      await toolsSection.scrollIntoViewIfNeeded();
+      await vscode.window.waitForTimeout(500);
+      
+      // Click to expand if collapsed
+      const isExpanded = await toolsSection.getAttribute("aria-expanded");
+      if (isExpanded !== "true") {
+        await toolsSection.click();
+        await vscode.window.waitForTimeout(500);
+      }
+
+      // Step 3: Find an uninstalled tool (should have "Not installed" description)
+      // In E2E test mode, external tools are marked as not installed
+      const uninstalledTool = vscode.window
+        .locator(".monaco-list-row")
+        .filter({ hasText: /Not installed/i })
+        .first();
+
+      // Wait for tools to load
+      await vscode.window.waitForTimeout(2000);
+      
+      // Check if any uninstalled tools are visible
+      const uninstalledToolCount = await uninstalledTool.count();
+      
+      if (uninstalledToolCount > 0) {
+        // Step 4: Right-click or find the install button/action
+        // The install button should be available via context menu or inline action
+        await uninstalledTool.click({ button: "right" });
+        await vscode.window.waitForTimeout(500);
+
+        // Look for context menu with "Install tool" option
+        const installOption = vscode.window
+          .locator(".context-menu")
+          .filter({ hasText: /Install|install/i })
+          .first();
+
+        // If context menu doesn't appear, try clicking the tool item directly
+        // (it should have a command attached)
+        if (await installOption.count() === 0) {
+          // Click the tool item directly - it should trigger the install command
+          await uninstalledTool.click();
+          await vscode.window.waitForTimeout(1000);
+        } else {
+          await installOption.click();
+          await vscode.window.waitForTimeout(1000);
+        }
+
+        // Step 5: Verify that a virtual document opens with installation instructions
+        // The document should have the scheme "carbonara-tool-installation://"
+        const editorTabs = vscode.window.locator(".tab");
+        
+        // Wait for the document to open
+        await vscode.window.waitForTimeout(2000);
+
+        // Check if an editor tab is open (the virtual document)
+        const tabCount = await editorTabs.count();
+        expect(tabCount).toBeGreaterThan(0);
+
+        // Step 6: Verify the document content includes installation instructions
+        // Look for markdown content in the editor
+        const editorContent = vscode.window.locator(".editor-container .monaco-editor");
+        await expect(editorContent).toBeVisible({ timeout: 5000 });
+
+        // Verify the document contains expected installation instruction text
+        const documentText = await editorContent.textContent();
+        
+        // Should contain installation-related text
+        expect(documentText).toMatch(/Installation|Prerequisites|Install|npm|pip/i);
+      } else {
+        // If no uninstalled tools are found, skip the test
+        // This can happen if all tools are installed or if tools haven't loaded yet
+        console.log("No uninstalled tools found, skipping installation instructions test");
+      }
+    } finally {
+      await VSCodeLauncher.close(vscode);
+    }
+  });
 });

@@ -430,7 +430,12 @@ export class DataService {
   ): Promise<number> {
     if (!this.db) throw new Error("Database not initialized");
 
-    console.log(`[DataService] Storing assessment data: tool=${toolName}, projectId=${projectId}, dataType=${dataType}`);
+    console.log(`[DataService] Storing assessment data:`);
+    console.log(`[DataService]   Project ID: ${projectId}`);
+    console.log(`[DataService]   Tool Name: ${toolName}`);
+    console.log(`[DataService]   Data Type: ${dataType}`);
+    console.log(`[DataService]   Source: ${source || 'none'}`);
+    console.log(`[DataService]   Data keys: ${Object.keys(data).join(', ')}`);
     
     this.db.run(
       `INSERT INTO assessment_data (project_id, tool_name, data_type, data, source) VALUES (?, ?, ?, ?, ?)`,
@@ -446,7 +451,7 @@ export class DataService {
     const result = this.db.exec("SELECT last_insert_rowid() as id");
     const id = result[0].values[0][0] as number;
 
-    console.log(`[DataService] ✅ Assessment data inserted with id=${id}, saving to disk...`);
+    console.log(`[DataService] Stored with ID: ${id}`);
     this.saveDatabase();
     
     // Verify the data was actually saved by reading it back
@@ -492,16 +497,24 @@ export class DataService {
 
     query += " ORDER BY timestamp DESC";
 
+    console.log(`[DataService] Query: ${query}`);
+    console.log(`[DataService] Params:`, params);
+
     const result = this.db.exec(query, params);
 
+    console.log(`[DataService] Query returned ${result.length} result sets`);
+
     if (result.length === 0) {
+      console.log(`[DataService] No data found in assessment_data table`);
       return [];
     }
 
     const columns = result[0].columns;
     const rows = result[0].values;
 
-    return rows.map((values: any) => {
+    console.log(`[DataService] Found ${rows.length} rows`);
+
+    const entries = rows.map((values: any) => {
       const row: any = {};
       columns.forEach((col: string, idx: number) => {
         row[col] = values[idx];
@@ -509,6 +522,18 @@ export class DataService {
       row.data = JSON.parse(row.data);
       return row;
     });
+
+    // Log summary of what was found
+    if (entries.length > 0) {
+      const toolCounts: { [key: string]: number } = {};
+      entries.forEach((entry: any) => {
+        const tool = entry.tool_name || 'unknown';
+        toolCounts[tool] = (toolCounts[tool] || 0) + 1;
+      });
+      console.log(`[DataService] Data summary:`, JSON.stringify(toolCounts, null, 2));
+    }
+
+    return entries;
   }
 
   async getAllAssessmentData(): Promise<AssessmentDataEntry[]> {

@@ -16,6 +16,7 @@ import {
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import { DeploymentsTreeProvider } from "./deployments-tree-provider";
 import { WelcomeTreeProvider } from "./welcome-tree-provider";
+import { ToolInstallationProvider } from "./tool-installation-provider";
 import {
   initializeSemgrep,
   ensureDatabaseInitialized,
@@ -95,6 +96,16 @@ export async function activate(context: vscode.ExtensionContext) {
     deploymentsTreeProvider
   );
   console.log("✅ All tree providers registered");
+
+  // Register virtual document provider for tool installation instructions
+  const toolInstallationProvider = new ToolInstallationProvider();
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      ToolInstallationProvider.SCHEME,
+      toolInstallationProvider
+    )
+  );
+  console.log("✅ Tool installation provider registered");
 
   // Register decoration provider for Semgrep findings
   const semgrepDecorationProvider = new SemgrepFindingDecorationProvider();

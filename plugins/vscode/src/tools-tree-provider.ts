@@ -403,38 +403,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return;
     }
 
-    if (!tool.installation) {
-      vscode.window.showErrorMessage(
-        `No installation instructions found for ${tool.name}`
-      );
-      return;
-    }
-
-    try {
-      vscode.window.showInformationMessage(`Installing ${tool.name}...`);
-
-      if (tool.installation.type === "npm") {
-        await this.runCommand("npm", [
-          "install",
-          "-g",
-          tool.installation.package,
-        ]);
-        vscode.window.showInformationMessage(
-          `${tool.name} installed successfully!`
-        );
-      } else {
-        vscode.window.showInformationMessage(
-          `Please install ${tool.name} manually: ${tool.installation.instructions || "See documentation"}`
-        );
-      }
-
-      // Refresh to update installation status
-      this.refresh();
-    } catch (error: any) {
-      vscode.window.showErrorMessage(
-        `Failed to install ${tool.name}: ${error.message}`
-      );
-    }
+    // Import and show installation instructions in virtual document
+    const { showToolInstallationInstructions } = await import("./tool-installation-provider");
+    await showToolInstallationInstructions(toolId);
   }
 
   public async analyzeTool(toolId: string): Promise<void> {
