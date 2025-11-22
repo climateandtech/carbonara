@@ -289,49 +289,31 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       // ASSERTION: Analysis Tools section must be visible
       await expect(toolsSection).toBeVisible({ timeout: 10000 });
 
-      // Step 3: Check Analysis Tools state and ensure it's expanded
+      // Step 3: Expand Analysis Tools section (sections start collapsed)
+      // Scroll into view first, then click to expand
+      await toolsSection.scrollIntoViewIfNeeded();
+      await vscode.window.waitForTimeout(500);
+      
+      // Click the section header to expand it
+      await toolsSection.click({ force: true });
+      await vscode.window.waitForTimeout(2000);
+      
+      // Don't verify chevron state - just proceed to check for tree content
+      // (The section might expand even if chevron state check fails)
 
-      // Look for the chevron icon to determine current state
-      const chevronRight = toolsSection.locator(".codicon-chevron-right"); // Collapsed
-      const chevronDown = toolsSection.locator(".codicon-chevron-down"); // Expanded
-
-      const isCollapsed = await chevronRight.isVisible({ timeout: 1000 });
-      const isExpanded = await chevronDown.isVisible({ timeout: 1000 });
-
-      if (isExpanded) {
-      } else if (isCollapsed) {
-        // Click the chevron icon directly to expand
-        await chevronRight.click();
-        await vscode.window.waitForTimeout(2000);
-
-        // Verify it expanded
-        const nowExpanded = await chevronDown.isVisible({ timeout: 3000 });
-      } else {
-        // Don't click anything - might already be in the right state
-      }
-
-      // Step 4: After clicking, wait for tree content to appear
-      await vscode.window.waitForTimeout(1000);
-
-      // Debug: Check what sections are visible now
-      const allSections = vscode.window.locator(".pane-header");
-      const sectionCount = await allSections.count();
-
-      if (sectionCount > 0) {
-        const sectionTexts = await allSections.allTextContents();
-      }
+      // Step 4: Wait for tree content to appear after expansion
+      await vscode.window.waitForTimeout(2000);
 
       // Get tools tree using deterministic selector (no fallbacks!)
-
       const toolsTree = vscode.window
         .locator(
           '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
         )
         .last();
 
-      await expect(toolsTree).toBeVisible();
-
+      // Wait for tree rows to appear (more reliable indicator than container)
       const allRows = toolsTree.locator(".monaco-list-row");
+      await expect(allRows.first()).toBeVisible({ timeout: 15000 });
 
       // Debug: Check what we find in the Analysis Tools section
       const rowCount = await allRows.count();
@@ -579,6 +561,8 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
           return (
             // Look for our test analysis group or entries
             lowerText.includes("test analysis") ||
+            // Look for the specific URL we entered (test-site.example.com)
+            text.includes("test-site.example.com") ||
             // Look for any test domain variation (test-site, test-fix, etc.)
             text.match(/test-[^.]+\.example\.com/) ||
             lowerText.includes("test result") ||
@@ -586,6 +570,11 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
             text.match(/\d{2}\/\d{2}\/\d{4}/)
           );
         });
+        
+        // STRONGER ASSERTION: Verify the specific URL we entered appears in results
+        const hasSpecificUrl = dataTexts.some((text) => 
+          text.includes("test-site.example.com")
+        );
 
         if (isShowingToolsList && !hasTestAnalysisResults) {
           // FAIL THE TEST: We should see analysis results, not tools
@@ -597,6 +586,7 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         if (!hasTestAnalysisResults) {
           const expected = [
             '"Test Analysis" (group name)',
+            '"test-site.example.com" (the URL we entered)',
             '"test-*.example.com" (URL pattern)',
             '"test result" (description)',
             '"02/09/2025" (date pattern)',
@@ -613,7 +603,14 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
           throw new Error(errorMessage);
         }
 
+        // STRONGER ASSERTIONS: Verify results actually appeared
         expect(hasTestAnalysisResults).toBe(true);
+        
+        // ASSERTION: The specific URL we entered must appear in the results
+        expect(hasSpecificUrl).toBe(true);
+        
+        // ASSERTION: We must have at least one data row showing results
+        expect(dataRowCount).toBeGreaterThan(0);
       } else {
         // Check if there's a "No data available" message vs actual empty state
         const noDataMessage = dataTree!.getByText(/No data/i);
@@ -626,9 +623,11 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         }
       }
 
-      // Wait 10 seconds for manual inspection before closing
-
-      await vscode.window.waitForTimeout(10000);
+      // ASSERTION SUMMARY: We've verified that:
+      // 1. Test Analyzer tool executed successfully
+      // 2. Results were saved to the database
+      // 3. Data & Results tab shows the analysis results
+      // 4. The specific URL we entered appears in the results
     } finally {
       await VSCodeLauncher.close(vscode);
     }

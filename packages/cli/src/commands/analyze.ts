@@ -7,7 +7,7 @@ import yaml from 'js-yaml';
 import { Command } from 'commander';
 import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake, createDeploymentService } from '@carbonara/core';
-import { loadProjectConfig } from '../utils/config.js';
+import { loadProjectConfig, getProjectRoot } from '../utils/config.js';
 import { CarbonaraSWDAnalyzer } from '../analyzers/carbonara-swd.js';
 
 interface AnalyzeOptions {
@@ -110,8 +110,16 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     displayResults(results, tool, options.output);
 
     // Save to database if requested (skip for deployment-scan as it saves directly)
+    console.log(chalk.blue(`\n💾 Save option: ${options.save}, toolId: ${toolId}`));
     if (options.save && toolId !== 'deployment-scan') {
+      console.log(chalk.blue(`\n💾 Calling saveToDatabase for ${toolId}...`));
       await saveToDatabase(toolId, url!, results);
+    } else {
+      if (!options.save) {
+        console.log(chalk.yellow(`\n⚠️  --save flag not set, skipping database save`));
+      } else if (toolId === 'deployment-scan') {
+        console.log(chalk.blue(`\n💾 Deployment scan saves directly, skipping saveToDatabase`));
+      }
     }
 
   } catch (error: any) {
@@ -136,33 +144,84 @@ async function runCarbonaraSWD(url: string, options: AnalyzeOptions, tool: Analy
 async function runDeploymentScan(dirPath: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   // Get the data service and project info
   const config = await loadProjectConfig();
-  const dataService = createDataLake(config?.database ? { dbPath: config.database.path } : undefined);
+  if (!config) {
+    throw new Error('No Carbonara project found. Please initialize a project first.');
+  }
+  
+  // Resolve database path correctly (same as saveToDatabase)
+  const projectRoot = getProjectRoot() || process.cwd();
+  console.log(chalk.blue(`📂 Project root: ${projectRoot}`));
+  
+  let dbPath: string;
+  if (config.database?.path) {
+    dbPath = path.isAbsolute(config.database.path)
+      ? config.database.path
+      : path.join(projectRoot, config.database.path);
+  } else {
+    // Default to .carbonara/carbonara.db in project root
+    dbPath = path.join(projectRoot, '.carbonara', 'carbonara.db');
+  }
+  
+  console.log(chalk.blue(`🗄️  Database path: ${dbPath}`));
+  
+  const dataService = createDataLake({ dbPath });
   await dataService.initialize();
 
-  // If no path provided (dirPath is '.'), use the project root from the database
-  let scanPath = dirPath;
-  if (dirPath === '.' && config?.projectId) {
-    const project = await dataService.getProjectById(config.projectId);
-    if (project) {
-      scanPath = project.path;
-    }
+  // Ensure we have a valid project ID (create if needed)
+  let projectId = config.projectId;
+  if (!projectId) {
+    console.log(chalk.blue('🔧 No project ID found, creating project in database...'));
+    projectId = await dataService.createProject(
+      config.name || 'Unnamed Project',
+      projectRoot,
+      {
+        description: config.description,
+        projectType: config.projectType || 'web',
+        initialized: new Date().toISOString()
+      }
+    );
+    
+    // Update config with new project ID
+    const { saveProjectConfig } = await import('../utils/config.js');
+    const updatedConfig = { ...config, projectId };
+    saveProjectConfig(updatedConfig, projectRoot);
+    
+    console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
   }
+
+  // If no path provided (dirPath is '.'), use the project root
+  let scanPath = dirPath === '.' ? projectRoot : dirPath;
+  const resolvedPath = path.resolve(scanPath);
 
   // Create deployment service
   const deploymentService = createDeploymentService(dataService);
 
   // Scan directory for deployment configurations
-  const resolvedPath = path.resolve(scanPath);
   const detections = await deploymentService.scanDirectory(resolvedPath);
 
   // Save to database if requested
-  if (options.save && detections.length > 0) {
-    await deploymentService.saveDeployments(
-      detections,
-      config?.projectId,
-      resolvedPath
-    );
+  if (options.save) {
+    if (detections.length > 0) {
+      try {
+        await deploymentService.saveDeployments(
+          detections,
+          projectId,
+          resolvedPath
+        );
+        console.log(chalk.green(`\n✅ Saved ${detections.length} deployment(s) to database`));
+      } catch (error: any) {
+        console.error(chalk.red(`\n❌ Could not save deployments: ${error.message}`));
+        if (error.stack) {
+          console.error(chalk.gray(`   Stack: ${error.stack}`));
+        }
+      }
+    } else {
+      console.log(chalk.yellow('\n⚠️  No deployments found to save'));
+    }
   }
+
+  // Ensure database is flushed to disk
+  await dataService.close();
 
   return {
     timestamp: new Date().toISOString(),
@@ -557,11 +616,29 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
   try {
     const config = await loadProjectConfig();
     if (!config) {
-      console.log(chalk.yellow('⚠️  No project found. Results not saved.'));
+      console.error(chalk.red('❌ No project found. Results not saved.'));
+      console.error(chalk.yellow('   Make sure you are in a Carbonara project directory with .carbonara/carbonara.config.json'));
       return;
     }
 
-    const dataLake = createDataLake();
+    // Get project root to resolve database path correctly
+    const projectRoot = getProjectRoot() || process.cwd();
+    console.log(chalk.blue(`📂 Project root: ${projectRoot}`));
+    
+    // Resolve database path from config (relative paths are relative to project root)
+    let dbPath: string;
+    if (config.database?.path) {
+      dbPath = path.isAbsolute(config.database.path)
+        ? config.database.path
+        : path.join(projectRoot, config.database.path);
+    } else {
+      // Default to .carbonara/carbonara.db in project root
+      dbPath = path.join(projectRoot, '.carbonara', 'carbonara.db');
+    }
+    
+    console.log(chalk.blue(`🗄️  Database path: ${dbPath}`));
+
+    const dataLake = createDataLake({ dbPath });
     await dataLake.initialize();
 
     // Ensure we have a valid project ID
@@ -570,8 +647,8 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
     if (!projectId) {
       console.log(chalk.blue('🔧 No project ID found, creating project in database...'));
       
-      // Create project in database
-      const projectPath = process.cwd();
+      // Create project in database - use projectRoot instead of process.cwd()
+      const projectPath = projectRoot;
       projectId = await dataLake.createProject(
         config.name || 'Unnamed Project',
         projectPath,
@@ -603,7 +680,12 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
     await dataLake.close();
 
     console.log(chalk.green('\n✅ Results saved to project database'));
-  } catch (error) {
-    console.log(chalk.yellow('\n⚠️  Could not save results:'), error);
+  } catch (error: any) {
+    console.error(chalk.red('\n❌ Could not save results:'));
+    console.error(chalk.red(`   Error: ${error.message || error}`));
+    if (error.stack) {
+      console.error(chalk.gray(`   Stack: ${error.stack}`));
+    }
+    // Don't throw - allow the command to complete even if save fails
   }
 }

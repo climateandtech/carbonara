@@ -146,4 +146,179 @@ describe('DataService', () => {
       expect(data[0].data.valid).toBe(true);
     });
   });
+
+  describe('Database Reloading (Integration Test)', () => {
+    it('should reload database from disk without overwriting data', async () => {
+      // This test verifies the fix for the reloadDatabase() bug where it would
+      // overwrite the database file with empty in-memory state before reloading.
+      // 
+      // Scenario:
+      // 1. CLI writes data to disk and closes
+      // 2. VSCode extension (with empty in-memory state) detects file change
+      // 3. reloadDatabase() is called
+      // 4. Data should still be present (not overwritten)
+
+      // Step 1: Simulate CLI writing data to disk
+      const projectId = await dataService.createProject('Reload Test Project', '/test/reload');
+      
+      const testData = {
+        url: 'https://test.example.com',
+        result: 'success',
+        data: {
+          testScore: 85,
+          testMetric: 'A+'
+        }
+      };
+
+      const dataId = await dataService.storeAssessmentData(
+        projectId,
+        'test-analyzer',
+        'web-analysis',
+        testData
+      );
+      expect(dataId).toBeGreaterThan(0);
+
+      // Verify data is in memory
+      const dataBeforeClose = await dataService.getAssessmentData(projectId);
+      expect(dataBeforeClose).toHaveLength(1);
+      expect(dataBeforeClose[0].data.url).toBe('https://test.example.com');
+
+      // Close and save to disk (simulating CLI closing)
+      await dataService.close();
+
+      // Verify file exists and has data
+      expect(fs.existsSync(testDbPath)).toBe(true);
+      const fileSizeBeforeReload = fs.statSync(testDbPath).size;
+      expect(fileSizeBeforeReload).toBeGreaterThan(0);
+
+      // Step 2: Simulate VSCode extension with empty in-memory state
+      // Create a new DataService instance pointing to the same file
+      const extensionDataService = new DataService({ dbPath: testDbPath });
+      await extensionDataService.initialize();
+
+      // Verify extension has empty in-memory state initially
+      // (It should load from disk, so it should have the data)
+      const dataAfterInit = await extensionDataService.getAssessmentData(projectId);
+      expect(dataAfterInit).toHaveLength(1);
+      expect(dataAfterInit[0].data.url).toBe('https://test.example.com');
+
+      // Step 3: Simulate file watcher detecting change and calling reloadDatabase()
+      // This should reload from disk WITHOUT overwriting with empty state
+      await extensionDataService.reloadDatabase();
+
+      // Step 4: Verify data is still present (not overwritten)
+      const dataAfterReload = await extensionDataService.getAssessmentData(projectId);
+      expect(dataAfterReload).toHaveLength(1);
+      expect(dataAfterReload[0].id).toBe(dataId);
+      expect(dataAfterReload[0].data.url).toBe('https://test.example.com');
+      expect(dataAfterReload[0].data.result).toBe('success');
+      expect(dataAfterReload[0].data.data.testScore).toBe(85);
+      expect(dataAfterReload[0].data.data.testMetric).toBe('A+');
+
+      // Verify file still exists and wasn't corrupted
+      expect(fs.existsSync(testDbPath)).toBe(true);
+      const fileSizeAfterReload = fs.statSync(testDbPath).size;
+      expect(fileSizeAfterReload).toBe(fileSizeBeforeReload);
+
+      await extensionDataService.close();
+    });
+
+    it('should handle multiple reloads without data loss', async () => {
+      // Test that multiple reloadDatabase() calls don't cause data loss
+      const projectId = await dataService.createProject('Multi Reload Test', '/test/multi-reload');
+      
+      // Add multiple data entries
+      const data1 = await dataService.storeAssessmentData(
+        projectId,
+        'test-analyzer',
+        'web-analysis',
+        { url: 'https://test1.com', order: 1 }
+      );
+      const data2 = await dataService.storeAssessmentData(
+        projectId,
+        'test-analyzer',
+        'web-analysis',
+        { url: 'https://test2.com', order: 2 }
+      );
+      const data3 = await dataService.storeAssessmentData(
+        projectId,
+        'greenframe',
+        'web-analysis',
+        { url: 'https://test3.com', order: 3 }
+      );
+
+      await dataService.close();
+
+      // Create new instance and reload multiple times
+      const newDataService = new DataService({ dbPath: testDbPath });
+      await newDataService.initialize();
+
+      // First reload
+      await newDataService.reloadDatabase();
+      let data = await newDataService.getAssessmentData(projectId);
+      expect(data).toHaveLength(3);
+
+      // Second reload
+      await newDataService.reloadDatabase();
+      data = await newDataService.getAssessmentData(projectId);
+      expect(data).toHaveLength(3);
+
+      // Third reload
+      await newDataService.reloadDatabase();
+      data = await newDataService.getAssessmentData(projectId);
+      expect(data).toHaveLength(3);
+
+      // Verify all data is still intact
+      const urls = data.map(d => d.data.url).sort();
+      expect(urls).toEqual(['https://test1.com', 'https://test2.com', 'https://test3.com']);
+
+      await newDataService.close();
+    });
+
+    it('should reload database when external process writes to it', async () => {
+      // Simulate the exact scenario: CLI writes, extension reloads
+      const projectId = await dataService.createProject('External Write Test', '/test/external');
+      
+      // Add initial data
+      await dataService.storeAssessmentData(
+        projectId,
+        'test-analyzer',
+        'web-analysis',
+        { url: 'https://initial.com' }
+      );
+      await dataService.close();
+
+      // Extension loads database
+      const extensionService = new DataService({ dbPath: testDbPath });
+      await extensionService.initialize();
+
+      // Verify initial data
+      let data = await extensionService.getAssessmentData(projectId);
+      expect(data).toHaveLength(1);
+
+      // Simulate CLI writing new data (by creating another service and writing)
+      const cliService = new DataService({ dbPath: testDbPath });
+      await cliService.initialize();
+      await cliService.storeAssessmentData(
+        projectId,
+        'test-analyzer',
+        'web-analysis',
+        { url: 'https://cli-added.com' }
+      );
+      await cliService.close();
+
+      // Extension detects change and reloads
+      await extensionService.reloadDatabase();
+
+      // Verify both old and new data are present
+      data = await extensionService.getAssessmentData(projectId);
+      expect(data).toHaveLength(2);
+      
+      const urls = data.map(d => d.data.url).sort();
+      expect(urls).toContain('https://initial.com');
+      expect(urls).toContain('https://cli-added.com');
+
+      await extensionService.close();
+    });
+  });
 });

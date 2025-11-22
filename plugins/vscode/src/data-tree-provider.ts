@@ -208,6 +208,13 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         vscodeProvider,
       };
 
+      // Set up callback to auto-refresh VSCode tree when database changes on disk
+      // This enables disk-first flow: CLI writes → file watcher → auto-refresh
+      dataService.setOnDatabaseReloadCallback(() => {
+        console.log("🔄 Database changed on disk, auto-refreshing VSCode tree...");
+        this.refresh();
+      });
+
       console.log("✅ Core services initialized successfully");
 
       // Test the services immediately
@@ -244,6 +251,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     // This prevents showing "Loading..." message during refresh
     if (this.coreServices && this.workspaceFolder) {
       try {
+        // Reload database from disk to pick up any external changes (e.g., from CLI)
+        await this.coreServices.dataService.reloadDatabase();
+        
         // Load fresh data from database
         const newItems = await this.loadRootItemsAsync();
         // Only update cache and fire event if data actually changed
