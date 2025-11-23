@@ -661,7 +661,21 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return envPath;
     }
 
-    // Check if we're in the monorepo
+    // Check bundled CLI in extension (highest priority for installed extensions)
+    // __dirname in the compiled extension points to dist/, so bundled CLI is at dist/node_modules/@carbonara/cli/dist/index.js
+    const bundledCliPath = path.join(
+      __dirname,
+      "node_modules",
+      "@carbonara",
+      "cli",
+      "dist",
+      "index.js"
+    );
+    if (fs.existsSync(bundledCliPath)) {
+      return bundledCliPath;
+    }
+
+    // Check if we're in the monorepo (for development)
     const workspaceRoot = this.workspaceFolder?.uri.fsPath;
     if (workspaceRoot) {
       const monorepoCliPath = path.join(
@@ -678,7 +692,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       }
     }
 
-    // Try global installation
+    // Try global installation (fallback)
     try {
       await this.runCommand("carbonara", ["--version"]);
       return "carbonara";
@@ -736,4 +750,5 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       });
     });
   }
+
 }

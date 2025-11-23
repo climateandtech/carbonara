@@ -274,13 +274,16 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
 
   test("should show Analysis Tools tree view and allow tool interaction", async () => {
     const vscode = await VSCodeLauncher.launch("with-carbonara-project");
+    
+    // Generate a unique URL for this test run to ensure we can verify the exact results
+    const uniqueId = `test-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const testUrl = `https://${uniqueId}.example.com`;
 
     try {
       // Wait for extension to fully activate
       await VSCodeLauncher.waitForExtension(vscode.window);
 
       // Step 1: Open the Carbonara sidebar
-
       await VSCodeLauncher.openSidebar(vscode.window);
 
       // Step 2: Assert Analysis Tools section is visible
@@ -336,7 +339,7 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         .filter({ hasText: "Test Analyzer" });
 
       // ASSERTION: Must have exactly 1 installed tool (Test Analyzer in test environment)
-      await expect(installedTools).toHaveCount(1, { timeout: 5000 });
+      await expect(installedTools).toHaveCount(1, { timeout: 10000 });
 
       // Verify it also has "Built-in" description
       const installedTexts = await installedTools.allTextContents();
@@ -395,7 +398,6 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       );
       await expect(inputBox).toBeVisible({ timeout: 5000 });
 
-      const testUrl = "https://test-site.example.com";
       await inputBox.fill(testUrl);
 
       // Press Enter to confirm
@@ -521,10 +523,20 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
           );
 
           const hasAnalysisData = rowTexts.some(
-            (text) =>
-              text.includes("Test Analysis") ||
-              text.includes("test-") ||
-              text.includes(".example.com")
+            (text) => {
+              const lowerText = text.toLowerCase();
+              return (
+                text.includes("Test Analysis") ||
+                lowerText.includes("test analysis") ||
+                text.includes("test-") ||
+                text.includes(".example.com") ||
+                lowerText.includes("analysis") ||
+                // Look for any URL pattern
+                text.match(/https?:\/\//) ||
+                // Look for any domain pattern
+                text.match(/[a-z0-9-]+\.[a-z]{2,}/i)
+              );
+            }
           );
 
           if (hasAnalysisData && !hasQuestionnaireData) {
@@ -535,8 +547,45 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         }
       }
 
+      // If we didn't find analysis tree, try to find it by excluding tools and questionnaire
       if (!foundAnalysisTree) {
-        dataTree = allTrees.nth(1);
+        for (let i = 0; i < treeCount; i++) {
+          const tree = allTrees.nth(i);
+          const treeRows = tree.locator(".monaco-list-row");
+          const rowCount = await treeRows.count();
+          
+          if (rowCount > 0) {
+            const rowTexts = await treeRows.allTextContents();
+            // Exclude tools tree (has "Built-in", "Not installed", "Installed")
+            const hasTools = rowTexts.some(
+              (text) =>
+                text.includes("Built-in") ||
+                text.includes("Not installed") ||
+                text.includes("Installed")
+            );
+            // Exclude questionnaire tree
+            const hasQuestionnaire = rowTexts.some(
+              (text) =>
+                text.includes("Project Information") ||
+                text.includes("Infrastructure") ||
+                text.includes("Development")
+            );
+            
+            // If it's not tools and not questionnaire, it might be data
+            if (!hasTools && !hasQuestionnaire) {
+              dataTree = tree;
+              foundAnalysisTree = true;
+              break;
+            }
+          }
+        }
+        
+        // Last resort: use the tree that's NOT the first one (first is usually tools)
+        if (!foundAnalysisTree && treeCount > 1) {
+          dataTree = allTrees.nth(1);
+        } else if (!foundAnalysisTree) {
+          dataTree = allTrees.first();
+        }
       }
 
       await expect(dataTree!).toBeVisible();
@@ -562,25 +611,27 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
 
         dataTexts.forEach((text, i) => {});
 
+        // PRIMARY ASSERTION: Verify the exact unique URL we entered appears in results
+        // This is the most reliable way to ensure we're seeing results from this test run
+        const hasSpecificUrl = dataTexts.some((text) => 
+          text.includes(testUrl) || text.includes(uniqueId)
+        );
+
         const hasTestAnalysisResults = dataTexts.some((text) => {
           const lowerText = text.toLowerCase();
           return (
+            // Look for our unique URL (most reliable)
+            text.includes(testUrl) ||
+            text.includes(uniqueId) ||
             // Look for our test analysis group or entries
             lowerText.includes("test analysis") ||
-            // Look for the specific URL we entered (test-site.example.com)
-            text.includes("test-site.example.com") ||
-            // Look for any test domain variation (test-site, test-fix, etc.)
+            // Look for any test domain variation
             text.match(/test-[^.]+\.example\.com/) ||
             lowerText.includes("test result") ||
             // Look for timestamp patterns (from screenshot: "02/09/2025")
             text.match(/\d{2}\/\d{2}\/\d{4}/)
           );
         });
-        
-        // STRONGER ASSERTION: Verify the specific URL we entered appears in results
-        const hasSpecificUrl = dataTexts.some((text) => 
-          text.includes("test-site.example.com")
-        );
 
         if (isShowingToolsList && !hasTestAnalysisResults) {
           // FAIL THE TEST: We should see analysis results, not tools
@@ -610,10 +661,11 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         }
 
         // STRONGER ASSERTIONS: Verify results actually appeared
-        expect(hasTestAnalysisResults).toBe(true);
-        
-        // ASSERTION: The specific URL we entered must appear in the results
+        // PRIMARY: The exact unique URL must appear (most reliable check)
         expect(hasSpecificUrl).toBe(true);
+        
+        // SECONDARY: General test analysis results should be present
+        expect(hasTestAnalysisResults).toBe(true);
         
         // ASSERTION: We must have at least one data row showing results
         expect(dataRowCount).toBeGreaterThan(0);

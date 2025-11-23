@@ -357,16 +357,38 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   fs.writeFileSync(manifestPath, yaml.dump(processedManifest));
 
   // Run Impact Framework analysis
-  await execa('if-run', [
-    '--manifest', manifestPath,
-    '--output', outputPath
-  ], {
-    stdio: 'pipe'
-  });
+  let ifRunResult;
+  try {
+    ifRunResult = await execa('if-run', [
+      '--manifest', manifestPath,
+      '--output', outputPath
+    ], {
+      stdio: 'pipe',
+      reject: false // Don't throw on non-zero exit, we'll check the output file
+    });
+  } catch (error: any) {
+    // If execa throws, capture what we can
+    const errorMessage = error.message || String(error);
+    const stdout = error.stdout?.toString() || '';
+    const stderr = error.stderr?.toString() || '';
+    throw new Error(
+      `Failed to run if-run: ${errorMessage}\n` +
+      (stdout ? `if-run stdout: ${stdout}\n` : '') +
+      (stderr ? `if-run stderr: ${stderr}` : '')
+    );
+  }
 
   // Check if output file exists
   if (!fs.existsSync(outputPath)) {
-    throw new Error(`Output file not created at ${outputPath}`);
+    const exitCode = ifRunResult.exitCode || 0;
+    const stdout = ifRunResult.stdout?.toString() || '';
+    const stderr = ifRunResult.stderr?.toString() || '';
+    throw new Error(
+      `Output file not created at ${outputPath}\n` +
+      `if-run exit code: ${exitCode}\n` +
+      (stdout ? `if-run stdout: ${stdout}\n` : '') +
+      (stderr ? `if-run stderr: ${stderr}` : '')
+    );
   }
 
   // Parse results and convert to JSON
