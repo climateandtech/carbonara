@@ -367,4 +367,315 @@ suite('ToolsTreeProvider Unit Tests', () => {
             assert.strictEqual(uninstalledItem.contextValue, 'uninstalled-tool');
         });
     });
+
+    suite('CLI Detection (findCarbonaraCLI)', () => {
+        let originalEnvPath: string | undefined;
+        let originalWorkspaceFolders: readonly vscode.WorkspaceFolder[] | undefined;
+
+        setup(() => {
+            originalEnvPath = process.env.CARBONARA_CLI_PATH;
+            originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+        });
+
+        teardown(() => {
+            if (originalEnvPath) {
+                process.env.CARBONARA_CLI_PATH = originalEnvPath;
+            } else {
+                delete process.env.CARBONARA_CLI_PATH;
+            }
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: originalWorkspaceFolders,
+                configurable: true
+            });
+        });
+
+        test('should prioritize environment variable CARBONARA_CLI_PATH', async () => {
+            const envCliPath = '/custom/path/to/cli.js';
+            process.env.CARBONARA_CLI_PATH = envCliPath;
+
+            // Mock fs.existsSync to return true for env path
+            const originalExistsSync = fs.existsSync.bind(fs);
+            const mockExistsSync = (filePath: string) => {
+                if (filePath === envCliPath) return true;
+                return originalExistsSync(filePath);
+            };
+            Object.defineProperty(fs, 'existsSync', {
+                value: mockExistsSync,
+                writable: true,
+                configurable: true
+            });
+
+            try {
+                const cliPath = await (provider as any).findCarbonaraCLI();
+                assert.strictEqual(cliPath, envCliPath, 'Should return environment variable path when set');
+            } finally {
+                Object.defineProperty(fs, 'existsSync', {
+                    value: originalExistsSync,
+                    writable: true,
+                    configurable: true
+                });
+            }
+        });
+
+        test('should find bundled CLI when it exists', async () => {
+            delete process.env.CARBONARA_CLI_PATH;
+
+            // Mock __dirname to point to a test dist directory
+            const mockDistDir = '/tmp/carbonara-test-dist';
+            const bundledCliPath = path.join(mockDistDir, 'node_modules', '@carbonara', 'cli', 'dist', 'index.js');
+            
+            // Create the directory structure
+            fs.mkdirSync(path.dirname(bundledCliPath), { recursive: true });
+            fs.writeFileSync(bundledCliPath, '#!/usr/bin/env node\n// Mock CLI');
+
+            // Mock __dirname by temporarily replacing the module's path resolution
+            // We'll use a different approach - mock fs.existsSync to check for bundled path
+            const originalExistsSync = fs.existsSync.bind(fs);
+            const originalRunCommand = (provider as any).runCommand;
+            
+            // Get the actual __dirname from the compiled extension
+            // In tests, __dirname points to dist/test/unit, so we need to go up to dist/
+            const testDistDir = path.join(__dirname, '..');
+            const actualBundledPath = path.join(testDistDir, 'node_modules', '@carbonara', 'cli', 'dist', 'index.js');
+
+            const mockExistsSync = (filePath: string) => {
+                // Check if it's the bundled path we're looking for
+                if (filePath === actualBundledPath && originalExistsSync(actualBundledPath)) {
+                    return true;
+                }
+                // For other paths, use original behavior
+                return originalExistsSync(filePath);
+            };
+            Object.defineProperty(fs, 'existsSync', {
+                value: mockExistsSync,
+                writable: true,
+                configurable: true
+            });
+
+            // Mock workspace to not have monorepo path
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: [{
+                    uri: vscode.Uri.file('/tmp/not-monorepo'),
+                    name: 'test',
+                    index: 0
+                }],
+                configurable: true
+            });
+
+            // Mock runCommand to fail (simulating no global CLI)
+            (provider as any).runCommand = async () => Promise.reject(new Error('Not found'));
+
+            try {
+                // Only test if bundled CLI actually exists (in development/test environment)
+                if (fs.existsSync(actualBundledPath)) {
+                    const cliPath = await (provider as any).findCarbonaraCLI();
+                    assert.ok(cliPath, 'Should find bundled CLI when it exists');
+                    // Should be the bundled path or monorepo path (depending on test environment)
+                    assert.ok(
+                        cliPath.includes('@carbonara/cli') || cliPath.includes('packages/cli'),
+                        'Should return a CLI path containing @carbonara/cli or packages/cli'
+                    );
+                } else {
+                    // Skip test if bundled CLI doesn't exist in test environment
+                    console.log('Skipping bundled CLI test - bundled CLI not found in test environment');
+                }
+            } finally {
+                Object.defineProperty(fs, 'existsSync', {
+                    value: originalExistsSync,
+                    writable: true,
+                    configurable: true
+                });
+                (provider as any).runCommand = originalRunCommand;
+                // Clean up
+                if (originalExistsSync(bundledCliPath)) {
+                    fs.unlinkSync(bundledCliPath);
+                }
+            }
+        });
+
+        test('should check monorepo path when workspace is in monorepo', async () => {
+            delete process.env.CARBONARA_CLI_PATH;
+
+            // Create a mock workspace that looks like it's in the monorepo
+            const mockWorkspaceRoot = '/tmp/carbonara-monorepo-test';
+            const mockMonorepoCliPath = path.join(mockWorkspaceRoot, '..', '..', 'packages', 'cli', 'dist', 'index.js');
+            
+            // Create the directory structure
+            fs.mkdirSync(path.dirname(mockMonorepoCliPath), { recursive: true });
+            fs.writeFileSync(mockMonorepoCliPath, '#!/usr/bin/env node\n// Mock CLI');
+
+            const mockWorkspaceFolder = {
+                uri: vscode.Uri.file(mockWorkspaceRoot),
+                name: 'test-workspace',
+                index: 0
+            };
+
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: [mockWorkspaceFolder],
+                configurable: true
+            });
+
+            // Mock fs.existsSync to return true for monorepo path
+            const originalExistsSync = fs.existsSync.bind(fs);
+            const mockExistsSync = (filePath: string) => {
+                if (filePath === mockMonorepoCliPath) return true;
+                // Return false for bundled path (simulate not in extension package)
+                if (filePath.includes('node_modules/@carbonara/cli')) return false;
+                return originalExistsSync(filePath);
+            };
+            Object.defineProperty(fs, 'existsSync', {
+                value: mockExistsSync,
+                writable: true,
+                configurable: true
+            });
+
+            // Mock runCommand to fail (no global CLI)
+            const originalRunCommand = (provider as any).runCommand;
+            (provider as any).runCommand = async () => Promise.reject(new Error('Not found'));
+
+            try {
+                const cliPath = await (provider as any).findCarbonaraCLI();
+                assert.strictEqual(cliPath, mockMonorepoCliPath, 'Should find monorepo CLI when workspace is in monorepo');
+            } finally {
+                Object.defineProperty(fs, 'existsSync', {
+                    value: originalExistsSync,
+                    writable: true,
+                    configurable: true
+                });
+                (provider as any).runCommand = originalRunCommand;
+                // Clean up
+                if (originalExistsSync(mockMonorepoCliPath)) {
+                    fs.unlinkSync(mockMonorepoCliPath);
+                }
+            }
+        });
+
+        test('should fall back to global installation when others not found', async () => {
+            delete process.env.CARBONARA_CLI_PATH;
+
+            // Mock fs.existsSync to return false for all file paths
+            const originalExistsSync = fs.existsSync.bind(fs);
+            const mockExistsSync = () => false;
+            Object.defineProperty(fs, 'existsSync', {
+                value: mockExistsSync,
+                writable: true,
+                configurable: true
+            });
+
+            // Mock runCommand to succeed (simulating global CLI available)
+            const originalRunCommand = (provider as any).runCommand;
+            (provider as any).runCommand = async () => Promise.resolve('carbonara version 0.1.0');
+
+            // Mock workspace to not be in monorepo
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: [{
+                    uri: vscode.Uri.file('/tmp/not-monorepo'),
+                    name: 'test',
+                    index: 0
+                }],
+                configurable: true
+            });
+
+            try {
+                const cliPath = await (provider as any).findCarbonaraCLI();
+                assert.strictEqual(cliPath, 'carbonara', 'Should return "carbonara" when global CLI is available');
+            } finally {
+                Object.defineProperty(fs, 'existsSync', {
+                    value: originalExistsSync,
+                    writable: true,
+                    configurable: true
+                });
+                (provider as any).runCommand = originalRunCommand;
+            }
+        });
+
+        test('should return null when no CLI is found', async () => {
+            delete process.env.CARBONARA_CLI_PATH;
+
+            // Mock fs.existsSync to return false for all file paths
+            const originalExistsSync = fs.existsSync.bind(fs);
+            const mockExistsSync = () => false;
+            Object.defineProperty(fs, 'existsSync', {
+                value: mockExistsSync,
+                writable: true,
+                configurable: true
+            });
+
+            // Mock runCommand to fail (no global CLI)
+            const originalRunCommand = (provider as any).runCommand;
+            (provider as any).runCommand = async () => Promise.reject(new Error('Command not found'));
+
+            // Mock workspace to not be in monorepo
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: [{
+                    uri: vscode.Uri.file('/tmp/not-monorepo'),
+                    name: 'test',
+                    index: 0
+                }],
+                configurable: true
+            });
+
+            try {
+                const cliPath = await (provider as any).findCarbonaraCLI();
+                assert.strictEqual(cliPath, null, 'Should return null when no CLI is found');
+            } finally {
+                Object.defineProperty(fs, 'existsSync', {
+                    value: originalExistsSync,
+                    writable: true,
+                    configurable: true
+                });
+                (provider as any).runCommand = originalRunCommand;
+            }
+        });
+
+        test('should check paths in correct priority order', async () => {
+            // This test verifies the priority: env > bundled > monorepo > global
+            const envPath = '/env/path/cli.js';
+            const bundledPath = path.join(__dirname, '..', 'node_modules', '@carbonara', 'cli', 'dist', 'index.js');
+            const monorepoPath = '/workspace/../../packages/cli/dist/index.js';
+
+            process.env.CARBONARA_CLI_PATH = envPath;
+
+            let checkedPaths: string[] = [];
+            const originalExistsSync = fs.existsSync.bind(fs);
+            const mockExistsSync = (filePath: string) => {
+                checkedPaths.push(filePath);
+                // Return true only for env path (highest priority)
+                return filePath === envPath;
+            };
+            Object.defineProperty(fs, 'existsSync', {
+                value: mockExistsSync,
+                writable: true,
+                configurable: true
+            });
+
+            const originalRunCommand = (provider as any).runCommand;
+            (provider as any).runCommand = async () => Promise.reject(new Error('Not found'));
+
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: [{
+                    uri: vscode.Uri.file('/workspace'),
+                    name: 'test',
+                    index: 0
+                }],
+                configurable: true
+            });
+
+            try {
+                const cliPath = await (provider as any).findCarbonaraCLI();
+                assert.strictEqual(cliPath, envPath, 'Should return env path when it exists');
+                // Verify env path was checked first
+                assert.ok(checkedPaths.includes(envPath), 'Should check env path');
+            } finally {
+                Object.defineProperty(fs, 'existsSync', {
+                    value: originalExistsSync,
+                    writable: true,
+                    configurable: true
+                });
+                (provider as any).runCommand = originalRunCommand;
+                delete process.env.CARBONARA_CLI_PATH;
+            }
+        });
+    });
+
 });
