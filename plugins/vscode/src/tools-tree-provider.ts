@@ -539,15 +539,34 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         UI_TEXT.NOTIFICATIONS.ANALYSIS_RUNNING(tool.name)
       );
 
+      console.log(`[ToolsTreeProvider] Running CLI command: ${cliPath} ${cliArgs.join(' ')}`);
       const result = await this.runCarbonaraCommand(cliPath, cliArgs);
+      
+      // Log the result for debugging - this should show all CLI output including our debug logs
+      console.log(`[ToolsTreeProvider] CLI command output:`, result);
+      
+      // Also show in output channel for visibility
+      const outputChannel = vscode.window.createOutputChannel('Carbonara CLI');
+      outputChannel.appendLine(`=== ${tool.name} Analysis ===`);
+      outputChannel.appendLine(result);
+      outputChannel.show();
 
       vscode.window.showInformationMessage(
         UI_TEXT.NOTIFICATIONS.ANALYSIS_COMPLETED(tool.name)
       );
 
+      // Wait a moment for database file to be fully written to disk
+      // The CLI closes the database connection, but file system writes may still be buffered
+      // The file watcher should auto-refresh, but we add a manual refresh as fallback
+      // after a delay to ensure the UI updates even if the file watcher misses the change
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       // Refresh data tree to show new results
-      vscode.commands.executeCommand("carbonara.refreshData");
+      // This will reload the database from disk and update the UI
+      // Note: The file watcher should also trigger a refresh, but this ensures it happens
+      await vscode.commands.executeCommand("carbonara.refreshData");
     } catch (error: any) {
+      console.error(`[ToolsTreeProvider] CLI command failed:`, error);
       vscode.window.showErrorMessage(
         `${UI_TEXT.NOTIFICATIONS.ANALYSIS_FAILED} ${error.message}`
       );
@@ -642,7 +661,21 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return envPath;
     }
 
-    // Check if we're in the monorepo
+    // Check bundled CLI in extension (highest priority for installed extensions)
+    // __dirname in the compiled extension points to dist/, so bundled CLI is at dist/node_modules/@carbonara/cli/dist/index.js
+    const bundledCliPath = path.join(
+      __dirname,
+      "node_modules",
+      "@carbonara",
+      "cli",
+      "dist",
+      "index.js"
+    );
+    if (fs.existsSync(bundledCliPath)) {
+      return bundledCliPath;
+    }
+
+    // Check if we're in the monorepo (for development)
     const workspaceRoot = this.workspaceFolder?.uri.fsPath;
     if (workspaceRoot) {
       const monorepoCliPath = path.join(
@@ -659,7 +692,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       }
     }
 
-    // Try global installation
+    // Try global installation (fallback)
     try {
       await this.runCommand("carbonara", ["--version"]);
       return "carbonara";
@@ -681,23 +714,30 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
   private runCommand(command: string, args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
-      const process = spawn(command, args, {
+      const workspaceRoot = this.workspaceFolder?.uri.fsPath || process.cwd();
+      const childProcess = spawn(command, args, {
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
+        cwd: workspaceRoot,
       });
 
       let stdout = "";
       let stderr = "";
 
-      process.stdout?.on("data", (data) => {
+      childProcess.stdout?.on("data", (data) => {
         stdout += data.toString();
       });
 
-      process.stderr?.on("data", (data) => {
-        stderr += data.toString();
+      childProcess.stderr?.on("data", (data) => {
+        const errorText = data.toString();
+        stderr += errorText;
+        // Log stderr for debugging (CLI might output warnings/info to stderr)
+        console.log(`[ToolsTreeProvider] CLI stderr:`, errorText);
+        // Also append to stdout since CLI might use stderr for normal output
+        stdout += errorText;
       });
 
-      process.on("close", (code) => {
+      childProcess.on("close", (code) => {
         if (code === 0) {
           resolve(stdout);
         } else {
@@ -705,9 +745,10 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         }
       });
 
-      process.on("error", (error) => {
+      childProcess.on("error", (error) => {
         reject(error);
       });
     });
   }
+
 }

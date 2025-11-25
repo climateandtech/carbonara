@@ -42,6 +42,10 @@ export class DataService {
   private db: Database | null = null;
   private dbPath: string;
   private SQL: any = null;
+  private dbExistedOnInit: boolean = false;
+  private fileWatcher: fs.FSWatcher | null = null;
+  private isReloading: boolean = false;
+  private onDatabaseReloadCallback: (() => void) | null = null;
 
   constructor(config: DatabaseConfig = {}) {
     this.dbPath =
@@ -52,11 +56,61 @@ export class DataService {
     return this.dbPath;
   }
 
+  /**
+   * Set a callback to be invoked when the database is reloaded from disk
+   * (e.g., when file watcher detects external changes from CLI)
+   */
+  setOnDatabaseReloadCallback(callback: (() => void) | null): void {
+    this.onDatabaseReloadCallback = callback;
+  }
+
   private saveDatabase(): void {
     if (this.db) {
-      const data = this.db.export();
-      const buffer = Buffer.from(data);
-      fs.writeFileSync(this.dbPath, buffer);
+      // Temporarily disable reloading to avoid reloading our own writes
+      this.isReloading = true;
+      try {
+        // Verify data exists in memory before exporting
+        const countResult = this.db.exec("SELECT COUNT(*) as count FROM assessment_data");
+        const inMemoryCount = countResult.length > 0 && countResult[0].values.length > 0
+          ? countResult[0].values[0][0] : 0;
+        console.log(`[DataService] In-memory assessment_data count before save: ${inMemoryCount}`);
+        
+        const data = this.db.export();
+        const buffer = Buffer.from(data);
+        console.log(`[DataService] Saving database to ${this.dbPath} (${buffer.length} bytes)`);
+        fs.writeFileSync(this.dbPath, buffer);
+        
+        // Verify file was written
+        if (fs.existsSync(this.dbPath)) {
+          const fileSize = fs.statSync(this.dbPath).size;
+          console.log(`[DataService] ✅ Database saved successfully (file size: ${fileSize} bytes)`);
+          
+          // Try to verify the data is in the saved file by reading it back
+          try {
+            const savedData = fs.readFileSync(this.dbPath);
+            const verifyDb = new this.SQL.Database(savedData);
+            const verifyResult = verifyDb.exec("SELECT COUNT(*) as count FROM assessment_data");
+            const savedCount = verifyResult.length > 0 && verifyResult[0].values.length > 0
+              ? verifyResult[0].values[0][0] : 0;
+            console.log(`[DataService] Verification: Saved file contains ${savedCount} assessment_data row(s)`);
+            verifyDb.close();
+          } catch (verifyError: any) {
+            console.error(`[DataService] ⚠️  Could not verify saved file: ${verifyError.message}`);
+          }
+        } else {
+          console.error(`[DataService] ❌ Database file does not exist after save!`);
+        }
+      } catch (error: any) {
+        console.error(`[DataService] ❌ Failed to save database: ${error.message}`);
+        throw error; // Re-throw so caller knows it failed
+      } finally {
+        // Re-enable reloading after a short delay to let file system settle
+        setTimeout(() => {
+          this.isReloading = false;
+        }, 200);
+      }
+    } else {
+      console.warn(`[DataService] ⚠️  Cannot save database: database not initialized`);
     }
   }
 
@@ -87,10 +141,15 @@ export class DataService {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    // Try to load existing database file
+    // CRITICAL: Track if database file existed before initialization
+    // This prevents overwriting existing databases with empty in-memory state
+    // when close() is called during instance switching (e.g., window reload)
     let existingData: Buffer | undefined;
     if (fs.existsSync(this.dbPath)) {
       existingData = fs.readFileSync(this.dbPath);
+      this.dbExistedOnInit = true;
+    } else {
+      this.dbExistedOnInit = false;
     }
 
     // Create or load database
@@ -195,8 +254,61 @@ export class DataService {
       )
     `);
 
-    // Save initial database
-    this.saveDatabase();
+    // CRITICAL FIX: Do NOT save database here on initialization
+    //
+    // Previous behavior: saveDatabase() was called here, which overwrote the
+    // existing database file with the in-memory state. When the extension reloaded:
+    // 1. Existing database file was loaded into memory (with data)
+    // 2. Tables were created/verified (no data loss yet)
+    // 3. saveDatabase() was called, writing in-memory state to disk
+    // 4. If in-memory database was empty/incomplete, it overwrote the file
+    //
+    // New behavior: Database is only saved when:
+    // - Explicit data modifications occur (createProject, saveAssessmentData, etc.)
+    // - close() is called AND database has data (see close() method)
+    //
+    // This ensures existing databases are never overwritten with empty state
+    // this.saveDatabase();
+
+    // Set up file watcher to auto-reload when database changes externally
+    this.setupFileWatcher();
+  }
+
+  private setupFileWatcher(): void {
+    // Only watch if file exists
+    if (!fs.existsSync(this.dbPath)) {
+      return;
+    }
+
+    // Close existing watcher if any
+    if (this.fileWatcher) {
+      this.fileWatcher.close();
+    }
+
+    // Watch for changes to the database file
+    // Use a small delay to avoid reloading during our own writes
+    let reloadTimeout: NodeJS.Timeout | null = null;
+    
+    this.fileWatcher = fs.watch(this.dbPath, (eventType) => {
+      // Only reload on 'change' events (not 'rename')
+      if (eventType === 'change' && !this.isReloading) {
+        // Debounce: wait 100ms before reloading to avoid multiple rapid reloads
+        if (reloadTimeout) {
+          clearTimeout(reloadTimeout);
+        }
+        reloadTimeout = setTimeout(async () => {
+          try {
+            await this.reloadDatabase();
+            // Notify listeners that database was reloaded from disk
+            if (this.onDatabaseReloadCallback) {
+              this.onDatabaseReloadCallback();
+            }
+          } catch (error) {
+            console.error('Error auto-reloading database:', error);
+          }
+        }, 100);
+      }
+    });
   }
 
   async createProject(
@@ -318,6 +430,8 @@ export class DataService {
   ): Promise<number> {
     if (!this.db) throw new Error("Database not initialized");
 
+    console.log(`[DataService] Storing assessment data: tool=${toolName}, projectId=${projectId}, dataType=${dataType}`);
+    
     this.db.run(
       `INSERT INTO assessment_data (project_id, tool_name, data_type, data, source) VALUES (?, ?, ?, ?, ?)`,
       [
@@ -332,7 +446,21 @@ export class DataService {
     const result = this.db.exec("SELECT last_insert_rowid() as id");
     const id = result[0].values[0][0] as number;
 
+    console.log(`[DataService] ✅ Assessment data inserted with id=${id}, saving to disk...`);
     this.saveDatabase();
+    
+    // Verify the data was actually saved by reading it back
+    const verifyResult = this.db.exec("SELECT COUNT(*) as count FROM assessment_data WHERE id = ?", [id]);
+    const verifyCount = verifyResult.length > 0 && verifyResult[0].values.length > 0
+      ? verifyResult[0].values[0][0] : 0;
+    console.log(`[DataService] Verification: Found ${verifyCount} row(s) with id=${id} after insert`);
+    
+    // Also verify the file on disk
+    if (fs.existsSync(this.dbPath)) {
+      const fileSize = fs.statSync(this.dbPath).size;
+      console.log(`[DataService] Database file size: ${fileSize} bytes`);
+    }
+    
     return id;
   }
 
@@ -607,29 +735,104 @@ export class DataService {
       throw new Error("Database not initialized");
     }
 
-    // Save current state first
-    this.saveDatabase();
-
-    // Reload from disk
-    let existingData: Buffer | undefined;
-    if (fs.existsSync(this.dbPath)) {
-      existingData = fs.readFileSync(this.dbPath);
+    // Prevent recursive reloads
+    if (this.isReloading) {
+      return;
     }
 
-    if (existingData) {
-      // Close old database
-      this.db.close();
-      // Load new database from disk
-      this.db = new this.SQL.Database(existingData);
+    this.isReloading = true;
+    try {
+      // CRITICAL FIX: Do NOT save current state before reloading!
+      // 
+      // Previous behavior: saveDatabase() was called here, which would overwrite
+      // the database file with the current in-memory state. This caused a race condition:
+      // 1. CLI writes data to disk
+      // 2. File watcher detects change and calls reloadDatabase()
+      // 3. reloadDatabase() saves empty in-memory state to disk (overwrites CLI's write!)
+      // 4. reloadDatabase() then loads the empty state from disk
+      //
+      // New behavior: Only reload from disk, never save before reloading.
+      // The disk is the source of truth. If we have unsaved changes in memory,
+      // they will be lost, but that's acceptable because:
+      // - The CLI always saves before closing
+      // - The extension should only read, not write (except through CLI)
+      // - The file watcher is meant to detect external changes (CLI writes)
+
+      // Reload from disk
+      let existingData: Buffer | undefined;
+      if (fs.existsSync(this.dbPath)) {
+        existingData = fs.readFileSync(this.dbPath);
+      }
+
+      if (existingData) {
+        // Close old database
+        this.db.close();
+        // Load new database from disk
+        this.db = new this.SQL.Database(existingData);
+        console.log(`[DataService] Database reloaded from disk (${existingData.length} bytes)`);
+      }
+      // If file doesn't exist, keep current in-memory database
+    } finally {
+      this.isReloading = false;
     }
-    // If file doesn't exist, keep current in-memory database
   }
 
   async close(): Promise<void> {
+    // Close file watcher
+    if (this.fileWatcher) {
+      this.fileWatcher.close();
+      this.fileWatcher = null;
+    }
+
     if (this.db) {
-      this.saveDatabase();
+      // CRITICAL FIX: Conditional save to prevent data loss
+      //
+      // Problem: When ensureDatabaseInitialized() switches instances (e.g., on window reload),
+      // it calls close() on the old instance. Previously, close() always saved, which could
+      // overwrite an existing database file with an empty in-memory database.
+      //
+      // Solution: Only save if:
+      // 1. Database has data (projects or assessment_data exist), OR
+      // 2. Database didn't exist when initialized (new database, safe to save)
+      //
+      // This prevents overwriting existing database files with empty state when just
+      // switching instances during extension reload.
+      const hasData = this.hasData();
+      console.log(`[DataService] close() called: hasData=${hasData}, dbExistedOnInit=${this.dbExistedOnInit}`);
+      if (hasData || !this.dbExistedOnInit) {
+        console.log(`[DataService] Saving database on close...`);
+        this.saveDatabase();
+      } else {
+        console.log(`[DataService] ⚠️  Skipping save on close (no data and database existed on init)`);
+      }
       this.db.close();
       this.db = null;
+    }
+  }
+
+  /**
+   * Check if database contains any data (projects or assessment_data).
+   * Used by close() to determine if it's safe to save the database.
+   * 
+   * CRITICAL: This prevents overwriting existing database files with empty
+   * in-memory state when switching instances during extension reload.
+   */
+  private hasData(): boolean {
+    if (!this.db) return false;
+    try {
+      // Check if we have any projects or assessment data
+      const projects = this.db.exec("SELECT COUNT(*) as count FROM projects");
+      const assessmentData = this.db.exec("SELECT COUNT(*) as count FROM assessment_data");
+
+      const projectCount = projects.length > 0 && projects[0].values.length > 0
+        ? projects[0].values[0][0] : 0;
+      const dataCount = assessmentData.length > 0 && assessmentData[0].values.length > 0
+        ? assessmentData[0].values[0][0] : 0;
+
+      return (projectCount as number) > 0 || (dataCount as number) > 0;
+    } catch (error) {
+      // If tables don't exist yet, consider it empty
+      return false;
     }
   }
 }

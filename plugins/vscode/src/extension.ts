@@ -24,6 +24,7 @@ import {
   clearSemgrepResults,
   setOnDatabaseUpdateCallback,
 } from "./semgrep-integration";
+import { DataService } from "@carbonara/core";
 
 let carbonaraStatusBar: vscode.StatusBarItem;
 let welcomeTreeProvider: WelcomeTreeProvider;
@@ -329,19 +330,53 @@ async function initProject() {
 
   const projectPath = getCurrentProjectPath();
 
-  // Create project structure
-  await ensureLocalCarbonaraProject(
-    projectPath,
-    projectName,
-    projectType.value
-  );
+  // Initialize database first (creates .carbonara directory and database file)
+  const dbPath = path.join(projectPath, ".carbonara", "carbonara.db");
+  const dataService = new DataService({ dbPath });
+  
+  try {
+    await dataService.initialize();
+    
+    // Create project in database to get projectId
+    const projectId = await dataService.createProject(
+      projectName,
+      projectPath,
+      {
+        description: `${projectName} - Carbonara project`,
+        projectType: projectType.value,
+        initialized: new Date().toISOString(),
+      }
+    );
 
-  // Initialize Carbonara database now that project is created
+    // Create complete config file with all required fields
+    await ensureLocalCarbonaraProject(
+      projectPath,
+      projectName,
+      projectType.value,
+      projectId
+    );
+
+    await dataService.close();
+  } catch (error) {
+    console.error(
+      "Failed to initialize Carbonara project:",
+      error
+    );
+    vscode.window.showErrorMessage(
+      `Failed to initialize Carbonara project: ${(error as Error).message}`
+    );
+    try {
+      await dataService.close();
+    } catch {}
+    return;
+  }
+
+  // Initialize database service for extension (for Semgrep integration, etc.)
   try {
     await ensureDatabaseInitialized(projectPath);
   } catch (error) {
     console.error(
-      "Failed to initialize Carbonara database after project creation:",
+      "Failed to initialize Carbonara database service:",
       error
     );
   }
@@ -764,7 +799,8 @@ function getCurrentProjectPath(): string {
 async function ensureLocalCarbonaraProject(
   projectPath: string,
   projectName: string,
-  projectType: string
+  projectType: string,
+  projectId: number
 ): Promise<void> {
   try {
     // Ensure .carbonara directory exists first
@@ -773,26 +809,33 @@ async function ensureLocalCarbonaraProject(
       fs.mkdirSync(carbonaraDir, { recursive: true });
     }
 
-    // Now create the config file
+    // Create complete config file matching CLI format
+    // This ensures consistency and includes all required fields
     const configPath = path.join(carbonaraDir, "carbonara.config.json");
-    if (!fs.existsSync(configPath)) {
-      const minimalConfig = {
-        name: projectName,
-        description: `${projectName} - Carbonara project`,
-        type: projectType,
-        version: 1,
-        createdAt: new Date().toISOString(),
-      };
-      fs.writeFileSync(
-        configPath,
-        JSON.stringify(minimalConfig, null, 2),
-        "utf-8"
-      );
-    }
+    const config = {
+      name: projectName,
+      description: `${projectName} - Carbonara project`,
+      type: projectType,
+      version: 1,
+      createdAt: new Date().toISOString(),
+      projectId: projectId,
+      database: {
+        path: ".carbonara/carbonara.db", // Relative to workspace root
+      },
+      tools: {}, // Empty by default, tools can be added later
+    };
+    
+    // Always write/update config to ensure it has all fields
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify(config, null, 2),
+      "utf-8"
+    );
   } catch (error) {
     vscode.window.showErrorMessage(
       `Failed to initialize local Carbonara project: ${(error as Error).message}`
     );
+    throw error;
   }
 }
 

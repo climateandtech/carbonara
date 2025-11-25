@@ -114,6 +114,24 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         return;
       }
 
+      // CRITICAL: Database path resolution from carbonara.config.json
+      //
+      // Required config format (.carbonara/carbonara.config.json):
+      // {
+      //   "name": "project-name",
+      //   "projectId": 1,
+      //   "database": {
+      //     "path": ".carbonara/carbonara.db"  // Relative to workspace root, or absolute
+      //   },
+      //   "tools": {}
+      // }
+      //
+      // The database.path can be:
+      // - Relative: Resolved relative to workspace root (e.g., ".carbonara/carbonara.db")
+      // - Absolute: Used as-is (e.g., "/path/to/database.db")
+      // - Omitted: Defaults to ".carbonara/carbonara.db" in workspace root
+      //
+      // This format matches the test fixtures to ensure consistent behavior.
       try {
         if (require("fs").existsSync(configPath)) {
           const config = JSON.parse(
@@ -128,6 +146,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
                   config.database.path
                 );
           } else {
+            // Fallback to default path if config.database.path is not specified
             dbPath = path.join(
               this.workspaceFolder.uri.fsPath,
               ".carbonara",
@@ -189,6 +208,13 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         vscodeProvider,
       };
 
+      // Set up callback to auto-refresh VSCode tree when database changes on disk
+      // This enables disk-first flow: CLI writes → file watcher → auto-refresh
+      dataService.setOnDatabaseReloadCallback(() => {
+        console.log("🔄 Database changed on disk, auto-refreshing VSCode tree...");
+        this.refresh();
+      });
+
       console.log("✅ Core services initialized successfully");
 
       // Test the services immediately
@@ -225,6 +251,9 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     // This prevents showing "Loading..." message during refresh
     if (this.coreServices && this.workspaceFolder) {
       try {
+        // Reload database from disk to pick up any external changes (e.g., from CLI)
+        await this.coreServices.dataService.reloadDatabase();
+        
         // Load fresh data from database
         const newItems = await this.loadRootItemsAsync();
         // Only update cache and fire event if data actually changed

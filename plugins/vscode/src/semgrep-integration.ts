@@ -671,6 +671,10 @@ export async function runSemgrepOnFile() {
       cancellable: false,
     },
     async () => {
+      if (!editor) {
+        vscode.window.showErrorMessage("No code file is currently open");
+        return;
+      }
       await runSemgrepAnalysis(editor, {
         showUI: true,
         outputChannel: output,

@@ -211,7 +211,7 @@ describe('Carbonara Core Integration', () => {
       // Verify that errors were logged (but suppressed from output)
       expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to load data for project:',
+        '[VSCodeDataProvider] Failed to load data for project:',
         expect.any(Error)
       );
 
