@@ -112,6 +112,11 @@
         "icon": "$(cloud-download)"
       },
       {
+        "command": "carbonara.showToolInstallation",
+        "title": "Show Installation Instructions",
+        "icon": "$(info)"
+      },
+      {
         "command": "carbonara.analyzeTool",
         "title": "Analyze with Tool",
         "icon": "$(play)"
@@ -242,14 +247,22 @@
       ],
       "view/item/context": [
         {
-          "command": "carbonara.installTool",
-          "when": "view == carbonara.toolsTree && viewItem == uninstalled-tool",
-          "group": "inline"
+          "command": "carbonara.showToolInstallation",
+          "when": "view == carbonara.toolsTree",
+          "group": "inline@1",
+          "icon": "$(info)"
         },
         {
           "command": "carbonara.analyzeTool",
           "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
-          "group": "inline"
+          "group": "inline@2",
+          "icon": "$(play)"
+        },
+        {
+          "command": "carbonara.installTool",
+          "when": "view == carbonara.toolsTree && (viewItem == uninstalled-tool || viewItem == installed-tool-prerequisites-missing)",
+          "group": "inline@2",
+          "icon": "$(cloud-download)"
         },
         {
           "command": "carbonara.runSemgrep",
@@ -338,7 +351,8 @@
     "build": "npm run clean && tsc -p ./ && npm run copy-deps",
     "copy-deps": "node scripts/copy-deps.js",
     "watch": "tsc -watch -p ./",
-    "package": "npm run build && vsce package && vsce ls",
+    "package": "npm run build && vsce package --no-dependencies && (vsce ls 2>/dev/null || echo '⚠️  vsce ls failed (non-critical - package was created successfully)')",
+    "test:package": "npm run build && vsce package --no-dependencies 2>&1 | (grep -q 'DONE  Packaged' || (echo '❌ Package creation failed - DONE message not found' && exit 1)) && (ls carbonara-vscode-*.vsix >/dev/null 2>&1 && echo '✅ Package created successfully' || (echo '❌ Package file not found' && exit 1))",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",

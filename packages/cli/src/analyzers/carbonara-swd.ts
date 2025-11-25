@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import chalk from 'chalk';
-import execa from 'execa';
+import { execa } from 'execa';
 
 export interface CarbonaraSWDResult {
   url: string;

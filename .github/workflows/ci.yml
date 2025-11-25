@@ -40,3 +40,6 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Test VSCode extension package
+        run: npm run test:package --workspace=plugins/vscode

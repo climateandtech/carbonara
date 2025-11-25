@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import execa from 'execa';
+import { execa } from 'execa';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
@@ -9,8 +9,6 @@ import { getToolRegistry, AnalysisTool } from '../registry/index.js';
 import { createDataLake, createDeploymentService } from '@carbonara/core';
 import { loadProjectConfig, getProjectRoot } from '../utils/config.js';
 import { CarbonaraSWDAnalyzer } from '../analyzers/carbonara-swd.js';
-import { checkPrerequisites, Prerequisite } from '@carbonara/core';
-import { IsolatedToolExecutor } from '../utils/tool-executor.js';
 
 interface AnalyzeOptions {
   save: boolean;
@@ -66,43 +64,30 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     process.exit(1);
   }
 
-  if (!(await registry.isToolInstalled(toolId))) {
+  // Check if tool is installed - allow running if installation succeeded but detection failed
+  const isInstalled = await registry.isToolInstalled(toolId);
+  let allowRun = isInstalled;
+  
+  // If detection failed, check config flag (installation may have succeeded)
+  if (!isInstalled) {
+    try {
+      const { isToolMarkedInstalled } = await import('../utils/config.js');
+      if (await isToolMarkedInstalled(toolId)) {
+        allowRun = true;
+        console.log(chalk.yellow(`\n⚠️  Tool detection failed, but installation was marked as successful. Attempting to run...`));
+      }
+    } catch {
+      // Config check failed, continue with normal check
+    }
+  }
+  
+  if (!allowRun) {
     console.error(chalk.red(`❌ Tool ${tool.name} is not installed`));
     console.log(chalk.yellow('\n💡 Install it with:'));
     console.log(chalk.white(tool.installation.instructions));
     console.log(chalk.gray('\nOr run:'));
     console.log(chalk.white(`carbonara tools install ${toolId}`));
     process.exit(1);
-  }
-
-  // Check prerequisites before execution
-  if (tool.prerequisites && tool.prerequisites.length > 0) {
-    const prerequisites: Prerequisite[] = tool.prerequisites.map((p: any) => ({
-      type: p.type,
-      name: p.name,
-      checkCommand: p.checkCommand,
-      expectedOutput: p.expectedOutput,
-      errorMessage: p.errorMessage,
-      setupInstructions: p.setupInstructions
-    }));
-
-    const prereqCheck = await checkPrerequisites(prerequisites);
-    
-    if (!prereqCheck.allAvailable) {
-      console.error(chalk.red(`\n❌ Prerequisites not met for ${tool.name}:`));
-      console.error('');
-      prereqCheck.missing.forEach(({ prerequisite, error }) => {
-        console.error(chalk.red(`   • ${prerequisite.name}: ${error}`));
-        if (prerequisite.setupInstructions) {
-          console.error('');
-          console.error(chalk.yellow(`   📋 Setup Instructions:`));
-          console.error(chalk.yellow(`      ${prerequisite.setupInstructions}`));
-          console.error('');
-        }
-      });
-      console.error(chalk.blue(`\n💡 Tip: You can view detailed installation instructions in the VSCode extension's Tools view.`));
-      process.exit(1);
-    }
   }
 
   const spinner = ora(`Running ${tool.name} analysis...`).start();
@@ -122,7 +107,11 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
     spinner.text = `Analyzing with ${tool.name}...`;
 
+    // Build command string for logging
+    const commandStr = `${tool.command.executable} ${tool.command.args.join(' ').replace('{url}', url || '')}`;
+
     let results: any;
+    let output = '';
 
     if (toolId === 'deployment-scan') {
       results = await runDeploymentScan(url || '.', options, tool);
@@ -132,11 +121,28 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
       results = await runCarbonaraSWD(url!, options, tool);
     } else if (toolId.startsWith('if-')) {
       results = await runImpactFramework(url!, options, tool);
+      output = JSON.stringify(results, null, 2).substring(0, 1000); // Limit output length
     } else {
       results = await runGenericTool(url!, options, tool);
+      output = JSON.stringify(results, null, 2).substring(0, 1000);
     }
 
     spinner.succeed(`${tool.name} analysis completed!`);
+
+    // Log successful execution
+    try {
+      const { logToolAction } = await import('../utils/tool-logger.js');
+      await logToolAction({
+        timestamp: new Date().toISOString(),
+        toolId,
+        action: 'run',
+        command: commandStr,
+        output: output || 'Analysis completed successfully',
+        exitCode: 0,
+      });
+    } catch (logError) {
+      // Silently fail - logging is optional
+    }
 
     // Display results
     displayResults(results, tool, options.output);
@@ -157,8 +163,115 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
   } catch (error: any) {
     spinner.fail(`${tool.name} analysis failed`);
     console.error(chalk.red('Error:'), error.message);
+    
+    // Log error
+    try {
+      const { logToolAction } = await import('../utils/tool-logger.js');
+      const commandStr = `${tool.command.executable} ${tool.command.args.join(' ').replace('{url}', url || '')}`;
+      await logToolAction({
+        timestamp: new Date().toISOString(),
+        toolId,
+        action: 'error',
+        command: commandStr,
+        error: error.message,
+        exitCode: 1,
+      });
+    } catch (logError) {
+      // Silently fail - logging is optional
+    }
+    
+    // Check if error suggests tool is not actually installed (false positive detection)
+    // This happens when detection passed but tool isn't really there (e.g., npx downloaded on-the-fly)
+    const errorMessage = error.message || String(error);
+    const suggestsNotInstalled = 
+      errorMessage.includes('command not found') ||
+      errorMessage.includes('Command not found') ||
+      errorMessage.includes('ENOENT') ||
+      errorMessage.includes('not found') ||
+      errorMessage.includes('cannot find') ||
+      errorMessage.includes('is not installed') ||
+      (error.exitCode === 127);
+    
+    // Check if error suggests missing plugin or configuration issue
+    const suggestsPluginIssue = 
+      errorMessage.includes('InputValidationError') ||
+      errorMessage.includes('ValidationError') ||
+      errorMessage.includes('is provided neither in config nor in input') ||
+      errorMessage.includes('plugin') && errorMessage.includes('not found');
+    
+    // If tool was detected as installed but run failed with "not found" error,
+    // flag that detection was incorrect
+    if (isInstalled && suggestsNotInstalled) {
+      try {
+        const { flagDetectionFailed } = await import('../utils/config.js');
+        await flagDetectionFailed(toolId);
+        console.log(chalk.yellow(`\n⚠️  Detection was incorrect - ${tool.name} is not actually installed.`));
+        console.log(chalk.yellow('Please install the tool and try again.'));
+      } catch (configError) {
+        // Silently fail - config recording is optional
+      }
+    }
+    
+    // If validation error suggests plugin issue, provide helpful message
+    if (suggestsPluginIssue && tool.installation?.package) {
+      const packages = tool.installation.package.split(' ').filter(p => p.trim());
+      if (packages.length > 1) {
+        console.log(chalk.yellow(`\n⚠️  Validation error detected. This may indicate a missing plugin.`));
+        console.log(chalk.yellow(`Please verify all required packages are installed:`));
+        packages.forEach(pkg => {
+          console.log(chalk.white(`  - ${pkg}`));
+        });
+        console.log(chalk.yellow(`\nReinstall with: ${tool.installation.command || tool.installation.instructions}`));
+      }
+    }
+    
+    // Record error in config
+    try {
+      const { recordToolError } = await import('../utils/config.js');
+      await recordToolError(toolId, error);
+    } catch (configError) {
+      // Silently fail - config recording is optional
+      console.error('Failed to record tool error in config:', configError);
+    }
+    
     process.exit(1);
   }
+}
+
+/**
+ * Extracts all unique plugin package names from a manifest template.
+ * Looks for 'path' fields in plugin definitions.
+ * This works programmatically for any tool with a manifestTemplate.
+ */
+function extractPluginPackages(manifest: any): string[] {
+  const packages = new Set<string>();
+  
+  const extractFromObject = (obj: any): void => {
+    if (!obj || typeof obj !== 'object') {
+      return;
+    }
+    
+    // Check if this object has a 'path' field (plugin definition)
+    if (obj.path && typeof obj.path === 'string' && obj.path.startsWith('@')) {
+      // Extract package name (e.g., "@tngtech/if-webpage-plugins" from path)
+      const packageName = obj.path.split('/').slice(0, 2).join('/');
+      if (packageName.includes('@') && packageName.includes('/')) {
+        packages.add(packageName);
+      }
+    }
+    
+    // Recursively check all nested objects and arrays
+    for (const value of Object.values(obj)) {
+      if (Array.isArray(value)) {
+        value.forEach(item => extractFromObject(item));
+      } else if (value && typeof value === 'object') {
+        extractFromObject(value);
+      }
+    }
+  };
+  
+  extractFromObject(manifest);
+  return Array.from(packages);
 }
 
 async function runCarbonaraSWD(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
@@ -268,32 +381,16 @@ async function runGenericTool(url: string, options: AnalyzeOptions, tool: Analys
   // Replace placeholders in command args
   const args = tool.command.args.map(arg => arg.replace('{url}', url));
   
-  // Use isolated execution for external tools to prevent workspace context interference
-  const executor = new IsolatedToolExecutor();
-  try {
-    await executor.createIsolatedEnvironment();
-    
-    const result = await executor.execute({
-      command: tool.command.executable,
-      args: args,
-      stdio: 'pipe'
-    });
+  const result = await execa(tool.command.executable, args, {
+    stdio: 'pipe'
+  });
 
-    // Check for execution errors
-    if (result.exitCode !== 0) {
-      const errorMessage = result.stderr || result.stdout || 'Unknown error';
-      throw new Error(`Tool execution failed: ${errorMessage}`);
-    }
-
-    if (tool.command.outputFormat === 'json') {
-      return JSON.parse(result.stdout);
-    } else if (tool.command.outputFormat === 'yaml') {
-      return yaml.load(result.stdout);
-    } else {
-      return { output: result.stdout };
-    }
-  } finally {
-    executor.cleanup();
+  if (tool.command.outputFormat === 'json') {
+    return JSON.parse(result.stdout);
+  } else if (tool.command.outputFormat === 'yaml') {
+    return yaml.load(result.stdout);
+  } else {
+    return { output: result.stdout };
   }
 }
 
@@ -329,6 +426,53 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     throw new Error(`Tool ${tool.id} does not have a manifest template configured`);
   }
 
+  // Verify all required plugin packages are installed and accessible
+  // This includes both base packages and plugin packages extracted from manifestTemplate
+  if (tool.installation?.package && tool.installation.global === false) {
+    // Collect all packages to check: base packages + plugin packages from manifest
+    const packages = new Set<string>();
+    
+    // Add base installation packages
+    tool.installation.package.split(' ').filter(p => p.trim()).forEach(p => packages.add(p.trim()));
+    
+    // Extract plugin packages from manifestTemplate if it exists
+    if (tool.manifestTemplate) {
+      const pluginPackages = extractPluginPackages(tool.manifestTemplate);
+      pluginPackages.forEach(pkg => packages.add(pkg));
+    }
+    
+    const missingPackages: string[] = [];
+    
+    for (const packageName of Array.from(packages)) {
+      const nodeModulesPath = path.join(process.cwd(), 'node_modules', packageName.split('/').join(path.sep));
+      
+      if (!fs.existsSync(nodeModulesPath)) {
+        // Check with npm list as fallback
+        try {
+          const { execa } = await import('execa');
+          const npmResult = await execa('npm', ['list', '--depth=0', packageName], { 
+            stdio: 'pipe',
+            cwd: process.cwd(),
+            reject: false,
+            timeout: 5000
+          });
+          if (npmResult.exitCode !== 0 || npmResult.stdout.includes('(empty)') || npmResult.stdout.includes('(no packages)')) {
+            missingPackages.push(packageName);
+          }
+        } catch {
+          missingPackages.push(packageName);
+        }
+      }
+    }
+    
+    if (missingPackages.length > 0) {
+      throw new Error(
+        `Missing required plugin packages: ${missingPackages.join(', ')}\n` +
+        `Please install with: ${tool.installation.command || tool.installation.instructions}`
+      );
+    }
+  }
+
   // Load project and get CO2 variables for intelligent defaults
   let co2Variables: any = {};
   try {
@@ -354,39 +498,90 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   // Create manifest from template with placeholder replacement
   const manifest = JSON.parse(JSON.stringify(tool.manifestTemplate)); // Deep clone
   
-  // Get values for placeholders
-  const scrollToBottom = options.scrollToBottom ?? co2Variables.monitoringConfig?.scrollToBottom ?? false;
-  const firstVisitPercentage = options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9;
-  const returnVisitPercentage = 1 - firstVisitPercentage;
-  const testCommand = options.testCommand ?? co2Variables.monitoringConfig?.e2eTestCommand ?? 'npm test';
+  // Build parameter values map from tool configuration
+  const parameterValues: Record<string, any> = {};
   
-  // Replace placeholders in manifest with intelligent defaults from assessment data
-  const replacePlaceholders = (obj: any): any => {
-    if (typeof obj === 'string') {
-      // If the entire string is a placeholder, return the actual value (boolean/number)
-      if (obj === '{scrollToBottom}') {
-        return scrollToBottom;
-      }
-      if (obj === '{firstVisitPercentage}') {
-        return firstVisitPercentage;
-      }
-      if (obj === '{returnVisitPercentage}') {
-        return returnVisitPercentage;
+  // Process parameters from tool definition
+  if (tool.parameters) {
+    for (const param of tool.parameters) {
+      const placeholderName = param.placeholder || param.name;
+      const paramValue = (options as any)[param.name];
+      const defaultValue = param.default ?? tool.parameterDefaults?.[param.name] ?? co2Variables.monitoringConfig?.[param.name];
+      
+      // Get value with fallback chain: options -> assessment data -> tool default -> parameter default
+      let value = paramValue ?? co2Variables.monitoringConfig?.[param.name] ?? defaultValue;
+      
+      // Handle special case: url parameter
+      if (param.name === 'url') {
+        value = url;
       }
       
-      // Otherwise, replace placeholders within strings
-      return obj
-        .replace('{url}', url)
-        .replace('{testCommand}', testCommand)
-        .replace('{scrollToBottom}', scrollToBottom.toString())
-        .replace('{firstVisitPercentage}', firstVisitPercentage.toString())
-        .replace('{returnVisitPercentage}', returnVisitPercentage.toString());
+      // Ensure type correctness
+      if (param.type === 'boolean') {
+        value = Boolean(value ?? false);
+      } else if (param.type === 'number') {
+        value = Number(value ?? 0);
+      }
+      
+      parameterValues[placeholderName] = value;
+    }
+  }
+  
+  // Process parameter mappings (derived/computed values)
+  if (tool.parameterMappings) {
+    for (const [mappedName, mapping] of Object.entries(tool.parameterMappings)) {
+      if (mapping.source && parameterValues[mapping.source] !== undefined) {
+        let value: any;
+        if (mapping.transform) {
+          // Simple transform: "1 - {source}" -> 1 - parameterValues[source]
+          value = eval(mapping.transform.replace(/\{source\}/g, String(parameterValues[mapping.source])));
+        } else {
+          value = parameterValues[mapping.source];
+        }
+        
+        // Ensure type correctness
+        if (mapping.type === 'boolean') {
+          value = Boolean(value);
+        } else if (mapping.type === 'number') {
+          value = Number(value);
+        }
+        
+        parameterValues[mappedName] = value;
+      }
+    }
+  }
+
+  // Replace placeholders in manifest with parameter values
+  const replacePlaceholders = (obj: any): any => {
+    if (typeof obj === 'string') {
+      // Check for exact placeholder matches first
+      for (const [placeholderName, value] of Object.entries(parameterValues)) {
+        if (obj === `{${placeholderName}}`) {
+          return value;
+        }
+      }
+      // Fallback to string replacement for partial matches
+      let result = obj;
+      for (const [placeholderName, value] of Object.entries(parameterValues)) {
+        result = result.replace(`{${placeholderName}}`, String(value));
+      }
+      return result;
     } else if (Array.isArray(obj)) {
       return obj.map(replacePlaceholders);
     } else if (obj && typeof obj === 'object') {
       const result: any = {};
       for (const [key, value] of Object.entries(obj)) {
-        result[key] = replacePlaceholders(value);
+        // If value is exactly a placeholder, replace with proper type
+        if (typeof value === 'string' && value.startsWith('{') && value.endsWith('}')) {
+          const placeholderName = value.slice(1, -1);
+          if (parameterValues[placeholderName] !== undefined) {
+            result[key] = parameterValues[placeholderName];
+          } else {
+            result[key] = replacePlaceholders(value);
+          }
+        } else {
+          result[key] = replacePlaceholders(value);
+        }
       }
       return result;
     }
@@ -423,45 +618,75 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   fs.writeFileSync(manifestPath, yaml.dump(processedManifest));
 
   // Run Impact Framework analysis
+  // Use the tool's command configuration (supports both 'if-run' and 'npx --package=@grnsft/if if-run')
+  const executable = tool.command.executable;
+  const baseArgs = tool.command.args || [];
+  
+  // Replace placeholders in args
+  const args = baseArgs.map((arg: string) => 
+    arg.replace('{manifest}', manifestPath).replace('{output}', outputPath)
+  );
+  
+  let ifRunResult;
   try {
-    const result = await execa('if-run', [
-      '--manifest', manifestPath,
-      '--output', outputPath
-    ], {
+    ifRunResult = await execa(executable, args, {
       stdio: 'pipe',
-      reject: false // Don't throw on non-zero exit
+      reject: false // Don't throw on non-zero exit, we'll check the output file
     });
-
-    // Check exit code
-    if (result.exitCode !== 0) {
-      const errorMsg = result.stderr || result.stdout || 'Unknown error';
-      throw new Error(`if-run failed with exit code ${result.exitCode}: ${errorMsg}`);
-    }
-
-    // Check if output file exists
-    if (!fs.existsSync(outputPath)) {
-      // Provide more context about what might have gone wrong
-      const manifestContent = fs.readFileSync(manifestPath, 'utf8');
-      throw new Error(
-        `Output file not created at ${outputPath}\n` +
-        `if-run exit code: ${result.exitCode}\n` +
-        `if-run stdout: ${result.stdout || '(empty)'}\n` +
-        `if-run stderr: ${result.stderr || '(empty)'}\n` +
-        `Manifest file: ${manifestPath}\n` +
-        `Temp directory: ${tempDir}`
-      );
-    }
   } catch (error: any) {
-    // If it's already our formatted error, re-throw it
-    if (error.message && error.message.includes('Output file not created')) {
-      throw error;
-    }
-    // Otherwise, wrap the error with more context
+    // If execa throws, capture what we can
+    const errorMessage = error.message || String(error);
+    const stdout = error.stdout?.toString() || '';
+    const stderr = error.stderr?.toString() || '';
     throw new Error(
-      `Failed to run Impact Framework analysis: ${error.message}\n` +
-      `Manifest: ${manifestPath}\n` +
-      `Output: ${outputPath}`
+      `Failed to run if-run: ${errorMessage}\n` +
+      (stdout ? `if-run stdout: ${stdout}\n` : '') +
+      (stderr ? `if-run stderr: ${stderr}` : '')
     );
+  }
+
+  // Check if output file exists
+  if (!fs.existsSync(outputPath)) {
+    const exitCode = ifRunResult.exitCode || 0;
+    const stdout = ifRunResult.stdout?.toString() || '';
+    const stderr = ifRunResult.stderr?.toString() || '';
+    
+    // Try to extract validation errors from stdout/stderr
+    let validationError = '';
+    const errorPatterns = [
+      /InputValidationError[:\s]+([^\n]+)/i,
+      /ValidationError[:\s]+([^\n]+)/i,
+      /Error[:\s]+([^\n]+)/i,
+      /expected\s+(\w+),\s+received\s+(\w+)/i,
+      /parameter\s+["']?(\w+)["']?\s+is\s+expected\s+(\w+),\s+received\s+(\w+)/i
+    ];
+    
+    const allOutput = stdout + '\n' + stderr;
+    for (const pattern of errorPatterns) {
+      const match = allOutput.match(pattern);
+      if (match) {
+        validationError = match[0];
+        break;
+      }
+    }
+    
+    // Build error message with validation error if found
+    let errorMessage = `Output file not created at ${outputPath}\n`;
+    errorMessage += `if-run exit code: ${exitCode}\n`;
+    
+    if (validationError) {
+      errorMessage += `\nValidation Error: ${validationError}\n`;
+    }
+    
+    if (stdout) {
+      errorMessage += `\nif-run stdout:\n${stdout}\n`;
+    }
+    
+    if (stderr) {
+      errorMessage += `\nif-run stderr:\n${stderr}`;
+    }
+    
+    throw new Error(errorMessage);
   }
 
   // Parse results and convert to JSON

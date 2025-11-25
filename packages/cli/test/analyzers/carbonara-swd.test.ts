@@ -16,6 +16,8 @@ vi.mock('chalk', () => ({
     white: vi.fn((text: string) => text),
     gray: vi.fn((text: string) => text),
     cyan: vi.fn((text: string) => text),
+    yellow: vi.fn((text: string) => text),
+    red: vi.fn((text: string) => text),
     bold: vi.fn((text: string) => text)
   }
 }));

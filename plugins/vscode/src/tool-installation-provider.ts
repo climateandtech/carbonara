@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import { Prerequisite, checkPrerequisites } from "@carbonara/core";
+import { isToolMarkedInstalled, getToolLastError } from "@carbonara/cli/dist/utils/config.js";
 
 /**
  * Virtual document provider for tool installation instructions
@@ -13,14 +14,21 @@ export class ToolInstallationProvider implements vscode.TextDocumentContentProvi
     uri: vscode.Uri,
     token: vscode.CancellationToken
   ): string | Thenable<string> {
-    // URI format: carbonara-tool-installation://toolId
-    // The authority part contains the toolId
-    const toolId = uri.authority || uri.path.replace(/^\//, '') || uri.toString().replace(`${ToolInstallationProvider.SCHEME}://`, '');
+    // URI format: carbonara-tool-installation://toolId/installation.md
+    // The authority part contains the toolId, or we extract it from the path
+    let toolId = uri.authority;
+    
+    // If no authority, try to extract from path (remove /installation.md if present)
+    if (!toolId) {
+      const path = uri.path.replace(/^\//, '').replace(/\/installation\.md$/, '');
+      toolId = path || uri.toString().replace(`${ToolInstallationProvider.SCHEME}://`, '').replace(/\/installation\.md$/, '');
+    }
     
     if (!toolId) {
       return `# Error\n\nNo tool ID provided in URI: ${uri.toString()}`;
     }
     
+    // Return a Promise that resolves to the document content
     return this.generateInstallationDocument(toolId);
   }
 
@@ -94,13 +102,35 @@ export class ToolInstallationProvider implements vscode.TextDocumentContentProvi
           lines.push("This tool can be installed via npm:");
           lines.push("");
           lines.push("```bash");
-          if (tool.installation.global) {
+          if (tool.installation.instructions) {
+            // Use custom instructions if provided (may include prerequisite setup)
+            lines.push(tool.installation.instructions);
+          } else if (tool.installation.global) {
             lines.push(`npm install -g ${tool.installation.package}`);
           } else {
             lines.push(`npm install ${tool.installation.package}`);
           }
           lines.push("```");
           lines.push("");
+          
+          // If tool has prerequisites that need browser installation, add a note
+          if (tool.prerequisites && tool.prerequisites.length > 0) {
+            const hasBrowserPrereq = tool.prerequisites.some((p: any) => 
+              p.type === "playwright" || p.type === "puppeteer"
+            );
+            if (hasBrowserPrereq && !tool.installation.instructions) {
+              lines.push("**Note:** After installing the npm packages, you may need to install browser dependencies:");
+              lines.push("");
+              tool.prerequisites.forEach((prereq: any) => {
+                if (prereq.type === "playwright" && prereq.setupInstructions) {
+                  lines.push(`- ${prereq.setupInstructions}`);
+                } else if (prereq.type === "puppeteer" && prereq.setupInstructions) {
+                  lines.push(`- ${prereq.setupInstructions}`);
+                }
+              });
+              lines.push("");
+            }
+          }
         } else if (tool.installation.type === "pip") {
           lines.push("This tool can be installed via pip:");
           lines.push("");
@@ -124,6 +154,42 @@ export class ToolInstallationProvider implements vscode.TextDocumentContentProvi
       } else {
         lines.push("No installation instructions available for this tool.");
         lines.push("");
+      }
+
+      // Installation Status
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (workspaceFolder) {
+        try {
+          const markedInstalled = await isToolMarkedInstalled(toolId, workspaceFolder.uri.fsPath);
+          const lastError = await getToolLastError(toolId, workspaceFolder.uri.fsPath);
+          
+          if (markedInstalled || lastError) {
+            lines.push("## Installation Status");
+            lines.push("");
+            
+            if (markedInstalled) {
+              lines.push("✅ **Installation Status:** Marked as installed");
+              lines.push("");
+              lines.push("This tool has been marked as successfully installed. If it's not detected, try refreshing the tools tree.");
+              lines.push("");
+            }
+            
+            if (lastError) {
+              lines.push("⚠️ **Last Error:**");
+              lines.push("");
+              lines.push("```");
+              lines.push(lastError.message);
+              lines.push("```");
+              lines.push("");
+              const errorDate = new Date(lastError.timestamp);
+              lines.push(`*Error occurred: ${errorDate.toLocaleString()}*`);
+              lines.push("");
+            }
+          }
+        } catch (error) {
+          // Silently fail - config check is optional
+          console.error(`Failed to check installation status for ${toolId}:`, error);
+        }
       }
 
       // Detection
@@ -238,7 +304,9 @@ export class ToolInstallationProvider implements vscode.TextDocumentContentProvi
 
     // Try global installation
     try {
-      const execa = (await import("execa")).default;
+      const execaModule = await import("execa");
+      // Handle both default export (execa 5.x) and named export (execa 8.x)
+      const execa = (execaModule as any).execa || execaModule.default;
       await execa("carbonara", ["--version"], { timeout: 3000 });
       return "carbonara";
     } catch {
@@ -252,14 +320,21 @@ export class ToolInstallationProvider implements vscode.TextDocumentContentProvi
  */
 export async function showToolInstallationInstructions(toolId: string): Promise<void> {
   // Create URI with toolId as authority (host) part for better compatibility
-  const uri = vscode.Uri.parse(`${ToolInstallationProvider.SCHEME}://${toolId}`);
+  // Add .md extension to help VSCode recognize it as markdown
+  const uri = vscode.Uri.parse(`${ToolInstallationProvider.SCHEME}://${toolId}/installation.md`);
   
   try {
     const document = await vscode.workspace.openTextDocument(uri);
-    await vscode.window.showTextDocument(document, {
+    const editor = await vscode.window.showTextDocument(document, {
       viewColumn: vscode.ViewColumn.Active,
       preview: false
     });
+    
+    // Set language mode to markdown for proper rendering
+    // Use the editor's document to ensure it's the active one
+    if (editor && editor.document) {
+      await vscode.languages.setTextDocumentLanguage(editor.document, "markdown");
+    }
   } catch (error: any) {
     vscode.window.showErrorMessage(
       `Failed to open installation instructions: ${error.message}`

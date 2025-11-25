@@ -218,11 +218,12 @@
         "type": "npm",
         "package": "@marmelab/greenframe-cli",
         "global": true,
+        "command": "npm install -g @marmelab/greenframe-cli",
         "instructions": "npm install -g @marmelab/greenframe-cli"
       },
       "detection": {
         "method": "command",
-        "target": "npx greenframe --help"
+        "target": "greenframe --version"
       },
       "prerequisites": [
         {
@@ -296,40 +297,67 @@
       "displayName": "Impact Framework",
       "description": "Impact Framework webpage analysis with carbon estimation using WebpageImpact and Co2js plugins",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins && npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome"
       },
       "detection": {
         "method": "command",
-        "target": "if-run --help"
+        "target": "if-run --version"
       },
+      "prerequisites": [
+        {
+          "type": "puppeteer",
+          "name": "Puppeteer Browsers",
+          "checkCommand": "npx --package=@tngtech/if-webpage-plugins puppeteer browsers install --dry-run chrome",
+          "errorMessage": "Puppeteer browsers (Chrome) are required but not installed",
+          "installCommand": "npm install @grnsft/if @tngtech/if-webpage-plugins && npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome",
+          "setupInstructions": "Run: npm install @grnsft/if @tngtech/if-webpage-plugins && npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome"
+        }
+      ],
       "parameters": [
         {
           "name": "url",
           "required": true,
           "type": "string",
-          "description": "URL of the webpage to analyze"
+          "description": "URL of the webpage to analyze",
+          "placeholder": "url"
         },
         {
           "name": "scrollToBottom",
           "required": false,
           "type": "boolean",
-          "description": "Whether to scroll to bottom of page during analysis"
+          "description": "Whether to scroll to bottom of page during analysis",
+          "placeholder": "scrollToBottom",
+          "default": false
         },
         {
           "name": "firstVisitPercentage",
           "required": false,
           "type": "number",
-          "description": "Percentage of first-time visits (0-1)"
+          "description": "Percentage of first-time visits (0-1)",
+          "placeholder": "firstVisitPercentage",
+          "default": 0.9
         }
       ],
+      "parameterDefaults": {
+        "scrollToBottom": false,
+        "firstVisitPercentage": 0.9
+      },
+      "parameterMappings": {
+        "returnVisitPercentage": {
+          "source": "firstVisitPercentage",
+          "transform": "1 - {source}",
+          "type": "number"
+        }
+      },
       "manifestTemplate": {
         "name": "webpage-carbon-scan",
         "description": "Webpage carbon impact analysis",
@@ -440,19 +468,20 @@
       "name": "IF Green Hosting",
       "description": "Check if a website is hosted on green energy using Impact Framework GreenHosting plugin",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins"
       },
       "detection": {
         "method": "command",
-        "target": "if-run --help"
+        "target": "if-run --version"
       },
       "parameters": [
         {
@@ -529,19 +558,20 @@
       "name": "IF CPU Metrics",
       "description": "Monitor local CPU utilization and energy consumption while analyzing web applications",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins"
       },
       "detection": {
         "method": "command",
-        "target": "if-run --help"
+        "target": "if-run --version"
       },
       "parameters": [
         {
@@ -818,19 +848,20 @@
       "name": "IF E2E Test CPU Metrics",
       "description": "Monitor CPU utilization and energy consumption while running E2E tests (Cypress, Playwright, etc.)",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins"
       },
       "detection": {
         "method": "command",
-        "target": "if-run --help"
+        "target": "if-run --version"
       },
       "parameters": [
         {

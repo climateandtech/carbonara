@@ -1,4 +1,4 @@
-import execa from 'execa';
+import { execa, execaCommand } from 'execa';
 
 export interface Prerequisite {
   /**
@@ -22,7 +22,11 @@ export interface Prerequisite {
    */
   errorMessage: string;
   /**
-   * Installation/setup instructions
+   * Command to install the prerequisite (optional, for automated installation)
+   */
+  installCommand?: string;
+  /**
+   * Installation/setup instructions (optional, for manual steps or documentation)
    */
   setupInstructions?: string;
 }
@@ -35,7 +39,7 @@ export async function checkPrerequisite(prerequisite: Prerequisite): Promise<{
   error?: string;
 }> {
   try {
-    const result = await execa.command(prerequisite.checkCommand, {
+    const result = await execaCommand(prerequisite.checkCommand, {
       stdio: 'pipe',
       timeout: 5000,
       reject: false,
@@ -50,86 +54,6 @@ export async function checkPrerequisite(prerequisite: Prerequisite): Promise<{
       };
     }
 
-    // For Docker, also check if daemon is running
-    if (prerequisite.type === 'docker') {
-      // Try to run a simple docker command to check if daemon is running
-      try {
-        const dockerCheck = await execa('docker', ['info'], {
-          stdio: 'pipe',
-          timeout: 3000,
-          reject: false
-        });
-        
-        if (dockerCheck.exitCode !== 0) {
-          // Docker is installed but daemon is not running
-          const stderr = dockerCheck.stderr || '';
-          if (stderr.includes('Cannot connect') || stderr.includes('Is the docker daemon running')) {
-            return {
-              available: false,
-              error: `Docker is installed but the Docker daemon is not running. Please start Docker Desktop.`
-            };
-          }
-          return {
-            available: false,
-            error: `Docker daemon is not running. Please start Docker Desktop.`
-          };
-        }
-      } catch {
-        return {
-          available: false,
-          error: `Docker daemon is not running. Please start Docker Desktop.`
-        };
-      }
-    }
-
-    // For Playwright, check if browsers are installed
-    if (prerequisite.type === 'playwright') {
-      try {
-        // Try to actually import and check if Playwright can find browsers
-        const { chromium } = await import('playwright');
-        
-        // Try to get the executable path - this will throw if browsers aren't installed
-        try {
-          const browserType = chromium;
-          // Use the executablePath method which will throw if browser isn't installed
-          const executablePath = browserType.executablePath();
-          
-          // Check if the executable actually exists
-          const fs = await import('fs');
-          if (!fs.existsSync(executablePath)) {
-            throw new Error('Playwright browser executable not found');
-          }
-        } catch (execError: any) {
-          // Browser not installed or executable doesn't exist
-          if (execError.message?.includes('Executable doesn\'t exist') ||
-              execError.message?.includes('browser executable not found') ||
-              execError.message?.includes('Executable not found')) {
-            return {
-              available: false,
-              error: `${prerequisite.errorMessage}\n   Run 'npx playwright install chromium' to install the required browsers.`
-            };
-          }
-          // Re-throw if it's a different error
-          throw execError;
-        }
-      } catch (error: any) {
-        // If import fails or browsers aren't installed
-        if (error.message?.includes('Executable doesn\'t exist') ||
-            error.message?.includes('browser executable not found') ||
-            error.message?.includes('Executable not found')) {
-          return {
-            available: false,
-            error: `${prerequisite.errorMessage}\n   Run 'npx playwright install chromium' to install the required browsers.`
-          };
-        }
-        // For other errors (like import failures), assume browsers might not be installed
-        return {
-          available: false,
-          error: `${prerequisite.errorMessage}\n   Run 'npx playwright install chromium' to install the required browsers.`
-        };
-      }
-    }
-
     // If expected output is specified, validate it
     if (prerequisite.expectedOutput && result.stdout) {
       if (!result.stdout.includes(prerequisite.expectedOutput)) {
@@ -138,6 +62,14 @@ export async function checkPrerequisite(prerequisite: Prerequisite): Promise<{
           error: prerequisite.errorMessage
         };
       }
+    }
+
+    // If command failed (non-zero exit code) and no expected output check, consider it unavailable
+    if (result.exitCode !== 0) {
+      return {
+        available: false,
+        error: prerequisite.errorMessage
+      };
     }
 
     // Command succeeded and output matches (if specified)

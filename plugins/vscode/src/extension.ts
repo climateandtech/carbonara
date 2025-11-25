@@ -107,6 +107,23 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   console.log("✅ Tool installation provider registered");
 
+  // Check Playwright browsers in background (non-blocking)
+  // Browsers will be auto-installed on-demand when needed
+  (async () => {
+    try {
+      const { arePlaywrightBrowsersInstalled } = await import("./utils/browser-setup.js");
+      const installed = await arePlaywrightBrowsersInstalled();
+      if (!installed) {
+        console.log("ℹ️  Playwright browsers not installed. Will install on-demand when needed.");
+      } else {
+        console.log("✅ Playwright browsers are installed.");
+      }
+    } catch (error) {
+      // Silently fail - browsers will be installed on-demand
+      console.log("ℹ️  Playwright setup check skipped:", error);
+    }
+  })();
+
   // Register decoration provider for Semgrep findings
   const semgrepDecorationProvider = new SemgrepFindingDecorationProvider();
   context.subscriptions.push(
@@ -155,15 +172,52 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("carbonara.installCli", installCli),
     vscode.commands.registerCommand("carbonara.viewTools", viewTools),
-    vscode.commands.registerCommand("carbonara.refreshTools", () =>
-      toolsTreeProvider.refresh()
-    ),
-    vscode.commands.registerCommand("carbonara.installTool", (toolId) =>
-      toolsTreeProvider.installTool(toolId)
-    ),
-    vscode.commands.registerCommand("carbonara.analyzeTool", (toolId) =>
-      toolsTreeProvider.analyzeTool(toolId)
-    ),
+    vscode.commands.registerCommand("carbonara.refreshTools", async () => {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Refreshing analysis tools...",
+          cancellable: false,
+        },
+        async () => {
+          try {
+            await toolsTreeProvider.refreshAsync();
+            vscode.window.showInformationMessage("Analysis tools refreshed successfully");
+          } catch (error: any) {
+            vscode.window.showErrorMessage(
+              `Failed to refresh tools: ${error.message || error}`
+            );
+          }
+        }
+      );
+    }),
+    vscode.commands.registerCommand("carbonara.installTool", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.installTool(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.showToolInstallation", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.showToolInstallation(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.analyzeTool", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.analyzeTool(toolId);
+    }),
     vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
     vscode.commands.registerCommand("carbonara.scanAllFiles", scanAllFiles),
     vscode.commands.registerCommand(

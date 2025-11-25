@@ -1,4 +1,5 @@
-import execa from 'execa';
+import { execa } from 'execa';
+import type { ExecaReturnValue } from 'execa';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -137,7 +138,7 @@ export class IsolatedToolExecutor {
   /**
    * Executes a command in an isolated environment
    */
-  async execute(options: IsolatedExecutionOptions): Promise<execa.ExecaReturnValue<string>> {
+  async execute(options: IsolatedExecutionOptions): Promise<ExecaReturnValue<string>> {
     // Ensure isolated environment exists
     const cwd = options.cwd || await this.createIsolatedEnvironment();
     
@@ -189,7 +190,7 @@ export async function executeInIsolation(
   command: string,
   args?: string[],
   options?: Omit<IsolatedExecutionOptions, 'command' | 'args'>
-): Promise<execa.ExecaReturnValue<string>> {
+): Promise<ExecaReturnValue<string>> {
   const executor = new IsolatedToolExecutor();
   try {
     return await executor.execute({

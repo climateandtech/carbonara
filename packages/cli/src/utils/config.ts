@@ -1,6 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 
+export interface ToolStatus {
+  enabled?: boolean;
+  installationStatus?: {
+    installed: boolean;
+    installedAt: string;
+  };
+  lastError?: {
+    message: string;
+    timestamp: string;
+  };
+  detectionFailed?: boolean;
+  detectionFailedAt?: string;
+}
+
 export interface ProjectConfig {
   name: string;
   description: string;
@@ -10,9 +24,7 @@ export interface ProjectConfig {
     path: string;
   };
   tools: {
-    greenframe: {
-      enabled: boolean;
-    };
+    [toolId: string]: ToolStatus;
   };
 }
 
@@ -68,4 +80,109 @@ export function getProjectRoot(searchPath?: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Mark a tool as successfully installed in the config
+ */
+export async function markToolInstalled(toolId: string, projectPath?: string): Promise<void> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config) {
+    return;
+  }
+
+  if (!config.tools) {
+    config.tools = {};
+  }
+
+  if (!config.tools[toolId]) {
+    config.tools[toolId] = {};
+  }
+
+  config.tools[toolId].installationStatus = {
+    installed: true,
+    installedAt: new Date().toISOString(),
+  };
+
+  saveProjectConfig(config, projectPath);
+}
+
+/**
+ * Record an error for a tool in the config
+ */
+export async function recordToolError(toolId: string, error: Error | string, projectPath?: string): Promise<void> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config) {
+    return;
+  }
+
+  if (!config.tools) {
+    config.tools = {};
+  }
+
+  if (!config.tools[toolId]) {
+    config.tools[toolId] = {};
+  }
+
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  config.tools[toolId].lastError = {
+    message: errorMessage,
+    timestamp: new Date().toISOString(),
+  };
+
+  saveProjectConfig(config, projectPath);
+}
+
+/**
+ * Check if a tool is marked as installed in the config
+ */
+export async function isToolMarkedInstalled(toolId: string, projectPath?: string): Promise<boolean> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config?.tools?.[toolId]?.installationStatus) {
+    return false;
+  }
+
+  return config.tools[toolId].installationStatus!.installed === true;
+}
+
+/**
+ * Get the last error for a tool from the config
+ */
+export async function getToolLastError(toolId: string, projectPath?: string): Promise<{ message: string; timestamp: string } | null> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config?.tools?.[toolId]?.lastError) {
+    return null;
+  }
+
+  return config.tools[toolId].lastError!;
+}
+
+/**
+ * Flag that detection was incorrect - tool appeared installed but actually isn't
+ * This happens when detection gives a false positive (e.g., npx downloads on-the-fly)
+ */
+export async function flagDetectionFailed(toolId: string, projectPath?: string): Promise<void> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config) {
+    return;
+  }
+
+  if (!config.tools) {
+    config.tools = {};
+  }
+
+  if (!config.tools[toolId]) {
+    config.tools[toolId] = {};
+  }
+
+  // Mark that detection failed - tool appeared installed but isn't
+  config.tools[toolId].detectionFailed = true;
+  config.tools[toolId].detectionFailedAt = new Date().toISOString();
+  
+  // Clear installation status if it was set (it was a false positive)
+  if (config.tools[toolId].installationStatus) {
+    delete config.tools[toolId].installationStatus;
+  }
+
+  saveProjectConfig(config, projectPath);
 } 

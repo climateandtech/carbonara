@@ -19,21 +19,40 @@ const LOCAL_PACKAGES = ['@carbonara/core', '@carbonara/cli'];
 const copied = new Set();
 
 /**
- * Recursively find all dependencies of a package
+ * Recursively find all dependencies of a package, including nested ones
  */
 function getAllDependencies(pkgName, root = NODE_MODULES, seen = new Set()) {
   if (seen.has(pkgName)) return [];
   seen.add(pkgName);
 
   let pkgPath = path.join(root, pkgName, 'package.json');
+  let actualRoot = root;
+  
   if (!fs.existsSync(pkgPath)) {
     // Try in execa's node_modules (some deps are bundled there)
     const execaPkgPath = path.join(NODE_MODULES, 'execa', 'node_modules', pkgName, 'package.json');
     if (fs.existsSync(execaPkgPath)) {
       pkgPath = execaPkgPath;
-      root = path.join(NODE_MODULES, 'execa', 'node_modules');
+      actualRoot = path.join(NODE_MODULES, 'execa', 'node_modules');
     } else {
-      return [];
+      // Try nested node_modules (e.g., ora/node_modules/string-width)
+      const nestedPath = path.join(root, pkgName);
+      if (fs.existsSync(nestedPath)) {
+        const nestedNodeModules = path.join(nestedPath, 'node_modules');
+        if (fs.existsSync(nestedNodeModules)) {
+          const nestedPkgPath = path.join(nestedNodeModules, pkgName, 'package.json');
+          if (fs.existsSync(nestedPkgPath)) {
+            pkgPath = nestedPkgPath;
+            actualRoot = nestedNodeModules;
+          } else {
+            return [];
+          }
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
     }
   }
 
@@ -42,7 +61,12 @@ function getAllDependencies(pkgName, root = NODE_MODULES, seen = new Set()) {
 
   if (pkg.dependencies) {
     for (const dep of Object.keys(pkg.dependencies)) {
-      deps.push(...getAllDependencies(dep, root, seen));
+      // First try in the same root
+      deps.push(...getAllDependencies(dep, actualRoot, seen));
+      // Also try in main node_modules (for nested deps that resolve to root)
+      if (actualRoot !== NODE_MODULES) {
+        deps.push(...getAllDependencies(dep, NODE_MODULES, seen));
+      }
     }
   }
 
@@ -50,9 +74,18 @@ function getAllDependencies(pkgName, root = NODE_MODULES, seen = new Set()) {
 }
 
 /**
- * Find where a package is located (root node_modules or bundled)
+ * Find where a package is located (root node_modules, bundled, or nested)
  */
 function findPackagePath(pkgName) {
+  // For execa, prioritize @carbonara/core's version (8.x) over root (5.x)
+  // since @carbonara/core uses execa 8.x with named exports
+  if (pkgName === 'execa') {
+    const coreExecaPath = path.join(ROOT, 'packages', 'core', 'node_modules', 'execa');
+    if (fs.existsSync(coreExecaPath)) {
+      return coreExecaPath;
+    }
+  }
+  
   // Try main node_modules first
   const mainPath = path.join(NODE_MODULES, pkgName);
   if (fs.existsSync(mainPath)) {
@@ -63,6 +96,20 @@ function findPackagePath(pkgName) {
   const execaPath = path.join(NODE_MODULES, 'execa', 'node_modules', pkgName);
   if (fs.existsSync(execaPath)) {
     return execaPath;
+  }
+  
+  // Try in nested node_modules (e.g., ora/node_modules/string-width)
+  // We need to search through all packages that might have nested deps
+  const packages = fs.readdirSync(NODE_MODULES).filter(item => {
+    const itemPath = path.join(NODE_MODULES, item);
+    return fs.statSync(itemPath).isDirectory() && !item.startsWith('.');
+  });
+  
+  for (const pkg of packages) {
+    const nestedPath = path.join(NODE_MODULES, pkg, 'node_modules', pkgName);
+    if (fs.existsSync(nestedPath)) {
+      return nestedPath;
+    }
   }
   
   return null;
@@ -169,6 +216,20 @@ function main() {
     }
   }
 
+  // Get dependencies from @carbonara/cli as well
+  const cliPkg = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'packages', 'cli', 'package.json'), 'utf8')
+  );
+  if (cliPkg.dependencies) {
+    for (const dep of Object.keys(cliPkg.dependencies)) {
+      // Skip @carbonara/core as it's already handled
+      if (dep !== '@carbonara/core') {
+        const deps = getAllDependencies(dep);
+        deps.forEach(d => allDeps.add(d));
+      }
+    }
+  }
+
   console.log(`📋 Found ${allDeps.size} dependencies to copy:`);
   console.log([...allDeps].sort().join(', '));
 
@@ -193,6 +254,47 @@ function main() {
   console.log('\n📦 Copying dependencies...');
   for (const dep of allDeps) {
     copyPackage(dep);
+  }
+
+  // After copying, check for nested dependencies that might have been missed
+  // (e.g., ora/node_modules/string-width depends on get-east-asian-width)
+  console.log('\n🔍 Checking for nested dependencies...');
+  const nestedDeps = new Set();
+  for (const dep of allDeps) {
+    const destPath = path.join(DIST_NODE_MODULES, dep);
+    if (fs.existsSync(destPath)) {
+      const nestedNodeModules = path.join(destPath, 'node_modules');
+      if (fs.existsSync(nestedNodeModules)) {
+        const nestedPackages = fs.readdirSync(nestedNodeModules).filter(item => {
+          const itemPath = path.join(nestedNodeModules, item);
+          return fs.statSync(itemPath).isDirectory() && !item.startsWith('.');
+        });
+        
+        for (const nestedPkg of nestedPackages) {
+          const nestedPkgPath = path.join(nestedNodeModules, nestedPkg, 'package.json');
+          if (fs.existsSync(nestedPkgPath)) {
+            const nestedPkgJson = JSON.parse(fs.readFileSync(nestedPkgPath, 'utf8'));
+            if (nestedPkgJson.dependencies) {
+              for (const nestedDep of Object.keys(nestedPkgJson.dependencies)) {
+                // Check if this nested dep is already in root node_modules but not copied
+                const rootDepPath = path.join(NODE_MODULES, nestedDep);
+                if (fs.existsSync(rootDepPath) && !allDeps.has(nestedDep) && !copied.has(nestedDep)) {
+                  nestedDeps.add(nestedDep);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Copy any missing nested dependencies
+  if (nestedDeps.size > 0) {
+    console.log(`📦 Found ${nestedDeps.size} additional nested dependencies: ${[...nestedDeps].join(', ')}`);
+    for (const dep of nestedDeps) {
+      copyPackage(dep);
+    }
   }
 
   // Copy local packages
