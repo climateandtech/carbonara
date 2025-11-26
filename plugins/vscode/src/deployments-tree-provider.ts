@@ -4,14 +4,18 @@ import * as fs from "fs";
 import {
   DataService,
   DeploymentService,
-  createDeploymentService
+  createDeploymentService,
 } from "@carbonara/core";
 
-export class DeploymentsTreeProvider implements vscode.TreeDataProvider<DeploymentTreeItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<DeploymentTreeItem | undefined | null | void> =
-    new vscode.EventEmitter<DeploymentTreeItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<DeploymentTreeItem | undefined | null | void> =
-    this._onDidChangeTreeData.event;
+export class DeploymentsTreeProvider
+  implements vscode.TreeDataProvider<DeploymentTreeItem>
+{
+  private _onDidChangeTreeData: vscode.EventEmitter<
+    DeploymentTreeItem | undefined | null | void
+  > = new vscode.EventEmitter<DeploymentTreeItem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<
+    DeploymentTreeItem | undefined | null | void
+  > = this._onDidChangeTreeData.event;
 
   private dataService: DataService | null = null;
   private deploymentService: DeploymentService | null = null;
@@ -30,14 +34,18 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     }
 
     const projectPath = workspaceFolder.uri.fsPath;
-    const configPath = path.join(projectPath, ".carbonara", "carbonara.config.json");
+    const configPath = path.join(
+      projectPath,
+      ".carbonara",
+      "carbonara.config.json"
+    );
 
     if (!fs.existsSync(configPath)) {
       return false;
     }
 
     // Load config to get project ID
-    const configContent = fs.readFileSync(configPath, 'utf-8');
+    const configContent = fs.readFileSync(configPath, "utf-8");
     const config = JSON.parse(configContent);
     this.projectId = config.projectId;
 
@@ -56,18 +64,38 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     return element;
   }
 
-  async getChildren(element?: DeploymentTreeItem): Promise<DeploymentTreeItem[]> {
+  async getChildren(
+    element?: DeploymentTreeItem
+  ): Promise<DeploymentTreeItem[]> {
     const initialized = await this.initializeServices();
 
     if (!initialized) {
-      return [
-        new DeploymentTreeItem(
-          "No Carbonara project found",
-          vscode.TreeItemCollapsibleState.None,
-          "info"
-        )
-      ];
+      // Set context to hide buttons
+      vscode.commands.executeCommand(
+        "setContext",
+        "carbonara.deploymentsInitialized",
+        false
+      );
+      const messageItem = new DeploymentTreeItem(
+        "",
+        vscode.TreeItemCollapsibleState.None,
+        "info",
+        undefined,
+        "info-message",
+        undefined,
+        undefined,
+        "Initialise Carbonara to access deployment insights"
+      );
+      messageItem.iconPath = new vscode.ThemeIcon("info");
+      return [messageItem];
     }
+
+    // Set context to show buttons
+    vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.deploymentsInitialized",
+      true
+    );
 
     if (!element) {
       // Root level - show main actions and provider groups
@@ -75,7 +103,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         // Fetch deployments from assessment_data table
         const assessmentData = await this.dataService!.getAssessmentData(
           undefined,
-          'deployment-scan'
+          "deployment-scan"
         );
 
         // Extract deployments from the most recent scan
@@ -101,17 +129,19 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
               vscode.TreeItemCollapsibleState.None,
               "action",
               "carbonara.scanDeployments"
-            )
+            ),
           ];
         }
 
         // Group by provider
-        const providers = [...new Set(deployments.map(d => d.provider))];
+        const providers = [...new Set(deployments.map((d) => d.provider))];
         const items: DeploymentTreeItem[] = [];
 
         // Add provider groups (no rescan action here - it's in the title bar)
         for (const provider of providers) {
-          const providerDeployments = deployments.filter(d => d.provider === provider);
+          const providerDeployments = deployments.filter(
+            (d) => d.provider === provider
+          );
           items.push(
             new DeploymentTreeItem(
               `${provider.toUpperCase()} (${providerDeployments.length})`,
@@ -126,8 +156,10 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
         return items;
       } catch (error: any) {
-        console.error('Error loading deployments:', error);
-        vscode.window.showErrorMessage(`Failed to load deployments: ${error.message || error}`);
+        console.error("Error loading deployments:", error);
+        vscode.window.showErrorMessage(
+          `Failed to load deployments: ${error.message || error}`
+        );
         return [
           new DeploymentTreeItem(
             "Error loading deployments",
@@ -139,16 +171,20 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
             vscode.TreeItemCollapsibleState.None,
             "action",
             "carbonara.scanDeployments"
-          )
+          ),
         ];
       }
     }
 
     if (element.type === "provider" && element.deployments) {
       // Group by environment within provider
-      const environments = [...new Set(element.deployments.map(d => d.environment))];
-      return environments.map(env => {
-        const envDeployments = element.deployments!.filter(d => d.environment === env);
+      const environments = [
+        ...new Set(element.deployments.map((d) => d.environment)),
+      ];
+      return environments.map((env) => {
+        const envDeployments = element.deployments!.filter(
+          (d) => d.environment === env
+        );
         return new DeploymentTreeItem(
           `${env} (${envDeployments.length})`,
           vscode.TreeItemCollapsibleState.Expanded,
@@ -162,7 +198,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
     if (element.type === "environment" && element.deployments) {
       // Show deployments in this environment
-      return element.deployments.map(deployment => {
+      return element.deployments.map((deployment) => {
         const label = deployment.name;
 
         return new DeploymentTreeItem(
@@ -200,7 +236,10 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       }
 
       // Carbon intensity info - shown as description (muted/smaller)
-      if (deployment.carbon_intensity !== null && deployment.carbon_intensity !== undefined) {
+      if (
+        deployment.carbon_intensity !== null &&
+        deployment.carbon_intensity !== undefined
+      ) {
         const intensity = deployment.carbon_intensity;
         const carbonBadge = this.getCarbonBadge(intensity);
         children.push(
@@ -272,7 +311,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       {
         location: vscode.ProgressLocation.Notification,
         title: "Scanning for deployments...",
-        cancellable: false
+        cancellable: false,
       },
       async (progress) => {
         try {
@@ -316,7 +355,9 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     }
 
     try {
-      const doc = await vscode.workspace.openTextDocument(deployment.config_file_path);
+      const doc = await vscode.workspace.openTextDocument(
+        deployment.config_file_path
+      );
       await vscode.window.showTextDocument(doc);
     } catch (error) {
       vscode.window.showErrorMessage(
@@ -327,7 +368,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
   async showDeploymentDetails(deployment: any) {
     const panel = vscode.window.createWebviewPanel(
-      'deploymentDetails',
+      "deploymentDetails",
       `Deployment: ${deployment.name}`,
       vscode.ViewColumn.One,
       {}
@@ -338,7 +379,10 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     panel.webview.html = this.getDeploymentDetailsHtml(deployment, carbonBadge);
   }
 
-  private getDeploymentDetailsHtml(deployment: any, carbonBadge: string): string {
+  private getDeploymentDetailsHtml(
+    deployment: any,
+    carbonBadge: string
+  ): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -390,38 +434,54 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
             <span class="value">${deployment.provider}</span>
           </div>
 
-          ${deployment.region ? `
+          ${
+            deployment.region
+              ? `
           <div class="section">
             <span class="label">Region:</span>
             <span class="value">${deployment.region}</span>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
-          ${deployment.country ? `
+          ${
+            deployment.country
+              ? `
           <div class="section">
             <span class="label">Country:</span>
             <span class="value">${deployment.country}</span>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
-          ${deployment.carbon_intensity ? `
+          ${
+            deployment.carbon_intensity
+              ? `
           <div class="section">
             <span class="label">Carbon Intensity:</span>
             <span class="value carbon-intensity">${deployment.carbon_intensity} gCO2/kWh</span>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
           <div class="section">
             <span class="label">Detection Method:</span>
             <span class="value">${deployment.detection_method}</span>
           </div>
 
-          ${deployment.config_file_path ? `
+          ${
+            deployment.config_file_path
+              ? `
           <div class="section">
             <span class="label">Config File:</span>
             <span class="value">${deployment.config_file_path}</span>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
           <div class="section">
             <span class="label">Status:</span>
@@ -437,7 +497,12 @@ class DeploymentTreeItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly type: "info" | "action" | "provider" | "environment" | "deployment",
+    public readonly type:
+      | "info"
+      | "action"
+      | "provider"
+      | "environment"
+      | "deployment",
     commandStr?: string,
     contextValue?: string,
     public readonly deployments?: any[],
@@ -450,7 +515,7 @@ class DeploymentTreeItem extends vscode.TreeItem {
       this.command = {
         command: commandStr,
         title: label,
-        arguments: deployment ? [deployment] : []
+        arguments: deployment ? [deployment] : [],
       };
     }
 

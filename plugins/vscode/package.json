@@ -200,37 +200,37 @@
       "view/title": [
         {
           "command": "carbonara.completeAssessment",
-          "when": "view == carbonara.assessmentTree",
+          "when": "view == carbonara.assessmentTree && carbonara.assessmentInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.refreshData",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.exportDataJson",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.exportDataCsv",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.clearAllData",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.refreshTools",
-          "when": "view == carbonara.toolsTree",
+          "when": "view == carbonara.toolsTree && carbonara.toolsInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.refreshDeployments",
-          "when": "view == carbonara.deploymentsTree",
+          "when": "view == carbonara.deploymentsTree && carbonara.deploymentsInitialized",
           "group": "navigation"
         }
       ],

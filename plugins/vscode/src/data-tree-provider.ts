@@ -295,6 +295,12 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
     if (!require("fs").existsSync(configPath)) {
       // Workspace exists but Carbonara is not initialized
+      // Set context to hide buttons
+      vscode.commands.executeCommand(
+        "setContext",
+        "carbonara.dataInitialized",
+        false
+      );
       // Show a single item with description styling
       return [
         new DataItem(
@@ -305,6 +311,13 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         ),
       ];
     }
+
+    // Set context to show buttons
+    vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.dataInitialized",
+      true
+    );
 
     if (!this.coreServices) {
       // Show current initialization status in UI

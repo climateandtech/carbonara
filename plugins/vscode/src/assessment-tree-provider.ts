@@ -75,32 +75,46 @@ export class AssessmentTreeProvider
     return element;
   }
 
-  getChildren(element?: AssessmentItem): Thenable<AssessmentItem[]> {
+  getChildren(
+    element?: AssessmentItem
+  ): AssessmentItem[] | Promise<AssessmentItem[]> {
     if (!this.workspaceFolder) {
       // No workspace open - return empty
-      return Promise.resolve([]);
+      return [];
     }
 
-    // Check if Carbonara is initialized in the current workspace
-    const projectPath = this.getCurrentProjectPath();
+    // Check if Carbonara is initialized
     const configPath = path.join(
-      projectPath,
+      this.workspaceFolder.uri.fsPath,
       ".carbonara",
       "carbonara.config.json"
     );
 
-    if (!fs.existsSync(configPath)) {
+    if (!require("fs").existsSync(configPath)) {
       // Workspace exists but Carbonara is not initialized
+      // Set context to hide buttons
+      vscode.commands.executeCommand(
+        "setContext",
+        "carbonara.assessmentInitialized",
+        false
+      );
       // Show a single item with description styling
-      return Promise.resolve([
-        new AssessmentItem(
-          "",
-          "Initialise Carbonara to access assessment questionnaire",
-          vscode.TreeItemCollapsibleState.None,
-          "description-text"
-        ),
-      ]);
+      const messageItem = new AssessmentItem(
+        "",
+        "Initialise Carbonara to access assessment questionnaire",
+        vscode.TreeItemCollapsibleState.None,
+        "info-message"
+      );
+      messageItem.iconPath = new vscode.ThemeIcon("info");
+      return [messageItem];
     }
+
+    // Set context to show buttons
+    vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.assessmentInitialized",
+      true
+    );
 
     if (element) {
       // Return field items for a section with description as first item
