@@ -5,67 +5,85 @@ import fs from "fs";
 import { z } from "zod";
 import { createDataLake } from "@carbonara/core";
 import { loadProjectConfig } from "../utils/config.js";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
-// Assessment Questionnaire Schema
-const AssessmentQuestionnaireSchema = z.object({
-  projectOverview: z.object({
-    projectType: z.enum(["Mobile App", "Web App", "API", "Other"]).optional(),
-    expectedUsers: z.enum([
-      "fewer-than-50",
-      "500-to-5000",
-      "5000-to-50000",
-      "over-50000",
-      "unknown",
-    ]),
-    expectedTraffic: z.enum(["low", "medium", "high", "very-high"]),
-    targetAudience: z.enum(["local", "national", "global"]),
-    projectLifespan: z.number().min(1), // months
-  }),
-  development: z.object({
-    teamSize: z.number().min(1),
-    developmentDuration: z.number().min(1), // months
-    cicdPipeline: z.boolean(),
-    testingStrategy: z.enum(["minimal", "moderate", "comprehensive"]),
-    codeQuality: z.enum(["basic", "good", "excellent"]),
-  }),
-  infrastructure: z.object({
-    hostingType: z.enum(["shared", "vps", "dedicated", "cloud", "hybrid"]),
-    cloudProvider: z.string().optional(),
-    serverLocation: z.enum([
-      "same-continent",
-      "different-continent",
-      "global-cdn",
-    ]),
-    dataStorage: z.enum(["minimal", "moderate", "heavy", "massive"]),
-    backupStrategy: z.enum(["none", "daily", "real-time", "weekly"]),
-  }),
-  featuresAndWorkload: z.object({
-    realTimeFeatures: z.boolean(),
-    mediaProcessing: z.boolean(),
-    aiMlFeatures: z.boolean(),
-    blockchainIntegration: z.boolean(),
-    iotIntegration: z.boolean(),
-  }),
-  sustainabilityGoals: z.object({
-    carbonNeutralityTarget: z.boolean(),
-    greenHostingRequired: z.boolean(),
-    optimizationPriority: z.enum(["performance", "sustainability", "balanced"]),
-    budgetForGreenTech: z.enum(["none", "low", "medium", "high"]),
-  }),
-  hardwareConfig: z.object({
-    cpuTdp: z.number().min(1).max(500),
-    totalVcpus: z.number().min(1).max(128),
-    allocatedVcpus: z.number().min(1).max(64),
-    gridCarbonIntensity: z.number().min(1).max(2000),
-  }),
-  monitoringConfig: z.object({
-    enableCpuMonitoring: z.boolean(),
-    enableE2eMonitoring: z.boolean(),
-    e2eTestCommand: z.string().optional(),
-    scrollToBottom: z.boolean(),
-    firstVisitPercentage: z.number().min(0).max(1),
-  }),
-});
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load assessment schema
+const schemaPath = path.join(__dirname, "../schemas/assessment-questionnaire.json");
+const assessmentSchema = JSON.parse(fs.readFileSync(schemaPath, "utf-8"));
+
+// Build Zod schema from JSON Schema
+function buildZodSchemaFromJson(jsonSchema: any): z.ZodObject<any> {
+  const shape: any = {};
+
+  for (const [sectionId, sectionDef] of Object.entries(jsonSchema.properties || {})) {
+    const section: any = sectionDef;
+    const sectionShape: any = {};
+
+    for (const [fieldId, fieldDef] of Object.entries(section.properties || {})) {
+      const field: any = fieldDef;
+      let zodType: any;
+
+      // Determine Zod type based on JSON Schema type
+      if (field.type === "boolean") {
+        zodType = z.boolean();
+      } else if (field.type === "integer" || field.type === "number") {
+        zodType = z.number();
+        if (field.minimum !== undefined) zodType = zodType.min(field.minimum);
+        if (field.maximum !== undefined) zodType = zodType.max(field.maximum);
+      } else if (field.type === "string") {
+        // If field has options, build enum from option values
+        if (field.options && field.options.length > 0) {
+          const enumValues = field.options.map((opt: any) => opt.value);
+          zodType = z.enum(enumValues as [string, ...string[]]);
+        } else {
+          zodType = z.string();
+        }
+      } else {
+        zodType = z.any();
+      }
+
+      // Handle optional fields
+      const isRequired = section.required?.includes(fieldId);
+      if (!isRequired) {
+        zodType = zodType.optional();
+      }
+
+      sectionShape[fieldId] = zodType;
+    }
+
+    shape[sectionId] = z.object(sectionShape);
+  }
+
+  return z.object(shape);
+}
+
+// Assessment Questionnaire Schema (generated from JSON)
+const AssessmentQuestionnaireSchema = buildZodSchemaFromJson(assessmentSchema);
+
+// Helper functions to extract labels and metadata from schema
+function getFieldLabel(sectionId: string, fieldId: string): string {
+  const field = assessmentSchema.properties?.[sectionId]?.properties?.[fieldId];
+  return field?.title || fieldId;
+}
+
+function getFieldOptions(sectionId: string, fieldId: string): any[] {
+  const field = assessmentSchema.properties?.[sectionId]?.properties?.[fieldId];
+  return field?.options || [];
+}
+
+function getSectionLabel(sectionId: string): string {
+  const section = assessmentSchema.properties?.[sectionId];
+  return section?.title || sectionId;
+}
+
+function getFieldDefault(sectionId: string, fieldId: string): any {
+  const field = assessmentSchema.properties?.[sectionId]?.properties?.[fieldId];
+  return field?.default;
+}
 
 interface AssessOptions {
   interactive: boolean;
@@ -85,6 +103,31 @@ export async function assessCommand(options: AssessOptions) {
 
     const dataLake = createDataLake();
     await dataLake.initialize();
+
+    // Ensure we have a valid project ID
+    let projectId = config.projectId;
+    if (!projectId) {
+      console.log(chalk.blue('🔧 No project ID found, creating project in database...'));
+
+      const { getProjectRoot, saveProjectConfig } = await import('../utils/config.js');
+      const projectPath = getProjectRoot() || process.cwd();
+
+      projectId = await dataLake.createProject(
+        config.name || 'Unnamed Project',
+        projectPath,
+        {
+          description: config.description,
+          projectType: config.projectType || 'web',
+          initialized: new Date().toISOString()
+        }
+      );
+
+      // Update config with new project ID
+      const updatedConfig = { ...config, projectId };
+      saveProjectConfig(updatedConfig, projectPath);
+
+      console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
+    }
 
     let assessmentData;
 
@@ -109,9 +152,9 @@ export async function assessCommand(options: AssessOptions) {
     const impactScore = calculateCO2Impact(validated);
 
     // Store in database
-    await dataLake.updateProjectCO2Variables(config.projectId, validated);
+    await dataLake.updateProjectCO2Variables(projectId, validated);
     await dataLake.storeAssessmentData(
-      config.projectId,
+      projectId,
       "assessment-questionnaire",
       "questionnaire",
       {
@@ -132,60 +175,35 @@ export async function assessCommand(options: AssessOptions) {
 }
 
 async function runInteractiveAssessment() {
-  console.log(chalk.green("\n Project Overview"));
+  console.log(chalk.green(`\n ${getSectionLabel("projectOverview")}`));
 
   const expectedUsers = await select({
-    message: "Expected number of users:",
-    choices: [
-      {
-        name: "Fewer than 50 users",
-        value: "fewer-than-50",
-        description: "small internal system",
-      },
-      {
-        name: "500 to 5,000 users",
-        value: "500-to-5000",
-        description: "medium organisation use",
-      },
-      {
-        name: "5,000 to 50,000 users",
-        value: "5000-to-50000",
-        description: "enterprise or large-scale",
-      },
-      {
-        name: "Over 50,000 users",
-        value: "over-50000",
-        description: "mass-market or nation-wide system",
-      },
-      {
-        name: "Unknown",
-        value: "unknown",
-        description: "will depend on rollout or adoption rate",
-      },
-    ],
+    message: `${getFieldLabel("projectOverview", "expectedUsers")}:`,
+    choices: getFieldOptions("projectOverview", "expectedUsers").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+      description: opt.detail,
+    })),
   });
 
   const expectedTraffic = await select({
-    message: "Expected traffic level:",
-    choices: [
-      { name: "Low (< 1K visits/month)", value: "low" },
-      { name: "Medium (1K-10K visits/month)", value: "medium" },
-      { name: "High (10K-100K visits/month)", value: "high" },
-      { name: "Very High (> 100K visits/month)", value: "very-high" },
-    ],
+    message: `${getFieldLabel("projectOverview", "expectedTraffic")}:`,
+    choices: getFieldOptions("projectOverview", "expectedTraffic").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const targetAudience = await select({
-    message: "Target audience:",
-    choices: [
-      { name: "Local (same city/region)", value: "local" },
-      { name: "National (same country)", value: "national" },
-      { name: "Global (worldwide)", value: "global" },
-    ],
+    message: `${getFieldLabel("projectOverview", "targetAudience")}:`,
+    choices: getFieldOptions("projectOverview", "targetAudience").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const projectLifespan = await input({
-    message: "Project lifespan (months):",
+    message: `${getFieldLabel("projectOverview", "projectLifespan")} (months):`,
     default: "12",
     validate: (value: string) => {
       const num = parseInt(value);
@@ -200,53 +218,45 @@ async function runInteractiveAssessment() {
     projectLifespan: parseInt(projectLifespan as string),
   };
 
-  console.log(chalk.green("\n Infrastructure"));
+  console.log(chalk.green(`\n ${getSectionLabel("infrastructure")}`));
 
   const hostingType = await select({
-    message: "Hosting type:",
-    choices: [
-      { name: "Shared hosting", value: "shared" },
-      { name: "Virtual Private Server (VPS)", value: "vps" },
-      { name: "Dedicated server", value: "dedicated" },
-      { name: "Cloud (AWS/Azure/GCP)", value: "cloud" },
-      { name: "Hybrid setup", value: "hybrid" },
-    ],
+    message: `${getFieldLabel("infrastructure", "hostingType")}:`,
+    choices: getFieldOptions("infrastructure", "hostingType").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   let cloudProvider;
   if (hostingType === "cloud") {
     cloudProvider = await input({
-      message: "Cloud provider (if applicable):",
+      message: `${getFieldLabel("infrastructure", "cloudProvider")}:`,
     });
   }
 
   const serverLocation = await select({
-    message: "Server location relative to users:",
-    choices: [
-      { name: "Same continent", value: "same-continent" },
-      { name: "Different continent", value: "different-continent" },
-      { name: "Global CDN", value: "global-cdn" },
-    ],
+    message: `${getFieldLabel("infrastructure", "serverLocation")}:`,
+    choices: getFieldOptions("infrastructure", "serverLocation").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const dataStorage = await select({
-    message: "Data storage requirements:",
-    choices: [
-      { name: "Minimal (< 1GB)", value: "minimal" },
-      { name: "Moderate (1-10GB)", value: "moderate" },
-      { name: "Heavy (10-100GB)", value: "heavy" },
-      { name: "Massive (> 100GB)", value: "massive" },
-    ],
+    message: `${getFieldLabel("infrastructure", "dataStorage")}:`,
+    choices: getFieldOptions("infrastructure", "dataStorage").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const backupStrategy = await select({
-    message: "Backup strategy:",
-    choices: [
-      { name: "No backups", value: "none" },
-      { name: "Weekly backups", value: "weekly" },
-      { name: "Daily backups", value: "daily" },
-      { name: "Real-time backups", value: "real-time" },
-    ],
+    message: `${getFieldLabel("infrastructure", "backupStrategy")}:`,
+    choices: getFieldOptions("infrastructure", "backupStrategy").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const infrastructure = {
@@ -257,10 +267,10 @@ async function runInteractiveAssessment() {
     backupStrategy,
   };
 
-  console.log(chalk.green("\n Development"));
+  console.log(chalk.green(`\n ${getSectionLabel("development")}`));
 
   const teamSize = await input({
-    message: "Development team size:",
+    message: `${getFieldLabel("development", "teamSize")}:`,
     default: "3",
     validate: (value: string) => {
       const num = parseInt(value);
@@ -269,7 +279,7 @@ async function runInteractiveAssessment() {
   });
 
   const developmentDuration = await input({
-    message: "Development duration (months):",
+    message: `${getFieldLabel("development", "developmentDuration")} (months):`,
     default: "6",
     validate: (value: string) => {
       const num = parseInt(value);
@@ -278,26 +288,24 @@ async function runInteractiveAssessment() {
   });
 
   const cicdPipeline = await confirm({
-    message: "Using CI/CD pipeline?",
+    message: `${getFieldLabel("development", "cicdPipeline")}?`,
     default: true,
   });
 
   const testingStrategy = await select({
-    message: "Testing strategy:",
-    choices: [
-      { name: "Minimal testing", value: "minimal" },
-      { name: "Moderate testing", value: "moderate" },
-      { name: "Comprehensive testing", value: "comprehensive" },
-    ],
+    message: `${getFieldLabel("development", "testingStrategy")}:`,
+    choices: getFieldOptions("development", "testingStrategy").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const codeQuality = await select({
-    message: "Code quality standards:",
-    choices: [
-      { name: "Basic", value: "basic" },
-      { name: "Good", value: "good" },
-      { name: "Excellent", value: "excellent" },
-    ],
+    message: `${getFieldLabel("development", "codeQuality")}:`,
+    choices: getFieldOptions("development", "codeQuality").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const development = {
@@ -308,30 +316,30 @@ async function runInteractiveAssessment() {
     codeQuality,
   };
 
-  console.log(chalk.green("\n⚡ Features"));
+  console.log(chalk.green(`\n ${getSectionLabel("featuresAndWorkload")}`));
 
   const realTimeFeatures = await confirm({
-    message: "Real-time features (WebSocket, live updates)?",
+    message: `${getFieldLabel("featuresAndWorkload", "realTimeFeatures")}?`,
     default: false,
   });
 
   const mediaProcessing = await confirm({
-    message: "Media processing (images, videos)?",
+    message: `${getFieldLabel("featuresAndWorkload", "mediaProcessing")}?`,
     default: false,
   });
 
   const aiMlFeatures = await confirm({
-    message: "AI/ML features?",
+    message: `${getFieldLabel("featuresAndWorkload", "aiMlFeatures")}?`,
     default: false,
   });
 
   const blockchainIntegration = await confirm({
-    message: "Blockchain integration?",
+    message: `${getFieldLabel("featuresAndWorkload", "blockchainIntegration")}?`,
     default: false,
   });
 
   const iotIntegration = await confirm({
-    message: "IoT integration?",
+    message: `${getFieldLabel("featuresAndWorkload", "iotIntegration")}?`,
     default: false,
   });
 
@@ -343,35 +351,32 @@ async function runInteractiveAssessment() {
     iotIntegration,
   };
 
-  console.log(chalk.green("\n Sustainability and Goals"));
+  console.log(chalk.green(`\n ${getSectionLabel("sustainabilityGoals")}`));
 
   const carbonNeutralityTarget = await confirm({
-    message: "Carbon neutrality target?",
+    message: `${getFieldLabel("sustainabilityGoals", "carbonNeutralityTarget")}?`,
     default: false,
   });
 
   const greenHostingRequired = await confirm({
-    message: "Green hosting required?",
+    message: `${getFieldLabel("sustainabilityGoals", "greenHostingRequired")}?`,
     default: false,
   });
 
   const optimizationPriority = await select({
-    message: "Optimization priority:",
-    choices: [
-      { name: "Performance first", value: "performance" },
-      { name: "Sustainability first", value: "sustainability" },
-      { name: "Balanced approach", value: "balanced" },
-    ],
+    message: `${getFieldLabel("sustainabilityGoals", "optimizationPriority")}:`,
+    choices: getFieldOptions("sustainabilityGoals", "optimizationPriority").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const budgetForGreenTech = await select({
-    message: "Budget for green technology:",
-    choices: [
-      { name: "No budget", value: "none" },
-      { name: "Low budget", value: "low" },
-      { name: "Medium budget", value: "medium" },
-      { name: "High budget", value: "high" },
-    ],
+    message: `${getFieldLabel("sustainabilityGoals", "budgetForGreenTech")}:`,
+    choices: getFieldOptions("sustainabilityGoals", "budgetForGreenTech").map((opt: any) => ({
+      name: opt.label,
+      value: opt.value,
+    })),
   });
 
   const sustainabilityGoals = {
@@ -381,41 +386,49 @@ async function runInteractiveAssessment() {
     budgetForGreenTech,
   };
 
-  console.log(chalk.green("\n💻 Hardware Configuration"));
+  console.log(chalk.green(`\n ${getSectionLabel("hardwareConfig")}`));
 
   const cpuTdp = await input({
-    message: "CPU Thermal Design Power (TDP) in watts:",
-    default: "100",
+    message: `${getFieldLabel("hardwareConfig", "cpuTdp")}:`,
+    default: String(getFieldDefault("hardwareConfig", "cpuTdp") || "100"),
     validate: (value) => {
       const num = parseInt(value);
-      return num >= 1 && num <= 500 ? true : "Please enter a value between 1 and 500";
+      return num >= 1 && num <= 500
+        ? true
+        : "Please enter a value between 1 and 500";
     },
   });
 
   const totalVcpus = await input({
-    message: "Total vCPUs available on your system:",
-    default: "8",
+    message: `${getFieldLabel("hardwareConfig", "totalVcpus")}:`,
+    default: String(getFieldDefault("hardwareConfig", "totalVcpus") || "8"),
     validate: (value) => {
       const num = parseInt(value);
-      return num >= 1 && num <= 128 ? true : "Please enter a value between 1 and 128";
+      return num >= 1 && num <= 128
+        ? true
+        : "Please enter a value between 1 and 128";
     },
   });
 
   const allocatedVcpus = await input({
-    message: "vCPUs allocated to your application:",
-    default: "2",
+    message: `${getFieldLabel("hardwareConfig", "allocatedVcpus")}:`,
+    default: String(getFieldDefault("hardwareConfig", "allocatedVcpus") || "2"),
     validate: (value) => {
       const num = parseInt(value);
-      return num >= 1 && num <= 64 ? true : "Please enter a value between 1 and 64";
+      return num >= 1 && num <= 64
+        ? true
+        : "Please enter a value between 1 and 64";
     },
   });
 
   const gridCarbonIntensity = await input({
-    message: "Grid carbon intensity for your location (gCO2e/kWh):",
-    default: "750",
+    message: `${getFieldLabel("hardwareConfig", "gridCarbonIntensity")}:`,
+    default: String(getFieldDefault("hardwareConfig", "gridCarbonIntensity") || "750"),
     validate: (value) => {
       const num = parseInt(value);
-      return num >= 1 && num <= 2000 ? true : "Please enter a value between 1 and 2000";
+      return num >= 1 && num <= 2000
+        ? true
+        : "Please enter a value between 1 and 2000";
     },
   });
 
@@ -426,37 +439,39 @@ async function runInteractiveAssessment() {
     gridCarbonIntensity: parseInt(gridCarbonIntensity),
   };
 
-  console.log(chalk.green("\n📊 Monitoring Configuration"));
+  console.log(chalk.green(`\n ${getSectionLabel("monitoringConfig")}`));
 
   const enableCpuMonitoring = await confirm({
-    message: "Enable CPU utilization monitoring during web analysis?",
-    default: true,
+    message: `${getFieldLabel("monitoringConfig", "enableCpuMonitoring")}?`,
+    default: getFieldDefault("monitoringConfig", "enableCpuMonitoring") ?? true,
   });
 
   const enableE2eMonitoring = await confirm({
-    message: "Enable CPU monitoring during E2E test execution?",
-    default: false,
+    message: `${getFieldLabel("monitoringConfig", "enableE2eMonitoring")}?`,
+    default: getFieldDefault("monitoringConfig", "enableE2eMonitoring") ?? false,
   });
 
   let e2eTestCommand: string | undefined;
   if (enableE2eMonitoring) {
     e2eTestCommand = await input({
-      message: "Command to run your E2E tests (e.g., 'npx cypress run'):",
+      message: `${getFieldLabel("monitoringConfig", "e2eTestCommand")}:`,
       default: "npx cypress run",
     });
   }
 
   const scrollToBottom = await confirm({
-    message: "Scroll to bottom of pages during web analysis?",
-    default: false,
+    message: `${getFieldLabel("monitoringConfig", "scrollToBottom")}?`,
+    default: getFieldDefault("monitoringConfig", "scrollToBottom") ?? false,
   });
 
   const firstVisitPercentage = await input({
-    message: "Percentage of first-time visitors (0.0 to 1.0):",
-    default: "0.9",
+    message: `${getFieldLabel("monitoringConfig", "firstVisitPercentage")}:`,
+    default: String(getFieldDefault("monitoringConfig", "firstVisitPercentage") || "0.9"),
     validate: (value) => {
       const num = parseFloat(value);
-      return num >= 0 && num <= 1 ? true : "Please enter a value between 0.0 and 1.0";
+      return num >= 0 && num <= 1
+        ? true
+        : "Please enter a value between 0.0 and 1.0";
     },
   });
 
@@ -472,7 +487,7 @@ async function runInteractiveAssessment() {
     projectOverview,
     infrastructure,
     development,
-    features,
+    featuresAndWorkload: features,
     sustainabilityGoals,
     hardwareConfig,
     monitoringConfig,
@@ -485,18 +500,18 @@ function calculateCO2Impact(
   let score = 0;
 
   // Traffic impact
-  const trafficMultipliers = { low: 1, medium: 2, high: 4, "very-high": 8 };
-  score += trafficMultipliers[data.projectOverview.expectedTraffic] * 10;
+  const trafficMultipliers: Record<string, number> = { low: 1, medium: 2, high: 4, "very-high": 8 };
+  score += (trafficMultipliers[data.projectOverview.expectedTraffic] || 0) * 10;
 
   // Infrastructure impact
-  const hostingMultipliers = {
+  const hostingMultipliers: Record<string, number> = {
     shared: 1,
     vps: 2,
     dedicated: 4,
     cloud: 3,
     hybrid: 5,
   };
-  score += hostingMultipliers[data.infrastructure.hostingType] * 5;
+  score += (hostingMultipliers[data.infrastructure.hostingType] || 0) * 5;
 
   // Features impact
   if (data.featuresAndWorkload.realTimeFeatures) score += 15;

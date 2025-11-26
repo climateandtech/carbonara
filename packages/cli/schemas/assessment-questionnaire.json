@@ -1,19 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "assessment questionnaire Schema",
+  "title": "Assessment Questionnaire Schema",
   "description": "Schema for CO2 impact assessment questionnaire data",
   "type": "object",
   "required": [
     "projectOverview",
     "infrastructure",
     "development",
-    "features",
-    "sustainabilityGoals"
+    "featuresAndWorkload",
+    "sustainabilityGoals",
+    "hardwareConfig",
+    "monitoringConfig"
   ],
   "properties": {
     "projectOverview": {
       "type": "object",
-      "description": "Basic project information",
+      "title": "Project Overview",
+      "description": "context and baseline assumptions",
       "required": [
         "expectedUsers",
         "expectedTraffic",
@@ -23,35 +26,69 @@
       "properties": {
         "expectedUsers": {
           "type": "string",
-          "enum": [
-            "fewer-than-50",
-            "500-to-5000",
-            "5000-to-50000",
-            "over-50000",
-            "unknown"
-          ],
-          "description": "Expected number of users"
+          "title": "Expected Users",
+          "description": "Expected number of users",
+          "options": [
+            {
+              "label": "Fewer than 50 users",
+              "value": "fewer-than-50",
+              "detail": "small internal system"
+            },
+            {
+              "label": "500 to 5,000 users",
+              "value": "500-to-5000",
+              "detail": "medium organisation use"
+            },
+            {
+              "label": "5,000 to 50,000 users",
+              "value": "5000-to-50000",
+              "detail": "enterprise or large-scale"
+            },
+            {
+              "label": "Over 50,000 users",
+              "value": "over-50000",
+              "detail": "mass-market or nation-wide system"
+            },
+            {
+              "label": "Unknown",
+              "value": "unknown",
+              "detail": "will depend on rollout or adoption rate"
+            }
+          ]
         },
         "expectedTraffic": {
           "type": "string",
-          "enum": ["low", "medium", "high", "very-high"],
-          "description": "Expected traffic level"
+          "title": "Expected Traffic",
+          "description": "Expected traffic level",
+          "options": [
+            { "label": "Low (< 1K visits/month)", "value": "low" },
+            { "label": "Medium (1K-10K visits/month)", "value": "medium" },
+            { "label": "High (10K-100K visits/month)", "value": "high" },
+            { "label": "Very High (> 100K visits/month)", "value": "very-high" }
+          ]
         },
         "targetAudience": {
           "type": "string",
-          "enum": ["local", "national", "global"],
-          "description": "Geographic scope of target audience"
+          "title": "Target Audience",
+          "description": "Geographic scope of target audience",
+          "options": [
+            { "label": "Local (same city/region)", "value": "local" },
+            { "label": "National (same country)", "value": "national" },
+            { "label": "Global (worldwide)", "value": "global" }
+          ]
         },
         "projectLifespan": {
           "type": "integer",
-          "minimum": 1,
-          "description": "Project lifespan in months"
+          "title": "Project Lifespan",
+          "description": "Project lifespan in months",
+          "minimum": 1
         }
       }
     },
     "infrastructure": {
       "type": "object",
-      "description": "Infrastructure and hosting details",
+      "title": "Infrastructure",
+      "description": "efficiency behaviours",
       "required": [
         "hostingType",
         "serverLocation",
@@ -61,33 +98,59 @@
       "properties": {
         "hostingType": {
           "type": "string",
-          "enum": ["shared", "vps", "dedicated", "cloud", "hybrid"],
-          "description": "Type of hosting solution"
+          "title": "Hosting Type",
+          "description": "Type of hosting solution",
+          "options": [
+            { "label": "Shared hosting", "value": "shared" },
+            { "label": "Virtual Private Server (VPS)", "value": "vps" },
+            { "label": "Dedicated server", "value": "dedicated" },
+            { "label": "Cloud (AWS/Azure/GCP)", "value": "cloud" },
+            { "label": "Hybrid setup", "value": "hybrid" }
+          ]
         },
         "cloudProvider": {
           "type": "string",
+          "title": "Cloud Provider",
           "description": "Cloud provider name (if applicable)"
         },
         "serverLocation": {
           "type": "string",
-          "enum": ["same-continent", "different-continent", "global-cdn"],
-          "description": "Server location relative to users"
+          "title": "Server Location",
+          "description": "Server location relative to users",
+          "options": [
+            { "label": "Same continent", "value": "same-continent" },
+            { "label": "Different continent", "value": "different-continent" },
+            { "label": "Global CDN", "value": "global-cdn" }
+          ]
         },
         "dataStorage": {
           "type": "string",
-          "enum": ["minimal", "moderate", "heavy", "massive"],
-          "description": "Data storage requirements"
+          "title": "Data Storage",
+          "description": "Data storage requirements",
+          "options": [
+            { "label": "Minimal (< 1GB)", "value": "minimal" },
+            { "label": "Moderate (1-10GB)", "value": "moderate" },
+            { "label": "Heavy (10-100GB)", "value": "heavy" },
+            { "label": "Massive (> 100GB)", "value": "massive" }
+          ]
         },
         "backupStrategy": {
           "type": "string",
-          "enum": ["none", "daily", "real-time", "weekly"],
-          "description": "Backup strategy"
+          "title": "Backup Strategy",
+          "description": "Backup strategy",
+          "options": [
+            { "label": "No backups", "value": "none" },
+            { "label": "Weekly backups", "value": "weekly" },
+            { "label": "Daily backups", "value": "daily" },
+            { "label": "Real-time backups", "value": "real-time" }
+          ]
         }
       }
     },
     "development": {
       "type": "object",
-      "description": "Development process details",
+      "title": "Development",
+      "description": "energy and resource implications",
       "required": [
         "teamSize",
         "developmentDuration",
@@ -98,33 +161,47 @@
       "properties": {
         "teamSize": {
           "type": "integer",
-          "minimum": 1,
-          "description": "Size of development team"
+          "title": "Team Size",
+          "description": "Size of development team",
+          "minimum": 1
         },
         "developmentDuration": {
           "type": "integer",
-          "minimum": 1,
-          "description": "Development duration in months"
+          "title": "Development Duration",
+          "description": "Development duration in months",
+          "minimum": 1
         },
         "cicdPipeline": {
           "type": "boolean",
+          "title": "CI/CD Pipeline",
           "description": "Whether CI/CD pipeline is used"
         },
         "testingStrategy": {
           "type": "string",
-          "enum": ["minimal", "moderate", "comprehensive"],
-          "description": "Testing strategy level"
+          "title": "Testing Strategy",
+          "description": "Testing strategy level",
+          "options": [
+            { "label": "Minimal testing", "value": "minimal" },
+            { "label": "Moderate testing", "value": "moderate" },
+            { "label": "Comprehensive testing", "value": "comprehensive" }
+          ]
         },
         "codeQuality": {
           "type": "string",
-          "enum": ["basic", "good", "excellent"],
-          "description": "Code quality standards"
+          "title": "Code Quality",
+          "description": "Code quality standards",
+          "options": [
+            { "label": "Basic", "value": "basic" },
+            { "label": "Good", "value": "good" },
+            { "label": "Excellent", "value": "excellent" }
+          ]
         }
       }
     },
-    "features": {
+    "featuresAndWorkload": {
       "type": "object",
-      "description": "Project features that impact CO2",
+      "title": "Features and Workload",
+      "description": "carbon-heavy workload and optimisation opportunities",
       "required": [
         "realTimeFeatures",
         "mediaProcessing",
@@ -135,29 +212,35 @@
       "properties": {
         "realTimeFeatures": {
           "type": "boolean",
+          "title": "Real-time Features",
           "description": "Real-time features (WebSocket, live updates)"
         },
         "mediaProcessing": {
           "type": "boolean",
+          "title": "Media Processing",
           "description": "Media processing capabilities"
         },
         "aiMlFeatures": {
           "type": "boolean",
+          "title": "AI/ML Features",
           "description": "AI/ML features"
         },
         "blockchainIntegration": {
           "type": "boolean",
+          "title": "Blockchain Integration",
           "description": "Blockchain integration"
         },
         "iotIntegration": {
           "type": "boolean",
+          "title": "IoT Integration",
           "description": "IoT integration"
         }
       }
     },
     "sustainabilityGoals": {
       "type": "object",
-      "description": "Sustainability objectives",
+      "title": "Sustainability and Goals",
+      "description": "tech decisions and environmental goals",
       "required": [
         "carbonNeutralityTarget",
         "greenHostingRequired",
@@ -167,27 +250,41 @@
       "properties": {
         "carbonNeutralityTarget": {
           "type": "boolean",
+          "title": "Carbon Neutrality Target",
           "description": "Whether carbon neutrality is a target"
         },
         "greenHostingRequired": {
           "type": "boolean",
+          "title": "Green Hosting Required",
           "description": "Whether green hosting is required"
         },
         "optimizationPriority": {
           "type": "string",
-          "enum": ["performance", "sustainability", "balanced"],
-          "description": "Primary optimization priority"
+          "title": "Optimization Priority",
+          "description": "Primary optimization priority",
+          "options": [
+            { "label": "Performance first", "value": "performance" },
+            { "label": "Sustainability first", "value": "sustainability" },
+            { "label": "Balanced approach", "value": "balanced" }
+          ]
         },
         "budgetForGreenTech": {
           "type": "string",
-          "enum": ["none", "low", "medium", "high"],
-          "description": "Budget allocation for green technology"
+          "title": "Budget for Green Tech",
+          "description": "Budget allocation for green technology",
+          "options": [
+            { "label": "No budget", "value": "none" },
+            { "label": "Low budget", "value": "low" },
+            { "label": "Medium budget", "value": "medium" },
+            { "label": "High budget", "value": "high" }
+          ]
         }
       }
     },
     "hardwareConfig": {
       "type": "object",
-      "description": "Hardware configuration for CPU monitoring and Impact Framework tools",
+      "title": "Hardware Configuration",
+      "description": "CPU and system specifications",
       "required": [
         "cpuTdp",
         "totalVcpus",
@@ -197,37 +294,42 @@
       "properties": {
         "cpuTdp": {
           "type": "number",
+          "title": "CPU TDP",
+          "description": "CPU Thermal Design Power (TDP) in watts",
           "minimum": 1,
           "maximum": 500,
-          "description": "CPU Thermal Design Power (TDP) in watts",
           "default": 100
         },
         "totalVcpus": {
           "type": "number",
+          "title": "Total vCPUs",
+          "description": "Total vCPUs available on your system",
           "minimum": 1,
           "maximum": 128,
-          "description": "Total vCPUs available on your system",
           "default": 8
         },
         "allocatedVcpus": {
           "type": "number",
+          "title": "Allocated vCPUs",
+          "description": "vCPUs allocated to your application",
           "minimum": 1,
           "maximum": 64,
-          "description": "vCPUs allocated to your application",
           "default": 2
         },
         "gridCarbonIntensity": {
           "type": "number",
+          "title": "Grid Carbon Intensity",
+          "description": "Grid carbon intensity for your location (gCO2e/kWh)",
           "minimum": 1,
           "maximum": 2000,
-          "description": "Grid carbon intensity for your location (gCO2e/kWh)",
           "default": 750
         }
       }
     },
     "monitoringConfig": {
       "type": "object",
-      "description": "Monitoring and analysis preferences for Impact Framework tools",
+      "title": "Monitoring Configuration",
+      "description": "analysis and monitoring preferences",
       "required": [
         "enableCpuMonitoring",
         "enableE2eMonitoring",
@@ -237,28 +339,33 @@
       "properties": {
         "enableCpuMonitoring": {
           "type": "boolean",
+          "title": "Enable CPU Monitoring",
           "description": "Enable CPU utilization monitoring during web analysis",
           "default": true
         },
         "enableE2eMonitoring": {
           "type": "boolean",
+          "title": "Enable E2E Monitoring",
           "description": "Enable CPU monitoring during E2E test execution",
           "default": false
         },
         "e2eTestCommand": {
           "type": "string",
+          "title": "E2E Test Command",
           "description": "Command to run your E2E tests (e.g., 'npx cypress run', 'npm run test:e2e')"
         },
         "scrollToBottom": {
           "type": "boolean",
+          "title": "Scroll to Bottom",
           "description": "Scroll to bottom of pages during web analysis (for more accurate measurements)",
           "default": false
         },
         "firstVisitPercentage": {
           "type": "number",
+          "title": "First Visit Percentage",
+          "description": "Percentage of first-time visitors (0.0 to 1.0)",
           "minimum": 0,
           "maximum": 1,
-          "description": "Percentage of first-time visitors (0.0 to 1.0)",
           "default": 0.9
         }
       }

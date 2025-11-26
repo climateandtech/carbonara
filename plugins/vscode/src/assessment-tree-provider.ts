@@ -3,6 +3,24 @@ import * as path from "path";
 import * as fs from "fs";
 import { DataService } from "@carbonara/core";
 
+// Load assessment schema from CLI schemas directory
+const schemaPath = path.join(
+  __dirname,
+  "node_modules",
+  "@carbonara",
+  "cli",
+  "dist",
+  "schemas",
+  "assessment-questionnaire.json"
+);
+let assessmentSchema: any;
+try {
+  assessmentSchema = JSON.parse(fs.readFileSync(schemaPath, "utf-8"));
+} catch (error) {
+  console.error("Failed to load assessment schema:", error);
+  assessmentSchema = { properties: {} };
+}
+
 export interface AssessmentSection {
   id: string;
   label: string;
@@ -183,271 +201,61 @@ export class AssessmentTreeProvider
   }
 
   private initializeAssessmentData(): void {
-    this.assessmentData = [
-      {
-        id: "project-info",
-        label: "Project Overview",
-        description: "context and baseline assumptions",
-        status: "pending",
-        fields: [
-          {
-            id: "expectedUsers",
-            label: "Expected Users",
-            type: "select",
-            required: true,
-            options: [
-              {
-                label: "Fewer than 50 users",
-                value: "fewer-than-50",
-                detail: "small internal system",
-              },
-              {
-                label: "500 to 5,000 users",
-                value: "500-to-5000",
-                detail: "medium organisation use",
-              },
-              {
-                label: "5,000 to 50,000 users",
-                value: "5000-to-50000",
-                detail: "enterprise or large-scale",
-              },
-              {
-                label: "Over 50,000 users",
-                value: "over-50000",
-                detail: "mass-market or nation-wide system",
-              },
-              {
-                label: "Unknown",
-                value: "unknown",
-                detail: "will depend on rollout or adoption rate",
-              },
-            ],
-          },
-          {
-            id: "expectedTraffic",
-            label: "Expected Traffic",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Low (< 1K visits/month)", value: "low" },
-              { label: "Medium (1K-10K visits/month)", value: "medium" },
-              { label: "High (10K-100K visits/month)", value: "high" },
-              { label: "Very High (> 100K visits/month)", value: "very-high" },
-            ],
-          },
-          {
-            id: "targetAudience",
-            label: "Target Audience",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Local (same city/region)", value: "local" },
-              { label: "National (same country)", value: "national" },
-              { label: "Global (worldwide)", value: "global" },
-            ],
-          },
-          {
-            id: "projectLifespan",
-            label: "Project Lifespan",
-            type: "number",
-            required: true,
-          },
-        ],
-      },
-      {
-        id: "development",
-        label: "Development",
-        description: "energy and resource implications",
-        status: "pending",
-        fields: [
-          {
-            id: "teamSize",
-            label: "Team Size",
-            type: "number",
-            required: true,
-          },
-          {
-            id: "developmentDuration",
-            label: "Development Duration",
-            type: "number",
-            required: true,
-          },
-          {
-            id: "cicdPipeline",
-            label: "CI/CD Pipeline",
-            type: "boolean",
-            required: true,
-          },
-          {
-            id: "testingStrategy",
-            label: "Testing Strategy",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Minimal testing", value: "minimal" },
-              { label: "Moderate testing", value: "moderate" },
-              { label: "Comprehensive testing", value: "comprehensive" },
-            ],
-          },
-          {
-            id: "codeQuality",
-            label: "Code Quality",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Basic", value: "basic" },
-              { label: "Good", value: "good" },
-              { label: "Excellent", value: "excellent" },
-            ],
-          },
-        ],
-      },
-      {
-        id: "infrastructure",
-        label: "Infrastructure",
-        description: "efficiency behaviours",
-        status: "pending",
-        fields: [
-          {
-            id: "hostingType",
-            label: "Hosting Type",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Shared hosting", value: "shared" },
-              { label: "Virtual Private Server (VPS)", value: "vps" },
-              { label: "Dedicated server", value: "dedicated" },
-              { label: "Cloud (AWS/Azure/GCP)", value: "cloud" },
-              { label: "Hybrid setup", value: "hybrid" },
-            ],
-          },
-          {
-            id: "cloudProvider",
-            label: "Cloud Provider",
-            type: "input",
-            required: false,
-          },
-          {
-            id: "serverLocation",
-            label: "Server Location",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Same continent", value: "same-continent" },
-              { label: "Different continent", value: "different-continent" },
-              { label: "Global CDN", value: "global-cdn" },
-            ],
-          },
-          {
-            id: "dataStorage",
-            label: "Data Storage",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Minimal (< 1GB)", value: "minimal" },
-              { label: "Moderate (1-10GB)", value: "moderate" },
-              { label: "Heavy (10-100GB)", value: "heavy" },
-              { label: "Massive (> 100GB)", value: "massive" },
-            ],
-          },
-          {
-            id: "backupStrategy",
-            label: "Backup Strategy",
-            type: "select",
-            required: true,
-            options: [
-              { label: "No backups", value: "none" },
-              { label: "Weekly backups", value: "weekly" },
-              { label: "Daily backups", value: "daily" },
-              { label: "Real-time backups", value: "real-time" },
-            ],
-          },
-        ],
-      },
-      {
-        id: "features",
-        label: "Features and Workload",
-        description: "carbon-heavy workload and optimisation opportunities",
-        status: "pending",
-        fields: [
-          {
-            id: "realTimeFeatures",
-            label: "Real-time Features",
-            type: "boolean",
-            required: true,
-          },
-          {
-            id: "mediaProcessing",
-            label: "Media Processing",
-            type: "boolean",
-            required: true,
-          },
-          {
-            id: "aiMlFeatures",
-            label: "AI/ML Features",
-            type: "boolean",
-            required: true,
-          },
-          {
-            id: "blockchainIntegration",
-            label: "Blockchain Integration",
-            type: "boolean",
-            required: true,
-          },
-          {
-            id: "iotIntegration",
-            label: "IoT Integration",
-            type: "boolean",
-            required: true,
-          },
-        ],
-      },
-      {
-        id: "sustainability",
-        label: "Sustainability and Goals",
-        description: "tech decisions and environmental goals",
-        status: "pending",
-        fields: [
-          {
-            id: "carbonNeutralityTarget",
-            label: "Carbon Neutrality Target",
-            type: "boolean",
-            required: true,
-          },
-          {
-            id: "greenHostingRequired",
-            label: "Green Hosting Required",
-            type: "boolean",
-            required: true,
-          },
-          {
-            id: "optimizationPriority",
-            label: "Optimization Priority",
-            type: "select",
-            required: true,
-            options: [
-              { label: "Performance first", value: "performance" },
-              { label: "Sustainability first", value: "sustainability" },
-              { label: "Balanced approach", value: "balanced" },
-            ],
-          },
-          {
-            id: "budgetForGreenTech",
-            label: "Budget for Green Tech",
-            type: "select",
-            required: true,
-            options: [
-              { label: "No budget", value: "none" },
-              { label: "Low budget", value: "low" },
-              { label: "Medium budget", value: "medium" },
-              { label: "High budget", value: "high" },
-            ],
-          },
-        ],
-      },
-    ];
+    // Load assessment structure from JSON schema
+    const properties = (assessmentSchema as any).properties || {};
+
+    this.assessmentData = Object.entries(properties).map(
+      ([sectionId, sectionDef]: [string, any]) => {
+        const fields: AssessmentField[] = [];
+        const sectionProperties = sectionDef.properties || {};
+        const requiredFields = sectionDef.required || [];
+
+        for (const [fieldId, fieldDef] of Object.entries(sectionProperties)) {
+          const field: any = fieldDef;
+
+          fields.push({
+            id: fieldId,
+            label: field.title || fieldId,
+            type: this.mapTypeToUIType(field.type, field.options),
+            required: requiredFields.includes(fieldId),
+            options: field.options || undefined,
+            defaultValue: field.default,
+          });
+        }
+
+        return {
+          id: sectionId,
+          label: sectionDef.title || sectionId,
+          description: sectionDef.description || "",
+          status: "pending" as const,
+          fields,
+        };
+      }
+    );
 
     this.loadAssessmentProgress();
+  }
+
+  private mapTypeToUIType(
+    jsonSchemaType: string,
+    options?: any[]
+  ): "input" | "select" | "number" | "boolean" {
+    // If field has options, it's a select
+    if (options && options.length > 0) {
+      return "select";
+    }
+
+    switch (jsonSchemaType) {
+      case "boolean":
+        return "boolean";
+      case "integer":
+      case "number":
+        return "number";
+      case "string":
+        return "input";
+      default:
+        return "input";
+    }
   }
 
   private loadAssessmentProgress(): void {
