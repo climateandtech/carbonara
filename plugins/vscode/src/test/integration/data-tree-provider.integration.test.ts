@@ -10,6 +10,7 @@ suite("DataTreeProvider Integration Tests", () => {
   let provider: DataTreeProvider;
   let testWorkspaceFolder: vscode.WorkspaceFolder;
   let testDbPath: string;
+  let originalWorkspaceFolders: readonly vscode.WorkspaceFolder[] | undefined;
 
   setup(async () => {
     // Create a unique temporary workspace folder for testing
@@ -28,13 +29,13 @@ suite("DataTreeProvider Integration Tests", () => {
     );
 
     testDbPath = path.join(carbonaraDir, "carbonara.db");
-    
+
     // Create an empty database file so the test can verify "No data available" message
     // (instead of "Database not found")
-    const initSqlJs = require('sql.js');
+    const initSqlJs = require("sql.js");
     const SQL = await initSqlJs();
     const db = new SQL.Database();
-    
+
     // Create minimal schema (just projects table to make it a valid database)
     db.run(`
       CREATE TABLE IF NOT EXISTS projects (
@@ -47,7 +48,7 @@ suite("DataTreeProvider Integration Tests", () => {
         co2_variables JSON
       )
     `);
-    
+
     // Save empty database to file
     const data = db.export();
     const buffer = Buffer.from(data);
@@ -60,8 +61,10 @@ suite("DataTreeProvider Integration Tests", () => {
       index: 0,
     };
 
+    // Save original workspace folders for restoration in teardown
+    originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+
     // Mock workspace folders
-    const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
     Object.defineProperty(vscode.workspace, "workspaceFolders", {
       value: [testWorkspaceFolder],
       configurable: true,
@@ -74,7 +77,7 @@ suite("DataTreeProvider Integration Tests", () => {
     let initialized = false;
     const maxWaitTime = 5000; // 5 seconds
     const startTime = Date.now();
-    
+
     while (!initialized && Date.now() - startTime < maxWaitTime) {
       const children = await provider.getChildren();
       // Check if we're past the loading state
@@ -87,12 +90,12 @@ suite("DataTreeProvider Integration Tests", () => {
       const hasNoData = children.some(
         (child) => child.label === UI_TEXT.DATA_TREE.NO_DATA
       );
-      
+
       if (!hasLoading && (hasDatabaseError || hasNoData)) {
         initialized = true;
         break;
       }
-      
+
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
@@ -108,6 +111,12 @@ suite("DataTreeProvider Integration Tests", () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     try {
+      // Restore original workspace folders
+      Object.defineProperty(vscode.workspace, "workspaceFolders", {
+        value: originalWorkspaceFolders,
+        configurable: true,
+      });
+
       // Clean up test database
       if (fs.existsSync(testDbPath)) {
         fs.unlinkSync(testDbPath);
@@ -242,7 +251,10 @@ suite("DataTreeProvider Integration Tests", () => {
       });
 
       // Assertion 1: Listener should be set up
-      assert.ok(disposable !== undefined, "onDidChangeTreeData should return a disposable");
+      assert.ok(
+        disposable !== undefined,
+        "onDidChangeTreeData should return a disposable"
+      );
 
       // Wait a bit to ensure listener is set up
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -258,11 +270,15 @@ suite("DataTreeProvider Integration Tests", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Assertion 2: Event should fire when refresh() is called (when coreServices is null, it always fires)
-      assert.strictEqual(refreshFired, true, "onDidChangeTreeData event should fire when refresh() is called with null coreServices");
-      
+      assert.strictEqual(
+        refreshFired,
+        true,
+        "onDidChangeTreeData event should fire when refresh() is called with null coreServices"
+      );
+
       // Restore coreServices
       (provider as any).coreServices = originalCoreServices;
-      
+
       disposable.dispose();
     });
 
@@ -536,6 +552,9 @@ suite("DataTreeProvider Integration Tests", () => {
     test.skip("should load and display data when assessment data exists", async function () {
       // Increase timeout for this test (15 seconds)
       this.timeout(15000);
+
+      // Wait for initial provider load to complete
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Create test database with assessment data
       const carbonaraDir = path.join(

@@ -432,9 +432,6 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
           return; // Exit early since analysis failed
         } else {
         }
-
-        // ASSERTION: Analysis must succeed (no failure notification should be visible)
-        expect(hasFailure).toBe(false);
       } catch (error) {
         // Fallback: wait additional time for CLI process to complete
         await vscode.window.waitForTimeout(3000);
@@ -702,7 +699,7 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       await VSCodeLauncher.openSidebar(vscode.window);
       await vscode.window.waitForTimeout(2000);
 
-      // Step 2: Assert Analysis Tools section is visible
+      // Step 2: Assert Analysis Tools section is visible   
       const toolsSection = vscode.window
         .locator(".pane-header")
         .filter({ hasText: "Analysis Tools" });

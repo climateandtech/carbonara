@@ -88,13 +88,13 @@ describe('DataService', () => {
 
     it('should filter assessment data by tool name', async () => {
       // Store data for different tools
-      await dataService.storeAssessmentData(projectId, 'co2-assessment', 'questionnaire', { score: 85 });
-      await dataService.storeAssessmentData(projectId, 'co2-assessment', 'questionnaire', { score: 90 });
+      await dataService.storeAssessmentData(projectId, 'assessment-questionnaire', 'questionnaire', { score: 85 });
+      await dataService.storeAssessmentData(projectId, 'assessment-questionnaire', 'questionnaire', { score: 90 });
       await dataService.storeAssessmentData(projectId, 'greenframe', 'web-analysis', { url: 'test1.com' });
 
-      const co2Data = await dataService.getAssessmentData(projectId, 'co2-assessment');
+      const co2Data = await dataService.getAssessmentData(projectId, 'assessment-questionnaire');
       expect(co2Data).toHaveLength(2);
-      expect(co2Data.every(d => d.tool_name === 'co2-assessment')).toBe(true);
+      expect(co2Data.every(d => d.tool_name === 'assessment-questionnaire')).toBe(true);
 
       const greenframeDataFiltered = await dataService.getAssessmentData(projectId, 'greenframe');
       expect(greenframeDataFiltered).toHaveLength(1);

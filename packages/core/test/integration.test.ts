@@ -33,7 +33,7 @@ describe("Carbonara Core Integration", () => {
       // 2. Store assessment data
       await dataService.storeAssessmentData(
         projectId,
-        "co2-assessment",
+        "assessment-questionnaire",
         "questionnaire",
         {
           impactScore: 75,
@@ -58,7 +58,7 @@ describe("Carbonara Core Integration", () => {
       expect(groups).toHaveLength(1);
 
       // Check assessment questionnaire group
-      const co2Group = groups.find((g: any) => g.toolName === "co2-assessment");
+      const co2Group = groups.find((g: any) => g.toolName === "assessment-questionnaire");
       expect(co2Group).toBeDefined();
       expect(co2Group?.displayName).toBe("🌍 assessment questionnaires");
       expect(co2Group?.entries).toHaveLength(1);
@@ -67,7 +67,7 @@ describe("Carbonara Core Integration", () => {
       const assessmentData =
         await vscodeProvider.loadDataForProject("/test/e2e");
       const co2Entry = assessmentData.find(
-        (d: any) => d.tool_name === "co2-assessment"
+        (d: any) => d.tool_name === "assessment-questionnaire"
       );
 
       const details = await vscodeProvider.createDataDetails(co2Entry!);
@@ -87,7 +87,7 @@ describe("Carbonara Core Integration", () => {
       // 5. Test project stats
       const stats = await vscodeProvider.getProjectStats("/test/e2e");
       expect(stats.totalEntries).toBe(1);
-      expect(stats.toolCounts["co2-assessment"]).toBe(1);
+      expect(stats.toolCounts["assessment-questionnaire"]).toBe(1);
       expect(stats.latestEntry).toBeDefined();
     });
 
@@ -102,7 +102,7 @@ describe("Carbonara Core Integration", () => {
       // Add searchable data
       await dataService.storeAssessmentData(
         projectId,
-        "co2-assessment",
+        "assessment-questionnaire",
         "questionnaire",
         {
           impactScore: 85,
@@ -113,10 +113,10 @@ describe("Carbonara Core Integration", () => {
       // Search by tool name
       const co2Results = await vscodeProvider.searchData(
         "/test/search",
-        "co2-assessment"
+        "assessment-questionnaire"
       );
       expect(co2Results).toHaveLength(1);
-      expect(co2Results[0].tool_name).toBe("co2-assessment");
+      expect(co2Results[0].tool_name).toBe("assessment-questionnaire");
 
       // Search by data content
       const scoreResults = await vscodeProvider.searchData(
@@ -124,7 +124,7 @@ describe("Carbonara Core Integration", () => {
         "85"
       );
       expect(scoreResults).toHaveLength(1);
-      expect(scoreResults[0].tool_name).toBe("co2-assessment");
+      expect(scoreResults[0].tool_name).toBe("assessment-questionnaire");
 
       // Empty search returns all
       const allResults = await vscodeProvider.searchData("/test/search", "");

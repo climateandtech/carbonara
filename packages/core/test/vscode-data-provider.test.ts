@@ -70,7 +70,7 @@ describe("VSCodeDataProvider", () => {
       // Add test data for different tools
       await dataService.storeAssessmentData(
         projectId,
-        "co2-assessment",
+        "assessment-questionnaire",
         "sustainability-assessment",
         {
           impactScore: 75,
@@ -80,7 +80,7 @@ describe("VSCodeDataProvider", () => {
 
       await dataService.storeAssessmentData(
         projectId,
-        "co2-assessment",
+        "assessment-questionnaire",
         "sustainability-assessment",
         {
           impactScore: 82,
@@ -90,7 +90,7 @@ describe("VSCodeDataProvider", () => {
 
       await dataService.storeAssessmentData(
         projectId,
-        "co2-assessment",
+        "assessment-questionnaire",
         "questionnaire",
         {
           impactScore: 75,
@@ -103,10 +103,10 @@ describe("VSCodeDataProvider", () => {
     it("should group data by tool with schema-based display", async () => {
       const groups = await dataProvider.createGroupedItems("/test/path");
 
-      expect(groups).toHaveLength(1); // 1 tool (co2-assessment)
+      expect(groups).toHaveLength(1); // 1 tool (assessment-questionnaire)
 
-      // Find co2-assessment group
-      const co2Group = groups.find((g) => g.toolName === "co2-assessment");
+      // Find assessment-questionnaire group
+      const co2Group = groups.find((g) => g.toolName === "assessment-questionnaire");
       expect(co2Group).toBeDefined();
       expect(co2Group?.displayName).toBe("🌍 assessment questionnaires");
       expect(co2Group?.entries).toHaveLength(3);
@@ -115,7 +115,7 @@ describe("VSCodeDataProvider", () => {
     it("should create schema-based entry labels", async () => {
       const groups = await dataProvider.createGroupedItems("/test/path");
 
-      const co2Group = groups.find((g) => g.toolName === "co2-assessment");
+      const co2Group = groups.find((g) => g.toolName === "assessment-questionnaire");
       const entry = co2Group?.entries[0];
 
       expect(entry?.label).toBeDefined();
@@ -124,7 +124,7 @@ describe("VSCodeDataProvider", () => {
 
     it("should create detailed field items from schema", async () => {
       const data = await dataProvider.loadDataForProject("/test/path");
-      const co2Entry = data.find((d) => d.tool_name === "co2-assessment");
+      const co2Entry = data.find((d) => d.tool_name === "assessment-questionnaire");
 
       const details = await dataProvider.createDataDetails(co2Entry!);
 

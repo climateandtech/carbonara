@@ -16,7 +16,7 @@ describe("SchemaService", () => {
       expect(schemas.size).toBeGreaterThan(0);
 
       // Check for expected tools from registry
-      expect(schemas.has("co2-assessment")).toBe(true);
+      expect(schemas.has("assessment-questionnaire")).toBe(true);
       expect(schemas.has("greenframe")).toBe(true);
       // Note: byte-counter will be added in separate step
     });
@@ -24,9 +24,9 @@ describe("SchemaService", () => {
     it("should return tool schema by id", async () => {
       await schemaService.loadToolSchemas();
 
-      const co2Schema = schemaService.getToolSchema("co2-assessment");
+      const co2Schema = schemaService.getToolSchema("assessment-questionnaire");
       expect(co2Schema).toBeDefined();
-      expect(co2Schema?.id).toBe("co2-assessment");
+      expect(co2Schema?.id).toBe("assessment-questionnaire");
       expect(co2Schema?.name).toBe("assessment questionnaire");
 
       const greenframeSchema = schemaService.getToolSchema("greenframe");
@@ -155,7 +155,7 @@ describe("SchemaService", () => {
     it("should validate tool schema structure", async () => {
       await schemaService.loadToolSchemas();
 
-      const schema = schemaService.getToolSchema("co2-assessment");
+      const schema = schemaService.getToolSchema("assessment-questionnaire");
       expect(schema).toBeDefined();
 
       // Validate required fields
