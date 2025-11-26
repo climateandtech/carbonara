@@ -4,7 +4,8 @@ import { CarbonaraSWDAnalyzer, CarbonaraSWDResult } from '../../src/analyzers/ca
 // Mock Playwright
 vi.mock('playwright', () => ({
   chromium: {
-    launch: vi.fn()
+    launch: vi.fn(),
+    executablePath: vi.fn(() => '/fake/path/to/chromium')
   }
 }));
 
@@ -20,6 +21,11 @@ vi.mock('chalk', () => ({
     red: vi.fn((text: string) => text),
     bold: vi.fn((text: string) => text)
   }
+}));
+
+// Mock fs to avoid file system checks in ensureBrowsersInstalled
+vi.mock('fs', () => ({
+  existsSync: vi.fn(() => true)
 }));
 
 describe('CarbonaraSWDAnalyzer', () => {
@@ -49,6 +55,8 @@ describe('CarbonaraSWDAnalyzer', () => {
     
     const { chromium } = await import('playwright');
     vi.mocked(chromium.launch).mockResolvedValue(mockBrowser);
+    // Mock executablePath to avoid browser installation in tests
+    vi.mocked(chromium.executablePath).mockReturnValue('/fake/path/to/chromium');
   });
 
   afterEach(() => {
@@ -269,13 +277,16 @@ describe('CarbonaraSWDAnalyzer', () => {
         status: vi.fn().mockReturnValue(200)
       };
 
+      // Mock page.on to register and call the callback
+      // The callback is called asynchronously to simulate real response events
       mockPage.on.mockImplementation((event: string, callback: Function) => {
         if (event === 'response') {
-          // Simulate a response event
-          setTimeout(() => callback(mockResponse), 10);
+          // Call callback asynchronously to simulate response event
+          process.nextTick(() => callback(mockResponse));
         }
       });
 
+      // Mock goto to resolve immediately (simulating page load completion)
       mockPage.goto.mockResolvedValue(undefined);
 
       const result = await analyzer.analyze('https://example.com', {
@@ -295,7 +306,7 @@ describe('CarbonaraSWDAnalyzer', () => {
       expect(result.metadata.model).toContain('SWD v4');
       
       expect(mockBrowser.close).toHaveBeenCalled();
-    });
+    }, 30000); // Increase timeout to 30 seconds for CI
 
     it('should handle returning visitor mode', async () => {
       mockPage.on.mockImplementation(() => {});
