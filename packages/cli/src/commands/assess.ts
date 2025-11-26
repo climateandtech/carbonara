@@ -8,11 +8,25 @@ import { loadProjectConfig } from "../utils/config.js";
 
 // CO2 Assessment Schema
 const CO2AssessmentSchema = z.object({
-  projectInfo: z.object({
-    expectedUsers: z.number().min(1),
+  projectOverview: z.object({
+    projectType: z.enum(["Mobile App", "Web App", "API", "Other"]).optional(),
+    expectedUsers: z.enum([
+      "fewer-than-50",
+      "500-to-5000",
+      "5000-to-50000",
+      "over-50000",
+      "unknown",
+    ]),
     expectedTraffic: z.enum(["low", "medium", "high", "very-high"]),
     targetAudience: z.enum(["local", "national", "global"]),
     projectLifespan: z.number().min(1), // months
+  }),
+  development: z.object({
+    teamSize: z.number().min(1),
+    developmentDuration: z.number().min(1), // months
+    cicdPipeline: z.boolean(),
+    testingStrategy: z.enum(["minimal", "moderate", "comprehensive"]),
+    codeQuality: z.enum(["basic", "good", "excellent"]),
   }),
   infrastructure: z.object({
     hostingType: z.enum(["shared", "vps", "dedicated", "cloud", "hybrid"]),
@@ -25,14 +39,7 @@ const CO2AssessmentSchema = z.object({
     dataStorage: z.enum(["minimal", "moderate", "heavy", "massive"]),
     backupStrategy: z.enum(["none", "daily", "real-time", "weekly"]),
   }),
-  development: z.object({
-    teamSize: z.number().min(1),
-    developmentDuration: z.number().min(1), // months
-    cicdPipeline: z.boolean(),
-    testingStrategy: z.enum(["minimal", "moderate", "comprehensive"]),
-    codeQuality: z.enum(["basic", "good", "excellent"]),
-  }),
-  features: z.object({
+  featuresAndWorkload: z.object({
     realTimeFeatures: z.boolean(),
     mediaProcessing: z.boolean(),
     aiMlFeatures: z.boolean(),
@@ -67,13 +74,11 @@ interface AssessOptions {
 
 export async function assessCommand(options: AssessOptions) {
   try {
-    console.log(chalk.blue("🌱 Starting CO2 Assessment..."));
-
     // Load project config
     const config = await loadProjectConfig();
     if (!config) {
       console.log(
-        chalk.yellow('⚠️  No project found. Run "carbonara init" first.')
+        chalk.yellow('No project found. Run "carbonara init" first.')
       );
       return;
     }
@@ -127,15 +132,37 @@ export async function assessCommand(options: AssessOptions) {
 }
 
 async function runInteractiveAssessment() {
-  console.log(chalk.green("\n📊 Project Information"));
+  console.log(chalk.green("\n Project Overview"));
 
-  const expectedUsers = await input({
+  const expectedUsers = await select({
     message: "Expected number of users:",
-    default: "1000",
-    validate: (value: string) => {
-      const num = parseInt(value);
-      return !isNaN(num) && num > 0 ? true : "Must be a number greater than 0";
-    },
+    choices: [
+      {
+        name: "Fewer than 50 users",
+        value: "fewer-than-50",
+        description: "small internal system",
+      },
+      {
+        name: "500 to 5,000 users",
+        value: "500-to-5000",
+        description: "medium organisation use",
+      },
+      {
+        name: "5,000 to 50,000 users",
+        value: "5000-to-50000",
+        description: "enterprise or large-scale",
+      },
+      {
+        name: "Over 50,000 users",
+        value: "over-50000",
+        description: "mass-market or nation-wide system",
+      },
+      {
+        name: "Unknown",
+        value: "unknown",
+        description: "will depend on rollout or adoption rate",
+      },
+    ],
   });
 
   const expectedTraffic = await select({
@@ -166,14 +193,14 @@ async function runInteractiveAssessment() {
     },
   });
 
-  const projectInfo = {
-    expectedUsers: parseInt(expectedUsers as string),
+  const projectOverview = {
+    expectedUsers,
     expectedTraffic,
     targetAudience,
     projectLifespan: parseInt(projectLifespan as string),
   };
 
-  console.log(chalk.green("\n🏗️  Infrastructure"));
+  console.log(chalk.green("\n Infrastructure"));
 
   const hostingType = await select({
     message: "Hosting type:",
@@ -230,7 +257,7 @@ async function runInteractiveAssessment() {
     backupStrategy,
   };
 
-  console.log(chalk.green("\n👥 Development"));
+  console.log(chalk.green("\n Development"));
 
   const teamSize = await input({
     message: "Development team size:",
@@ -316,7 +343,7 @@ async function runInteractiveAssessment() {
     iotIntegration,
   };
 
-  console.log(chalk.green("\n🌍 Sustainability Goals"));
+  console.log(chalk.green("\n Sustainability and Goals"));
 
   const carbonNeutralityTarget = await confirm({
     message: "Carbon neutrality target?",
@@ -442,7 +469,7 @@ async function runInteractiveAssessment() {
   };
 
   return {
-    projectInfo,
+    projectOverview,
     infrastructure,
     development,
     features,
@@ -457,7 +484,7 @@ function calculateCO2Impact(data: z.infer<typeof CO2AssessmentSchema>): number {
 
   // Traffic impact
   const trafficMultipliers = { low: 1, medium: 2, high: 4, "very-high": 8 };
-  score += trafficMultipliers[data.projectInfo.expectedTraffic] * 10;
+  score += trafficMultipliers[data.projectOverview.expectedTraffic] * 10;
 
   // Infrastructure impact
   const hostingMultipliers = {
@@ -470,11 +497,11 @@ function calculateCO2Impact(data: z.infer<typeof CO2AssessmentSchema>): number {
   score += hostingMultipliers[data.infrastructure.hostingType] * 5;
 
   // Features impact
-  if (data.features.realTimeFeatures) score += 15;
-  if (data.features.mediaProcessing) score += 20;
-  if (data.features.aiMlFeatures) score += 25;
-  if (data.features.blockchainIntegration) score += 50;
-  if (data.features.iotIntegration) score += 10;
+  if (data.featuresAndWorkload.realTimeFeatures) score += 15;
+  if (data.featuresAndWorkload.mediaProcessing) score += 20;
+  if (data.featuresAndWorkload.aiMlFeatures) score += 25;
+  if (data.featuresAndWorkload.blockchainIntegration) score += 50;
+  if (data.featuresAndWorkload.iotIntegration) score += 10;
 
   // Sustainability adjustments
   if (data.sustainabilityGoals.greenHostingRequired) score *= 0.7;
@@ -487,32 +514,44 @@ function generateAssessmentReport(
   data: z.infer<typeof CO2AssessmentSchema>,
   impactScore: number
 ) {
-  console.log(chalk.green("\n📋 Assessment Report"));
+  console.log(chalk.green("\n Assessment Report"));
   console.log("═".repeat(50));
 
-  console.log(chalk.blue("\n🎯 Project Overview:"));
+  console.log(chalk.blue("\n Project Overview:"));
+  // Map expectedUsers value to label for display
+  const userLabels: Record<string, string> = {
+    "fewer-than-50": "Fewer than 50 users",
+    "500-to-5000": "500 to 5,000 users",
+    "5000-to-50000": "5,000 to 50,000 users",
+    "over-50000": "Over 50,000 users",
+    unknown: "Unknown",
+  };
   console.log(
-    `Expected Users: ${data.projectInfo.expectedUsers.toLocaleString()}`
+    `Expected Users: ${userLabels[data.projectOverview.expectedUsers] || data.projectOverview.expectedUsers}`
   );
-  console.log(`Traffic Level: ${data.projectInfo.expectedTraffic}`);
-  console.log(`Target Audience: ${data.projectInfo.targetAudience}`);
-  console.log(`Project Lifespan: ${data.projectInfo.projectLifespan} months`);
+  console.log(`Traffic Level: ${data.projectOverview.expectedTraffic}`);
+  console.log(`Target Audience: ${data.projectOverview.targetAudience}`);
+  console.log(
+    `Project Lifespan: ${data.projectOverview.projectLifespan} months`
+  );
 
-  console.log(chalk.blue("\n🏗️  Infrastructure:"));
+  console.log(chalk.blue("\n Infrastructure:"));
   console.log(`Hosting: ${data.infrastructure.hostingType}`);
   console.log(`Server Location: ${data.infrastructure.serverLocation}`);
   console.log(`Data Storage: ${data.infrastructure.dataStorage}`);
 
-  console.log(chalk.blue("\n⚡ High-Impact Features:"));
+  console.log(chalk.blue("\n High-Impact Features:"));
   const highImpactFeatures = [];
-  if (data.features.realTimeFeatures)
+  if (data.featuresAndWorkload.realTimeFeatures)
     highImpactFeatures.push("Real-time features");
-  if (data.features.mediaProcessing)
+  if (data.featuresAndWorkload.mediaProcessing)
     highImpactFeatures.push("Media processing");
-  if (data.features.aiMlFeatures) highImpactFeatures.push("AI/ML features");
-  if (data.features.blockchainIntegration)
+  if (data.featuresAndWorkload.aiMlFeatures)
+    highImpactFeatures.push("AI/ML features");
+  if (data.featuresAndWorkload.blockchainIntegration)
     highImpactFeatures.push("Blockchain");
-  if (data.features.iotIntegration) highImpactFeatures.push("IoT integration");
+  if (data.featuresAndWorkload.iotIntegration)
+    highImpactFeatures.push("IoT integration");
 
   if (highImpactFeatures.length > 0) {
     highImpactFeatures.forEach((feature) => console.log(`• ${feature}`));
@@ -520,7 +559,7 @@ function generateAssessmentReport(
     console.log("• None detected");
   }
 
-  console.log(chalk.blue("\n🌍 Sustainability:"));
+  console.log(chalk.blue("\n Sustainability:"));
   console.log(
     `Carbon Neutrality Target: ${data.sustainabilityGoals.carbonNeutralityTarget ? "Yes" : "No"}`
   );
@@ -532,7 +571,7 @@ function generateAssessmentReport(
   );
 
   // Impact score and recommendations
-  console.log(chalk.blue("\n📊 CO2 Impact Score:"));
+  console.log(chalk.blue("\n CO2 Impact Score:"));
   let scoreColor = chalk.green;
   let rating = "Excellent";
 
@@ -546,7 +585,7 @@ function generateAssessmentReport(
 
   console.log(`${scoreColor(impactScore.toString())} (${rating})`);
 
-  console.log(chalk.blue("\n💡 Recommendations:"));
+  console.log(chalk.blue("\n Recommendations:"));
   if (impactScore > 100) {
     console.log("• Consider green hosting providers");
     console.log("• Implement aggressive caching strategies");
@@ -562,5 +601,5 @@ function generateAssessmentReport(
   }
 
   console.log("\n" + "═".repeat(50));
-  console.log(chalk.green("✅ Assessment completed successfully!"));
+  console.log(chalk.green(" Assessment completed successfully!"));
 }

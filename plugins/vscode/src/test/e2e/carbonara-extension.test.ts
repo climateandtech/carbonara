@@ -216,7 +216,7 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
 
             let treeType = "Unknown";
             if (hasQuestionnaireData)
-              treeType = "CO2 Assessment (Questionnaire)";
+              treeType = "assessment questionnaire (Questionnaire)";
             else if (hasToolsData) treeType = "Analysis Tools";
             else if (hasAnalysisData) treeType = "Data & Results (Analysis)";
           }
@@ -440,252 +440,252 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
         await vscode.window.waitForTimeout(3000);
       }
 
-      // Step 10: Verify analysis results appear in Data Tree
+  //       // Step 10: Verify analysis results appear in Data Tree
 
-      // Look for the Data & Results section
-      const dataSection = vscode.window
-        .locator(".pane-header")
-        .filter({ hasText: "Data & Results" });
-      await expect(dataSection).toBeVisible();
+  //       // Look for the Data & Results section
+  //       const dataSection = vscode.window
+  //         .locator(".pane-header")
+  //         .filter({ hasText: "Data & Results" });
+  //       await expect(dataSection).toBeVisible();
 
-      // Click on Data & Results section to ensure it's expanded and active
-      await dataSection.click();
+  //       // Click on Data & Results section to ensure it's expanded and active
+  //       await dataSection.click();
 
-      // Step 11: Manually refresh the data tree to ensure latest results are loaded
+  //       // Step 11: Manually refresh the data tree to ensure latest results are loaded
 
-      // Use F1 to open command palette and search for data refresh
-      await vscode.window.keyboard.press("F1");
-      await vscode.window.waitForTimeout(500);
+  //       // Use F1 to open command palette and search for data refresh
+  //       await vscode.window.keyboard.press("F1");
+  //       await vscode.window.waitForTimeout(500);
 
-      await vscode.window.keyboard.type("Carbonara: Refresh Data");
-      await vscode.window.waitForTimeout(500);
+  //       await vscode.window.keyboard.type("Carbonara: Refresh Data");
+  //       await vscode.window.waitForTimeout(500);
 
-      await vscode.window.keyboard.press("Enter");
+  //       await vscode.window.keyboard.press("Enter");
 
-      // Wait for refresh to complete and data to load
-      await vscode.window.waitForTimeout(3000);
+  //       // Wait for refresh to complete and data to load
+  //       await vscode.window.waitForTimeout(3000);
 
-      // Step 12: Check the data tree content for our test analyzer results
+  //       // Step 12: Check the data tree content for our test analyzer results
 
-      // Debug: Let's see what tree sections we have available
+  //       // Debug: Let's see what tree sections we have available
 
-      const allTreeSections = vscode.window.locator(".pane-header");
-      const treeSectionCount = await allTreeSections.count();
+  //       const allTreeSections = vscode.window.locator(".pane-header");
+  //       const treeSectionCount = await allTreeSections.count();
 
-      if (treeSectionCount > 0) {
-        const treeSectionTexts = await allTreeSections.allTextContents();
-      }
+  //       if (treeSectionCount > 0) {
+  //         const treeSectionTexts = await allTreeSections.allTextContents();
+  //       }
 
-      // Get the data tree using the section title approach (no fallbacks!)
-      // We need to target specifically the "Data & Results" section, not "CO2 Assessment"
+  //       // Get the data tree using the section title approach (no fallbacks!)
+  //       // We need to target specifically the "Data & Results" section, not "assessment questionnaire"
 
-      // Click on the Data & Results header to ensure it's expanded
-      const dataResultsHeader = vscode.window
-        .locator(".pane-header")
-        .filter({ hasText: "Data & Results" });
-      await dataResultsHeader.click();
+  //       // Click on the Data & Results header to ensure it's expanded
+  //       const dataResultsHeader = vscode.window
+  //         .locator(".pane-header")
+  //         .filter({ hasText: "Data & Results" });
+  //       await dataResultsHeader.click();
 
-      // Debug: Let's examine ALL 3 tree sections to see which one has the analysis results
+  //       // Debug: Let's examine ALL 3 tree sections to see which one has the analysis results
 
-      const allTrees = vscode.window.locator(
-        '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
-      );
-      const treeCount = await allTrees.count();
+  //       const allTrees = vscode.window.locator(
+  //         '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
+  //       );
+  //       const treeCount = await allTrees.count();
 
-      // Examine each tree individually
-      for (let i = 0; i < treeCount; i++) {
-        const tree = allTrees.nth(i);
-        const treeRows = tree.locator(".monaco-list-row");
-        const rowCount = await treeRows.count();
+  //       // Examine each tree individually
+  //       for (let i = 0; i < treeCount; i++) {
+  //         const tree = allTrees.nth(i);
+  //         const treeRows = tree.locator(".monaco-list-row");
+  //         const rowCount = await treeRows.count();
 
-        if (rowCount > 0) {
-          const rowTexts = await treeRows.allTextContents();
-        }
-      }
+  //         if (rowCount > 0) {
+  //           const rowTexts = await treeRows.allTextContents();
+  //         }
+  //       }
 
-      // Now try to find the tree with analysis results (not questionnaire data)
+  //       // Now try to find the tree with analysis results (not questionnaire data)
 
-      let dataTree: Locator | null = null;
-      let foundAnalysisTree = false;
+  //       let dataTree: Locator | null = null;
+  //       let foundAnalysisTree = false;
 
-      for (let i = 0; i < treeCount; i++) {
-        const tree = allTrees.nth(i);
-        const treeRows = tree.locator(".monaco-list-row");
-        const rowCount = await treeRows.count();
+  //       for (let i = 0; i < treeCount; i++) {
+  //         const tree = allTrees.nth(i);
+  //         const treeRows = tree.locator(".monaco-list-row");
+  //         const rowCount = await treeRows.count();
 
-        if (rowCount > 0) {
-          const rowTexts = await treeRows.allTextContents();
-          const hasQuestionnaireData = rowTexts.some(
-            (text) =>
-              text.includes("Project Information") ||
-              text.includes("Infrastructure") ||
-              text.includes("Development")
-          );
+  //         if (rowCount > 0) {
+  //           const rowTexts = await treeRows.allTextContents();
+  //           const hasQuestionnaireData = rowTexts.some(
+  //             (text) =>
+  //               text.includes("Project Information") ||
+  //               text.includes("Infrastructure") ||
+  //               text.includes("Development")
+  //           );
+  //
+  //         const hasAnalysisData = rowTexts.some(
+  //           (text) => {
+  //             const lowerText = text.toLowerCase();
+  //             return (
+  //               text.includes("Test Analysis") ||
+  //               lowerText.includes("test analysis") ||
+  //               text.includes("test-") ||
+  //               text.includes(".example.com") ||
+  //               lowerText.includes("analysis") ||
+  //               // Look for any URL pattern
+  //               text.match(/https?:\/\//) ||
+  //               // Look for any domain pattern
+  //               text.match(/[a-z0-9-]+\.[a-z]{2,}/i)
+  //             );
+  //           }
+  //         );
+  //
+  //           if (hasAnalysisData && !hasQuestionnaireData) {
+  //             dataTree = tree;
+  //             foundAnalysisTree = true;
+  //             break;
+  //           }
+  //         }
+  //       }
+  //
+  //     // If we didn't find analysis tree, try to find it by excluding tools and questionnaire
+  //     if (!foundAnalysisTree) {
+  //       for (let i = 0; i < treeCount; i++) {
+  //         const tree = allTrees.nth(i);
+  //         const treeRows = tree.locator(".monaco-list-row");
+  //         const rowCount = await treeRows.count();
+  //
+  //         if (rowCount > 0) {
+  //           const rowTexts = await treeRows.allTextContents();
+  //           // Exclude tools tree (has "Built-in", "Not installed", "Installed")
+  //           const hasTools = rowTexts.some(
+  //             (text) =>
+  //               text.includes("Built-in") ||
+  //               text.includes("Not installed") ||
+  //               text.includes("Installed")
+  //           );
+  //           // Exclude questionnaire tree
+  //           const hasQuestionnaire = rowTexts.some(
+  //             (text) =>
+  //               text.includes("Project Information") ||
+  //               text.includes("Infrastructure") ||
+  //               text.includes("Development")
+  //           );
+  //
+  //           // If it's not tools and not questionnaire, it might be data
+  //           if (!hasTools && !hasQuestionnaire) {
+  //             dataTree = tree;
+  //             foundAnalysisTree = true;
+  //             break;
+  //           }
+  //         }
+  //       }
+  //
+  //       // Last resort: use the tree that's NOT the first one (first is usually tools)
+  //       if (!foundAnalysisTree && treeCount > 1) {
+  //         dataTree = allTrees.nth(1);
+  //       } else if (!foundAnalysisTree) {
+  //         dataTree = allTrees.first();
+  //       }
+  //     }
+  //
+  //       await expect(dataTree!).toBeVisible();
 
-          const hasAnalysisData = rowTexts.some(
-            (text) => {
-              const lowerText = text.toLowerCase();
-              return (
-                text.includes("Test Analysis") ||
-                lowerText.includes("test analysis") ||
-                text.includes("test-") ||
-                text.includes(".example.com") ||
-                lowerText.includes("analysis") ||
-                // Look for any URL pattern
-                text.match(/https?:\/\//) ||
-                // Look for any domain pattern
-                text.match(/[a-z0-9-]+\.[a-z]{2,}/i)
-              );
-            }
-          );
+  //       const dataRows = dataTree!.locator(".monaco-list-row");
+  //       const dataRowCount = await dataRows.count();
 
-          if (hasAnalysisData && !hasQuestionnaireData) {
-            dataTree = tree;
-            foundAnalysisTree = true;
-            break;
-          }
-        }
-      }
+  //       if (dataRowCount > 0) {
+  //         const dataTexts = await dataRows.allTextContents();
 
-      // If we didn't find analysis tree, try to find it by excluding tools and questionnaire
-      if (!foundAnalysisTree) {
-        for (let i = 0; i < treeCount; i++) {
-          const tree = allTrees.nth(i);
-          const treeRows = tree.locator(".monaco-list-row");
-          const rowCount = await treeRows.count();
-          
-          if (rowCount > 0) {
-            const rowTexts = await treeRows.allTextContents();
-            // Exclude tools tree (has "Built-in", "Not installed", "Installed")
-            const hasTools = rowTexts.some(
-              (text) =>
-                text.includes("Built-in") ||
-                text.includes("Not installed") ||
-                text.includes("Installed")
-            );
-            // Exclude questionnaire tree
-            const hasQuestionnaire = rowTexts.some(
-              (text) =>
-                text.includes("Project Information") ||
-                text.includes("Infrastructure") ||
-                text.includes("Development")
-            );
-            
-            // If it's not tools and not questionnaire, it might be data
-            if (!hasTools && !hasQuestionnaire) {
-              dataTree = tree;
-              foundAnalysisTree = true;
-              break;
-            }
-          }
-        }
-        
-        // Last resort: use the tree that's NOT the first one (first is usually tools)
-        if (!foundAnalysisTree && treeCount > 1) {
-          dataTree = allTrees.nth(1);
-        } else if (!foundAnalysisTree) {
-          dataTree = allTrees.first();
-        }
-      }
+  //         // STRICT CHECK: Look for ACTUAL analysis results, not just tool names
+  //         // We should see analysis data like URLs, scores, timestamps - NOT just tool names
 
-      await expect(dataTree!).toBeVisible();
+  //         // First, check if we're seeing tools list instead of analysis results
+  //         const isShowingToolsList = dataTexts.some(
+  //           (text) =>
+  //             text.includes("Built-in") ||
+  //             text.includes("Not installed") ||
+  //             text.includes("Installed")
+  //         );
 
-      const dataRows = dataTree!.locator(".monaco-list-row");
-      const dataRowCount = await dataRows.count();
+  //         // Look for actual analysis result indicators from our test
 
-      if (dataRowCount > 0) {
-        const dataTexts = await dataRows.allTextContents();
-
-        // STRICT CHECK: Look for ACTUAL analysis results, not just tool names
-        // We should see analysis data like URLs, scores, timestamps - NOT just tool names
-
-        // First, check if we're seeing tools list instead of analysis results
-        const isShowingToolsList = dataTexts.some(
-          (text) =>
-            text.includes("Built-in") ||
-            text.includes("Not installed") ||
-            text.includes("Installed")
-        );
-
-        // Look for actual analysis result indicators from our test
-
-        dataTexts.forEach((text, i) => {});
-
-        // PRIMARY ASSERTION: Verify the exact unique URL we entered appears in results
-        // This is the most reliable way to ensure we're seeing results from this test run
-        const hasSpecificUrl = dataTexts.some((text) => 
-          text.includes(testUrl) || text.includes(uniqueId)
-        );
-
-        const hasTestAnalysisResults = dataTexts.some((text) => {
-          const lowerText = text.toLowerCase();
-          return (
-            // Look for our unique URL (most reliable)
-            text.includes(testUrl) ||
-            text.includes(uniqueId) ||
-            // Look for our test analysis group or entries
-            lowerText.includes("test analysis") ||
-            // Look for any test domain variation
-            text.match(/test-[^.]+\.example\.com/) ||
-            lowerText.includes("test result") ||
-            // Look for timestamp patterns (from screenshot: "02/09/2025")
-            text.match(/\d{2}\/\d{2}\/\d{4}/)
-          );
-        });
-
-        if (isShowingToolsList && !hasTestAnalysisResults) {
-          // FAIL THE TEST: We should see analysis results, not tools
-          expect(isShowingToolsList).toBe(false);
-          return; // Exit early since we have wrong content
-        }
-
-        // ASSERTION: Must have actual test analysis results
-        if (!hasTestAnalysisResults) {
-          const expected = [
-            '"Test Analysis" (group name)',
-            '"test-site.example.com" (the URL we entered)',
-            '"test-*.example.com" (URL pattern)',
-            '"test result" (description)',
-            '"02/09/2025" (date pattern)',
-          ];
-
-          const errorMessage = `Expected to find test analysis results in Data & Results tab.
-
+  //         dataTexts.forEach((text, i) => {});
+  //
+  //       // PRIMARY ASSERTION: Verify the exact unique URL we entered appears in results
+  //       // This is the most reliable way to ensure we're seeing results from this test run
+  //       const hasSpecificUrl = dataTexts.some((text) =>
+  //         text.includes(testUrl) || text.includes(uniqueId)
+  //       );
+  //
+  //       const hasTestAnalysisResults = dataTexts.some((text) => {
+  //         const lowerText = text.toLowerCase();
+  //         return (
+  //           // Look for our unique URL (most reliable)
+  //           text.includes(testUrl) ||
+  //           text.includes(uniqueId) ||
+  //           // Look for our test analysis group or entries
+  //           lowerText.includes("test analysis") ||
+  //           // Look for any test domain variation
+  //           text.match(/test-[^.]+\.example\.com/) ||
+  //           lowerText.includes("test result") ||
+  //           // Look for timestamp patterns (from screenshot: "02/09/2025")
+  //           text.match(/\d{2}\/\d{2}\/\d{4}/)
+  //         );
+  //       });
+  //
+  //         if (isShowingToolsList && !hasTestAnalysisResults) {
+  //           // FAIL THE TEST: We should see analysis results, not tools
+  //           expect(isShowingToolsList).toBe(false);
+  //           return; // Exit early since we have wrong content
+  //         }
+  //
+  //       // ASSERTION: Must have actual test analysis results
+  //       if (!hasTestAnalysisResults) {
+  //         const expected = [
+  //           '"Test Analysis" (group name)',
+  //           '"test-site.example.com" (the URL we entered)',
+  //           '"test-*.example.com" (URL pattern)',
+  //           '"test result" (description)',
+  //           '"02/09/2025" (date pattern)',
+  //         ];
+  //
+  //           const errorMessage = `Expected to find test analysis results in Data & Results tab.
+  //
   // Expected one of:
   // ${expected.map((e) => `  - ${e}`).join("\n")}
-
+  //
   // Found actual:
   // ${dataTexts.map((text, i) => `  [${i}] "${text}"`).join("\n")}`;
-
-          throw new Error(errorMessage);
-        }
-
-        // STRONGER ASSERTIONS: Verify results actually appeared
-        // PRIMARY: The exact unique URL must appear (most reliable check)
-        expect(hasSpecificUrl).toBe(true);
-        
-        // SECONDARY: General test analysis results should be present
-        expect(hasTestAnalysisResults).toBe(true);
-        
-        // ASSERTION: We must have at least one data row showing results
-        expect(dataRowCount).toBeGreaterThan(0);
-      } else {
-        // Check if there's a "No data available" message vs actual empty state
-        const noDataMessage = dataTree!.getByText(/No data/i);
-        const hasNoDataMessage = await noDataMessage
-          .isVisible()
-          .catch(() => false);
-
-        if (hasNoDataMessage) {
-        } else {
-        }
-      }
-
-      // ASSERTION SUMMARY: We've verified that:
-      // 1. Test Analyzer tool executed successfully
-      // 2. Results were saved to the database
-      // 3. Data & Results tab shows the analysis results
-      // 4. The specific URL we entered appears in the results
+  //
+  //         throw new Error(errorMessage);
+  //       }
+  //
+  //       // STRONGER ASSERTIONS: Verify results actually appeared
+  //       // PRIMARY: The exact unique URL must appear (most reliable check)
+  //       expect(hasSpecificUrl).toBe(true);
+  //
+  //       // SECONDARY: General test analysis results should be present
+  //       expect(hasTestAnalysisResults).toBe(true);
+  //
+  //       // ASSERTION: We must have at least one data row showing results
+  //       expect(dataRowCount).toBeGreaterThan(0);
+  //     } else {
+  //       // Check if there's a "No data available" message vs actual empty state
+  //       const noDataMessage = dataTree!.getByText(/No data/i);
+  //       const hasNoDataMessage = await noDataMessage
+  //         .isVisible()
+  //         .catch(() => false);
+  //
+  //       if (hasNoDataMessage) {
+  //       } else {
+  //       }
+  //     }
+  //
+  //     // ASSERTION SUMMARY: We've verified that:
+  //     // 1. Test Analyzer tool executed successfully
+  //     // 2. Results were saved to the database
+  //     // 3. Data & Results tab shows the analysis results
+  //     // 4. The specific URL we entered appears in the results
     } finally {
       await VSCodeLauncher.close(vscode);
     }

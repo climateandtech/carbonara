@@ -1,18 +1,35 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CO2 Assessment Schema",
+  "title": "assessment questionnaire Schema",
   "description": "Schema for CO2 impact assessment questionnaire data",
   "type": "object",
-  "required": ["projectInfo", "infrastructure", "development", "features", "sustainabilityGoals", "hardwareConfig", "monitoringConfig"],
+  "required": [
+    "projectOverview",
+    "infrastructure",
+    "development",
+    "features",
+    "sustainabilityGoals"
+  ],
   "properties": {
-    "projectInfo": {
+    "projectOverview": {
       "type": "object",
       "description": "Basic project information",
-      "required": ["expectedUsers", "expectedTraffic", "targetAudience", "projectLifespan"],
+      "required": [
+        "expectedUsers",
+        "expectedTraffic",
+        "targetAudience",
+        "projectLifespan"
+      ],
       "properties": {
         "expectedUsers": {
-          "type": "integer",
-          "minimum": 1,
+          "type": "string",
+          "enum": [
+            "fewer-than-50",
+            "500-to-5000",
+            "5000-to-50000",
+            "over-50000",
+            "unknown"
+          ],
           "description": "Expected number of users"
         },
         "expectedTraffic": {
@@ -21,7 +38,7 @@
           "description": "Expected traffic level"
         },
         "targetAudience": {
-          "type": "string", 
+          "type": "string",
           "enum": ["local", "national", "global"],
           "description": "Geographic scope of target audience"
         },
@@ -35,7 +52,12 @@
     "infrastructure": {
       "type": "object",
       "description": "Infrastructure and hosting details",
-      "required": ["hostingType", "serverLocation", "dataStorage", "backupStrategy"],
+      "required": [
+        "hostingType",
+        "serverLocation",
+        "dataStorage",
+        "backupStrategy"
+      ],
       "properties": {
         "hostingType": {
           "type": "string",
@@ -66,7 +88,13 @@
     "development": {
       "type": "object",
       "description": "Development process details",
-      "required": ["teamSize", "developmentDuration", "cicdPipeline", "testingStrategy", "codeQuality"],
+      "required": [
+        "teamSize",
+        "developmentDuration",
+        "cicdPipeline",
+        "testingStrategy",
+        "codeQuality"
+      ],
       "properties": {
         "teamSize": {
           "type": "integer",
@@ -97,7 +125,13 @@
     "features": {
       "type": "object",
       "description": "Project features that impact CO2",
-      "required": ["realTimeFeatures", "mediaProcessing", "aiMlFeatures", "blockchainIntegration", "iotIntegration"],
+      "required": [
+        "realTimeFeatures",
+        "mediaProcessing",
+        "aiMlFeatures",
+        "blockchainIntegration",
+        "iotIntegration"
+      ],
       "properties": {
         "realTimeFeatures": {
           "type": "boolean",
@@ -124,7 +158,12 @@
     "sustainabilityGoals": {
       "type": "object",
       "description": "Sustainability objectives",
-      "required": ["carbonNeutralityTarget", "greenHostingRequired", "optimizationPriority", "budgetForGreenTech"],
+      "required": [
+        "carbonNeutralityTarget",
+        "greenHostingRequired",
+        "optimizationPriority",
+        "budgetForGreenTech"
+      ],
       "properties": {
         "carbonNeutralityTarget": {
           "type": "boolean",
@@ -149,7 +188,12 @@
     "hardwareConfig": {
       "type": "object",
       "description": "Hardware configuration for CPU monitoring and Impact Framework tools",
-      "required": ["cpuTdp", "totalVcpus", "allocatedVcpus", "gridCarbonIntensity"],
+      "required": [
+        "cpuTdp",
+        "totalVcpus",
+        "allocatedVcpus",
+        "gridCarbonIntensity"
+      ],
       "properties": {
         "cpuTdp": {
           "type": "number",
@@ -184,7 +228,12 @@
     "monitoringConfig": {
       "type": "object",
       "description": "Monitoring and analysis preferences for Impact Framework tools",
-      "required": ["enableCpuMonitoring", "enableE2eMonitoring", "scrollToBottom", "firstVisitPercentage"],
+      "required": [
+        "enableCpuMonitoring",
+        "enableE2eMonitoring",
+        "scrollToBottom",
+        "firstVisitPercentage"
+      ],
       "properties": {
         "enableCpuMonitoring": {
           "type": "boolean",
@@ -215,4 +264,4 @@
       }
     }
   }
-} 
+}

@@ -39,7 +39,7 @@
       },
       {
         "command": "carbonara.runAssessment",
-        "title": "Run CO2 Assessment"
+        "title": "Run assessment questionnaire"
       },
       {
         "command": "carbonara.analyzeWebsite",
@@ -65,7 +65,7 @@
       {
         "command": "carbonara.completeAssessment",
         "title": "Complete Assessment",
-        "icon": "$(check)"
+        "icon": "$(play)"
       },
       {
         "command": "carbonara.refreshAssessment",
@@ -173,9 +173,8 @@
         },
         {
           "id": "carbonara.assessmentTree",
-          "name": "CO2 Assessment",
-          "icon": "$(checklist)",
-          "visibility": "collapsed"
+          "name": "assessment questionnaire",
+          "icon": "$(checklist)"
         },
         {
           "id": "carbonara.dataTree",
@@ -201,11 +200,6 @@
       "view/title": [
         {
           "command": "carbonara.completeAssessment",
-          "when": "view == carbonara.assessmentTree",
-          "group": "navigation"
-        },
-        {
-          "command": "carbonara.refreshAssessment",
           "when": "view == carbonara.assessmentTree",
           "group": "navigation"
         },

@@ -1,7 +1,7 @@
 {
   "name": "@carbonara/cli",
   "version": "0.1.0",
-  "description": "Carbonara CLI tool for CO2 assessment and modular tool execution",
+  "description": "Carbonara CLI tool for assessment questionnaire and modular tool execution",
   "main": "dist/index.js",
   "bin": {
     "carbonara": "dist/index.js"

@@ -2,7 +2,7 @@
   "tools": [
     {
       "id": "co2-assessment",
-      "name": "CO2 Assessment",
+      "name": "assessment questionnaire",
       "description": "Interactive CO2 sustainability assessment questionnaire",
       "command": {
         "executable": "built-in",
@@ -22,7 +22,7 @@
       "display": {
         "category": "Sustainability Assessment",
         "icon": "🌍",
-        "groupName": "CO2 Assessments",
+        "groupName": "assessment questionnaires",
         "entryTemplate": "📊 Assessment - {date}",
         "descriptionTemplate": "Score: {impactScore}/100",
         "fields": [
