@@ -45,6 +45,7 @@ export interface AnalysisTool {
     message: string;
     timestamp: string;
   }; // Last error from execution (from config)
+  hasCustomExecutionCommand?: boolean; // True if user has set a custom execution command
 }
 
 export class ToolItem extends vscode.TreeItem {
@@ -63,6 +64,7 @@ export class ToolItem extends vscode.TreeItem {
     if (tool.type === "built-in") {
       statusText = "Built-in";
     } else if (tool.isInstalled) {
+      // Only show "Error" if detection passed (tool.isInstalled is true)
       if (tool.lastError) {
         statusText = "Error";
       } else if (tool.prerequisitesMissing) {
@@ -71,6 +73,7 @@ export class ToolItem extends vscode.TreeItem {
         statusText = "Installed";
       }
     } else {
+      // Detection failed - show "Not installed" even if there's a lastError
       statusText = "Not installed";
     }
     
@@ -110,11 +113,15 @@ export class ToolItem extends vscode.TreeItem {
     if (tool.type === "built-in") {
       // Special context for semgrep to show custom buttons
       this.contextValue = tool.id === "semgrep" ? "builtin-tool-semgrep" : "builtin-tool";
-    } else if (tool.isInstalled) {
+    } else if (tool.isInstalled || tool.hasCustomExecutionCommand) {
+      // Tool is installed OR has custom execution command (can be run)
       if (tool.lastError) {
         this.contextValue = "installed-tool-error";
       } else if (tool.prerequisitesMissing) {
         this.contextValue = "installed-tool-prerequisites-missing";
+      } else if (tool.hasCustomExecutionCommand) {
+        // Tool with custom execution command (even if working) - allow editing the command
+        this.contextValue = "installed-tool-custom-command";
       } else {
         this.contextValue = "installed-tool";
       }
@@ -235,6 +242,10 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
   async refreshAsync(): Promise<void> {
     await this.loadTools(); // loadTools() already calls _onDidChangeTreeData.fire()
+  }
+
+  getTool(toolId: string): AnalysisTool | undefined {
+    return this.tools.find((t) => t.id === toolId);
   }
 
   getTreeItem(element: ToolItem): vscode.TreeItem {
@@ -404,6 +415,20 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
   }
 
+  private async hasCustomExecutionCommand(toolId: string): Promise<boolean> {
+    if (!this.workspaceFolder) {
+      return false;
+    }
+    try {
+      const { getCustomExecutionCommand } = await import("@carbonara/cli/dist/utils/config.js");
+      const customCommand = await getCustomExecutionCommand(toolId, this.workspaceFolder.uri.fsPath);
+      return !!customCommand;
+    } catch (configError) {
+      // Silently fail - config check is optional
+      return false;
+    }
+  }
+
   private async loadBundledRegistry(): Promise<boolean> {
     try {
       // Look for registry bundled with the extension
@@ -438,6 +463,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           // Load lastError from config
           const lastError = await this.loadLastError(tool.id);
           
+          // Check for custom execution command
+          const hasCustomCommand = await this.hasCustomExecutionCommand(tool.id);
+          
           return {
             id: tool.id,
             name: tool.name,
@@ -451,6 +479,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             isInstalled,
             prerequisitesMissing,
             lastError,
+            hasCustomExecutionCommand: hasCustomCommand,
           };
         })
       );
@@ -488,6 +517,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           // Load lastError from config
           const lastError = await this.loadLastError(tool.id);
           
+          // Check for custom execution command
+          const hasCustomCommand = await this.hasCustomExecutionCommand(tool.id);
+          
           return {
             id: tool.id,
             name: tool.name,
@@ -501,6 +533,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             isInstalled,
             prerequisitesMissing,
             lastError,
+            hasCustomExecutionCommand: hasCustomCommand,
           };
         })
       );
@@ -539,6 +572,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           // Load lastError from config
           const lastError = await this.loadLastError(tool.id);
           
+          // Check for custom execution command
+          const hasCustomCommand = await this.hasCustomExecutionCommand(tool.id);
+          
           return {
           id: tool.id,
           name: tool.name,
@@ -551,6 +587,8 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             prerequisites: tool.prerequisites,
             isInstalled,
             prerequisitesMissing,
+            lastError,
+            hasCustomExecutionCommand: hasCustomCommand,
           };
         }));
 
@@ -848,12 +886,21 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return;
     }
 
-    // Allow running if installation succeeded but detection failed (check config flag)
-    const canRun = tool.isInstalled || (this.workspaceFolder && await isToolMarkedInstalled(toolId, this.workspaceFolder.uri.fsPath));
+    // Allow running if:
+    // 1. Tool is detected as installed (tool.isInstalled)
+    // 2. Tool is marked as installed in config (installation succeeded but detection failed)
+    // 3. Tool has a custom execution command (user manually set it)
+    let canRun = tool.isInstalled;
+    if (!canRun && this.workspaceFolder) {
+      const { isToolMarkedInstalled, getCustomExecutionCommand } = await import("@carbonara/cli/dist/utils/config.js");
+      const isMarkedInstalled = await isToolMarkedInstalled(toolId, this.workspaceFolder.uri.fsPath);
+      const customCommand = await getCustomExecutionCommand(toolId, this.workspaceFolder.uri.fsPath);
+      canRun = isMarkedInstalled || !!customCommand;
+    }
     
     if (!canRun) {
       vscode.window.showErrorMessage(
-        `${tool.name} is not installed. Please install it first.`
+        `${tool.name} is not installed. Please install it first or set a custom execution command.`
       );
       const { showToolInstallationInstructions } = await import("./tool-installation-provider");
       await showToolInstallationInstructions(toolId);
@@ -1200,6 +1247,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           // Load lastError from config
           const lastError = await this.loadLastError(tool.id);
           
+          // Check for custom execution command
+          const hasCustomCommand = await this.hasCustomExecutionCommand(tool.id);
+          
           return {
             ...tool,
             type: isBuiltIn ? "built-in" : "external",
@@ -1208,6 +1258,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             isInstalled,
             prerequisitesMissing,
             lastError,
+            hasCustomExecutionCommand: hasCustomCommand,
           };
         })
       );

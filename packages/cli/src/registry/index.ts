@@ -120,6 +120,22 @@ export class AnalysisToolRegistry {
 
   private async checkToolInstallation(tool: AnalysisTool): Promise<boolean> {
     try {
+      // Check if user has manually installed with custom execution command
+      // If so, mark as installed (detection is bypassed, user knows it's installed)
+      // NOTE: Only custom execution command bypasses detection - config flags (isToolMarkedInstalled)
+      // are only used to allow running, not to change display status
+      try {
+        const { getCustomExecutionCommand } = await import('../utils/config.js');
+        const customExecCommand = await getCustomExecutionCommand(tool.id);
+        if (customExecCommand) {
+          // User has manually installed with custom command - trust them, mark as installed
+          // Detection is bypassed because user provided their own command
+          return true;
+        }
+      } catch {
+        // Config check failed, continue with default detection
+      }
+      
       switch (tool.detection.method) {
         case 'built-in':
           return true; // Built-in tools are always available

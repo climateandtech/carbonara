@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Carbonara Project Configuration",
+  "description": "Configuration file for Carbonara projects stored in .carbonara/carbonara.config.json",
+  "type": "object",
+  "required": ["name", "description", "projectType", "projectId", "database"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Project name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Project description"
+    },
+    "projectType": {
+      "type": "string",
+      "description": "Type of project (e.g., 'web', 'api', 'mobile')"
+    },
+    "projectId": {
+      "type": "number",
+      "description": "Unique project identifier"
+    },
+    "database": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Path to the database file"
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "description": "Tool-specific configuration and status",
+      "additionalProperties": {
+        "$ref": "#/definitions/ToolStatus"
+      }
+    }
+  },
+  "definitions": {
+    "ToolStatus": {
+      "type": "object",
+      "description": "Status and configuration for a specific tool",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the tool is enabled"
+        },
+        "installationStatus": {
+          "type": "object",
+          "description": "Installation status tracked by Carbonara",
+          "properties": {
+            "installed": {
+              "type": "boolean",
+              "description": "Whether the tool is marked as installed"
+            },
+            "installedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "ISO timestamp when the tool was marked as installed"
+            }
+          },
+          "required": ["installed", "installedAt"]
+        },
+        "lastError": {
+          "type": "object",
+          "description": "Last error encountered when running the tool",
+          "properties": {
+            "message": {
+              "type": "string",
+              "description": "Error message"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "ISO timestamp when the error occurred"
+            }
+          },
+          "required": ["message", "timestamp"]
+        },
+        "detectionFailed": {
+          "type": "boolean",
+          "description": "Flag indicating that detection previously gave a false positive"
+        },
+        "detectionFailedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp when detection failure was flagged"
+        },
+        "customExecutionCommand": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Single custom execution command to override default command"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Array of command parts (executable + args) to override default command"
+            }
+          ],
+          "description": "Custom execution command to override the tool's default command. If set, this command is used when running the tool. Can be a single string (will be split by spaces) or array of strings (first is executable, rest are args). Use {url} placeholder for URL. The tool will be marked as installed when this is set."
+        }
+      }
+    }
+  }
+}
+

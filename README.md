@@ -158,6 +158,32 @@ carbonara tools --install greenframe      # Install external tool
 carbonara tools --refresh                 # Refresh installation status
 ```
 
+#### Smart Tool Detection & Execution
+
+Carbonara includes advanced tool management features for reliable tool detection and execution:
+
+**🔍 Intelligent Detection**
+- Uses explicit detection commands to accurately verify tool installation
+- Supports multiple detection commands for complex tools with dependencies
+- Automatically checks prerequisites (e.g., Docker, browsers) before execution
+
+**⚠️ Error Tracking**
+- Yellow status indicator when tools are detected but fail during execution
+- Detailed error messages with timestamps in tooltips
+- Installation instructions shown when tools are missing or misconfigured
+
+**⚙️ Custom Execution Commands**
+- Override default execution commands for manually installed tools
+- Configure custom paths or commands via VS Code extension settings
+- Maintains error tracking even with custom execution setups
+- Useful for tools installed in non-standard locations or with custom configurations
+
+**VS Code Integration**
+- Visual status indicators (green/yellow/red) for tool installation and execution state
+- Inline action buttons for running tools and viewing installation instructions
+- Settings gear icon to configure custom execution commands
+- Error tooltips with troubleshooting information
+
 ### Data Management
 ```bash
 carbonara data --list                     # List stored data
@@ -174,6 +200,19 @@ carbonara import --database other.db      # Import from database
 - **Command Palette**: Access all Carbonara commands
 - **Interactive Menus**: Visual interface for operations
 - **Project Management**: Initialize and configure projects
+- **Smart Tool Management**: Visual status indicators, error tracking, and custom execution commands
+
+### Analysis Tools View
+The extension provides a comprehensive Analysis Tools tree view with:
+- **Status Indicators**: 
+  - 🟢 Green: Tool installed and ready
+  - 🟡 Yellow: Tool detected but has errors or missing prerequisites
+  - 🔴 Red: Tool not installed
+- **Inline Actions**: 
+  - ▶️ Run/Install button
+  - ℹ️ Installation instructions
+  - ⚙️ Custom execution command settings
+- **Error Tooltips**: Detailed error messages with timestamps and troubleshooting steps
 
 ### Usage
 1. Click **Carbonara** in status bar
@@ -183,6 +222,11 @@ carbonara import --database other.db      # Import from database
    - 🌐 Analyze Website
    - 🗄️ View Data
    - ⚙️ Open Configuration
+3. Use the **Analysis Tools** sidebar to:
+   - View tool installation status
+   - Run analysis tools with a single click
+   - Configure custom execution commands for manually installed tools
+   - View detailed installation instructions and error information
 
 ## 🗄️ Database Model
 

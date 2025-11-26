@@ -13,6 +13,7 @@ export interface ToolStatus {
   };
   detectionFailed?: boolean;
   detectionFailedAt?: string;
+  customExecutionCommand?: string | string[]; // Custom execution command(s) to override default command - user provides this when manually installing
 }
 
 export interface ProjectConfig {
@@ -184,5 +185,62 @@ export async function flagDetectionFailed(toolId: string, projectPath?: string):
     delete config.tools[toolId].installationStatus;
   }
 
+  saveProjectConfig(config, projectPath);
+}
+
+/**
+ * Set a custom execution command for a tool
+ * This allows users to override the default execution command when they manually install a tool
+ * Can be a single string command or an array of command parts
+ * The tool will be marked as installed and use this command for execution
+ */
+export async function setCustomExecutionCommand(toolId: string, command: string | string[], projectPath?: string): Promise<void> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config) {
+    return;
+  }
+
+  if (!config.tools) {
+    config.tools = {};
+  }
+
+  if (!config.tools[toolId]) {
+    config.tools[toolId] = {};
+  }
+
+  config.tools[toolId].customExecutionCommand = command;
+  
+  // Mark as installed if custom execution command is set (user manually installed it)
+  config.tools[toolId].installationStatus = {
+    installed: true,
+    installedAt: new Date().toISOString(),
+  };
+
+  saveProjectConfig(config, projectPath);
+}
+
+/**
+ * Get the custom execution command for a tool
+ * Returns a string (single command) or array of strings (command parts), or null if not set
+ */
+export async function getCustomExecutionCommand(toolId: string, projectPath?: string): Promise<string | string[] | null> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config?.tools?.[toolId]?.customExecutionCommand) {
+    return null;
+  }
+
+  return config.tools[toolId].customExecutionCommand!;
+}
+
+/**
+ * Clear the custom execution command for a tool
+ */
+export async function clearCustomExecutionCommand(toolId: string, projectPath?: string): Promise<void> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config?.tools?.[toolId]) {
+    return;
+  }
+
+  delete config.tools[toolId].customExecutionCommand;
   saveProjectConfig(config, projectPath);
 } 

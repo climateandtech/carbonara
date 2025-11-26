@@ -127,11 +127,18 @@
       "properties": {
         "method": {
           "type": "string",
-          "enum": ["command", "npm", "file"]
+          "enum": ["command", "npm", "file", "built-in"]
         },
         "target": {
           "type": "string",
-          "description": "Command to check, npm package, or file path"
+          "description": "Command to check, npm package, or file path (backward compatible)"
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of detection commands to check (all must pass). Takes precedence over target."
         },
         "expectedOutput": {
           "type": "string",

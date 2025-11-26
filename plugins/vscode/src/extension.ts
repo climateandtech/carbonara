@@ -218,6 +218,61 @@ export async function activate(context: vscode.ExtensionContext) {
       }
       toolsTreeProvider.analyzeTool(toolId);
     }),
+    vscode.commands.registerCommand("carbonara.setCustomExecutionCommand", async (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      
+      const tool = toolsTreeProvider.getTool(toolId);
+      if (!tool) {
+        vscode.window.showErrorMessage("Tool not found");
+        return;
+      }
+      
+      // Get workspace folder
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        vscode.window.showErrorMessage("Please open a workspace folder first");
+        return;
+      }
+      
+      // Show input box for custom command
+      const customCommand = await vscode.window.showInputBox({
+        prompt: `Enter custom execution command for ${tool.name}`,
+        placeHolder: "e.g., npx greenframe analyze",
+        value: tool.command || "",
+        validateInput: (value) => {
+          if (!value || value.trim().length === 0) {
+            return "Command cannot be empty";
+          }
+          return undefined;
+        },
+      });
+      
+      if (!customCommand) {
+        return;
+      }
+      
+      try {
+        // Import and use the config utility
+        const { setCustomExecutionCommand } = await import("@carbonara/cli/dist/utils/config.js");
+        await setCustomExecutionCommand(toolId, customCommand.trim(), workspaceFolder.uri.fsPath);
+        
+        vscode.window.showInformationMessage(
+          `✅ Custom execution command set for ${tool.name}. The tool will now use this command when running.`
+        );
+        
+        // Refresh tools tree to update status
+        await toolsTreeProvider.refreshAsync();
+      } catch (error: any) {
+        vscode.window.showErrorMessage(
+          `Failed to set custom execution command: ${error.message}`
+        );
+      }
+    }),
     vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
     vscode.commands.registerCommand("carbonara.scanAllFiles", scanAllFiles),
     vscode.commands.registerCommand(

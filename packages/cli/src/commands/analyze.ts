@@ -124,8 +124,23 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
 
     spinner.text = `Analyzing with ${tool.name}...`;
 
+    // Check for custom execution command (user manually installed)
+    const { getCustomExecutionCommand } = await import('../utils/config.js');
+    const customExecCommand = await getCustomExecutionCommand(toolId);
+    
     // Build command string for logging
-    const commandStr = `${tool.command.executable} ${tool.command.args.join(' ').replace('{url}', url || '')}`;
+    let commandStr: string;
+    if (customExecCommand) {
+      // Use custom execution command
+      if (Array.isArray(customExecCommand)) {
+        commandStr = customExecCommand.join(' ').replace('{url}', url || '');
+      } else {
+        commandStr = customExecCommand.replace('{url}', url || '');
+      }
+    } else {
+      // Use default command
+      commandStr = `${tool.command.executable} ${tool.command.args.join(' ').replace('{url}', url || '')}`;
+    }
 
     let results: any;
     let output = '';
@@ -137,10 +152,10 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     } else if (toolId === 'carbonara-swd') {
       results = await runCarbonaraSWD(url!, options, tool);
     } else if (toolId.startsWith('if-')) {
-      results = await runImpactFramework(url!, options, tool);
+      results = await runImpactFramework(url!, options, tool, customExecCommand);
       output = JSON.stringify(results, null, 2).substring(0, 1000); // Limit output length
     } else {
-      results = await runGenericTool(url!, options, tool);
+      results = await runGenericTool(url!, options, tool, customExecCommand);
       output = JSON.stringify(results, null, 2).substring(0, 1000);
     }
 
@@ -359,7 +374,49 @@ async function runDeploymentScan(dirPath: string, options: AnalyzeOptions, tool:
   };
 }
 
-async function runGenericTool(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+async function runGenericTool(url: string, options: AnalyzeOptions, tool: AnalysisTool, customExecCommand?: string | string[] | null): Promise<any> {
+  // Use custom execution command if provided, otherwise use default
+  if (customExecCommand) {
+    // Custom command can be a string or array
+    if (typeof customExecCommand === 'string') {
+      // Single string command - replace {url} placeholder and execute
+      const command = customExecCommand.replace('{url}', url);
+      // Parse command string into executable and args
+      const parts = command.split(' ').filter(p => p.trim());
+      const executable = parts[0];
+      const args = parts.slice(1);
+      
+      const result = await execa(executable, args, {
+        stdio: 'pipe'
+      });
+      
+      if (tool.command.outputFormat === 'json') {
+        return JSON.parse(result.stdout);
+      } else if (tool.command.outputFormat === 'yaml') {
+        return yaml.load(result.stdout);
+      } else {
+        return { output: result.stdout };
+      }
+    } else {
+      // Array of command parts - first is executable, rest are args
+      const executable = customExecCommand[0];
+      const args = customExecCommand.slice(1).map(arg => arg.replace('{url}', url));
+      
+      const result = await execa(executable, args, {
+        stdio: 'pipe'
+      });
+      
+      if (tool.command.outputFormat === 'json') {
+        return JSON.parse(result.stdout);
+      } else if (tool.command.outputFormat === 'yaml') {
+        return yaml.load(result.stdout);
+      } else {
+        return { output: result.stdout };
+      }
+    }
+  }
+  
+  // Default command execution
   // Replace placeholders in command args
   const args = tool.command.args.map(arg => arg.replace('{url}', url));
   
@@ -402,7 +459,7 @@ async function runTestAnalyzer(url: string, options: AnalyzeOptions, tool: Analy
   };
 }
 
-async function runImpactFramework(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
+async function runImpactFramework(url: string, options: AnalyzeOptions, tool: AnalysisTool, customExecCommand?: string | string[] | null): Promise<any> {
   // Check if tool has manifest template
   if (!tool.manifestTemplate) {
     throw new Error(`Tool ${tool.id} does not have a manifest template configured`);

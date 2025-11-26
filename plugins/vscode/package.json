@@ -122,6 +122,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "carbonara.setCustomExecutionCommand",
+        "title": "Set Custom Execution Command",
+        "icon": "$(gear)"
+      },
+      {
         "command": "carbonara.runSemgrep",
         "title": "Scan current file",
         "icon": "$(play)"
@@ -254,7 +259,7 @@
         },
         {
           "command": "carbonara.analyzeTool",
-          "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool)",
+          "when": "view == carbonara.toolsTree && (viewItem == installed-tool || viewItem == builtin-tool || viewItem == installed-tool-error)",
           "group": "inline@2",
           "icon": "$(play)"
         },
@@ -263,6 +268,13 @@
           "when": "view == carbonara.toolsTree && (viewItem == uninstalled-tool || viewItem == installed-tool-prerequisites-missing)",
           "group": "inline@2",
           "icon": "$(cloud-download)"
+        },
+        {
+          "command": "carbonara.setCustomExecutionCommand",
+          "when": "view == carbonara.toolsTree && viewItem != builtin-tool && viewItem != builtin-tool-semgrep",
+          "group": "inline@2",
+          "icon": "$(gear)",
+          "title": "Set Custom Execution Command"
         },
         {
           "command": "carbonara.runSemgrep",
