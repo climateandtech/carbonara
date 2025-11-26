@@ -9,6 +9,7 @@ export default defineConfig({
       exclude: ['src/**/*.test.js', 'src/**/*.test.ts']
     },
     testTimeout: 15000, // 15 seconds for CLI operations
+    poolTimeout: 60000, // 60 seconds for worker pool communication (prevents "onTaskUpdate" timeout)
     passWithNoTests: true
   }
 })
