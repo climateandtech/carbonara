@@ -17,7 +17,7 @@ export interface AssessmentField {
   label: string;
   type: "input" | "select" | "number" | "boolean";
   required: boolean;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; detail?: string }[];
   value?: any;
   defaultValue?: any;
 }
