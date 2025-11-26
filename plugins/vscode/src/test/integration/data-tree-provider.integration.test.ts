@@ -221,6 +221,7 @@ suite("DataTreeProvider Integration Tests", () => {
 
       if (entries.length > 0) {
         const entryDetails = await provider.getChildren(entries[0]);
+        assert.ok(Array.isArray(entryDetails), "Entry details should be an array");
         entryDetails.forEach((detail) => {
           assert.strictEqual(detail.type, "detail");
           assert.strictEqual(
@@ -228,8 +229,236 @@ suite("DataTreeProvider Integration Tests", () => {
             vscode.TreeItemCollapsibleState.None
           );
           assert.strictEqual(detail.contextValue, "carbonara-data-detail");
+          assert.ok(typeof detail.label === "string", "Detail label should be a string");
         });
       }
+    });
+  });
+
+  suite("Entry Expansion with Test Data", () => {
+    let dataService: any;
+    let projectId: number;
+
+    setup(async () => {
+      // Create data service for test data setup
+      dataService = createDataService({ dbPath: testDbPath });
+      await dataService.initialize();
+
+      // Create a test project
+      projectId = await dataService.createProject(
+        "Test Project",
+        testWorkspaceFolder.uri.fsPath,
+        {}
+      );
+    });
+
+    teardown(async () => {
+      if (dataService) {
+        await dataService.close();
+      }
+    });
+
+    test("should expand test-analyzer entry and show all fields", async () => {
+      // Insert test-analyzer data
+      const entryId = await dataService.storeAssessmentData(
+        projectId,
+        "test-analyzer",
+        "web-analysis",
+        {
+          url: "https://test.example.com",
+          result: "test result",
+        }
+      );
+
+      // Wait for provider to refresh
+      await provider.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const children = await provider.getChildren();
+      const entries = children.filter(
+        (child) => child.type === "entry" && child.toolName === "test-analyzer"
+      );
+
+      assert.ok(entries.length > 0, "Should have test-analyzer entries");
+
+      // Expand the first entry
+      const entryDetails = await provider.getChildren(entries[0]);
+      
+      // test-analyzer has 2 fields: url and result
+      assert.ok(entryDetails.length >= 2, "Should show at least 2 detail fields");
+      
+      const fieldKeys = entryDetails.map((d) => d.label);
+      assert.ok(
+        fieldKeys.some((k) => k.includes("Test URL") || k.includes("url")),
+        "Should show URL field"
+      );
+      assert.ok(
+        fieldKeys.some((k) => k.includes("Test Result") || k.includes("result")),
+        "Should show result field"
+      );
+    });
+
+    test("should expand carbonara-swd entry and show carbon emissions and energy", async () => {
+      // Insert carbonara-swd data with correct structure (carbonEmissions.total, energyUsage.total)
+      await dataService.storeAssessmentData(
+        projectId,
+        "carbonara-swd",
+        "web-analysis",
+        {
+          url: "https://example.com",
+          totalBytes: 524288,
+          carbonEmissions: {
+            networkTransfer: 0.05,
+            deviceUsage: 0.10,
+            datacenterUsage: 0.03,
+            embodiedCarbon: 0.0001,
+            total: 0.18
+          },
+          energyUsage: {
+            networkTransfer: 0.0001,
+            total: 0.0003
+          },
+          metadata: {
+            loadTime: 1250,
+            resourceCount: 42,
+            analysisTimestamp: new Date().toISOString(),
+            carbonIntensity: 473,
+            model: "SWD v4"
+          }
+        }
+      );
+
+      await provider.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const children = await provider.getChildren();
+      const entries = children.filter(
+        (child) => child.type === "entry" && child.toolName === "carbonara-swd"
+      );
+
+      assert.ok(entries.length > 0, "Should have carbonara-swd entries");
+
+      const entryDetails = await provider.getChildren(entries[0]);
+      
+      // carbonara-swd has 6 fields: url, totalBytes, requestCount, loadTime, carbonEstimate, energyEstimate
+      assert.ok(entryDetails.length >= 6, "Should show at least 6 detail fields");
+      
+      const fieldLabels = entryDetails.map((d) => d.label);
+      assert.ok(
+        fieldLabels.some((l) => l.includes("URL")),
+        "Should show URL field"
+      );
+      assert.ok(
+        fieldLabels.some((l) => l.includes("Data Transfer")),
+        "Should show Data Transfer field"
+      );
+      assert.ok(
+        fieldLabels.some((l) => l.includes("CO2 Estimate")),
+        "Should show CO2 Estimate field (most important)"
+      );
+      assert.ok(
+        fieldLabels.some((l) => l.includes("Energy")),
+        "Should show Energy field (most important)"
+      );
+    });
+
+    test("should expand semgrep entry and show only filtered fields", async () => {
+      // Insert semgrep data
+      await dataService.storeAssessmentData(
+        projectId,
+        "semgrep",
+        "code-analysis",
+        {
+          target: "/path/to/file",
+          stats: {
+            total_matches: 10,
+            error_count: 2,
+            warning_count: 5,
+            info_count: 3,
+            files_scanned: 1,
+          },
+        }
+      );
+
+      await provider.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const children = await provider.getChildren();
+      const entries = children.filter(
+        (child) => child.type === "entry" && child.toolName === "semgrep"
+      );
+
+      assert.ok(entries.length > 0, "Should have semgrep entries");
+
+      const entryDetails = await provider.getChildren(entries[0]);
+      
+      // Semgrep should only show: error_count, warning_count, info_count, target
+      assert.strictEqual(entryDetails.length, 4, "Should show exactly 4 filtered fields");
+      
+      const fieldKeys = entryDetails.map((d) => {
+        // Extract key from label (e.g., "🚨 Errors: 2" -> "error_count")
+        const label = d.label.toLowerCase();
+        if (label.includes("error")) return "error_count";
+        if (label.includes("warning")) return "warning_count";
+        if (label.includes("info")) return "info_count";
+        if (label.includes("target")) return "target";
+        return "";
+      });
+
+      assert.ok(fieldKeys.includes("error_count"), "Should show error_count");
+      assert.ok(fieldKeys.includes("warning_count"), "Should show warning_count");
+      assert.ok(fieldKeys.includes("info_count"), "Should show info_count");
+      assert.ok(fieldKeys.includes("target"), "Should show target");
+      
+      // Verify total_matches and files_scanned are NOT shown
+      const allLabels = entryDetails.map((d) => d.label.toLowerCase());
+      assert.ok(
+        !allLabels.some((l) => l.includes("total_matches") || l.includes("findings")),
+        "Should NOT show total_matches"
+      );
+      assert.ok(
+        !allLabels.some((l) => l.includes("files_scanned") || l.includes("files")),
+        "Should NOT show files_scanned"
+      );
+    });
+
+    test("should handle entry with missing data gracefully", async () => {
+      // Insert entry with minimal data
+      await dataService.storeAssessmentData(
+        projectId,
+        "test-analyzer",
+        "web-analysis",
+        {}
+      );
+
+      await provider.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const children = await provider.getChildren();
+      const entries = children.filter(
+        (child) => child.type === "entry" && child.toolName === "test-analyzer"
+      );
+
+      if (entries.length > 0) {
+        const entryDetails = await provider.getChildren(entries[0]);
+        // Should return empty array or handle gracefully
+        assert.ok(Array.isArray(entryDetails), "Should return array even with missing data");
+      }
+    });
+
+    test("should return empty array for non-existent entryId", async () => {
+      // Create a fake entry item with non-existent ID
+      const fakeEntry = new DataItem(
+        "Fake Entry",
+        "Test",
+        vscode.TreeItemCollapsibleState.Collapsed,
+        "entry",
+        "test-analyzer",
+        99999 // Non-existent ID
+      );
+
+      const entryDetails = await provider.getChildren(fakeEntry);
+      assert.strictEqual(entryDetails.length, 0, "Should return empty array for non-existent entry");
     });
   });
 

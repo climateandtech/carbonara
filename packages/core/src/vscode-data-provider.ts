@@ -177,9 +177,13 @@ export class VSCodeDataProvider {
     const toolSchema = this.schemaService.getToolSchema(entry.tool_name);
     const details: DataDetail[] = [];
 
-    if (toolSchema && toolSchema.display) {
-      // Schema-based details
+    if (toolSchema && toolSchema.display && toolSchema.display.fields.length > 0) {
+      // Schema-based details - use schema paths to extract nested values from any depth
+      // The schema defines which fields to extract using paths like "data.results.totalBytes"
+      // This allows tool maintainers to specify exactly what nested data to display
       toolSchema.display.fields.forEach(field => {
+        // extractValue navigates the nested structure using the path (e.g., "data.results.totalBytes")
+        // It handles paths like "data.results.carbonEstimate,data.results.co2Estimate" (fallback paths)
         const value = this.schemaService.extractValue(entry, field.path);
         if (value !== null && value !== undefined) {
           const formattedValue = this.schemaService.formatValue(value, field.type, field.format);
@@ -194,7 +198,8 @@ export class VSCodeDataProvider {
         }
       });
     } else {
-      // Generic fallback details
+      // Generic fallback - only show basic metadata, not raw data fields
+      // Tool maintainers should define schemas to extract nested data properly
       details.push({
         key: 'tool',
         label: `Tool: ${entry.tool_name}`,
@@ -210,21 +215,6 @@ export class VSCodeDataProvider {
         formattedValue: new Date(entry.timestamp).toLocaleString(),
         type: 'string'
       });
-
-      // Add basic data fields
-      if (entry.data && typeof entry.data === 'object') {
-        Object.keys(entry.data).forEach(key => {
-          if (key !== 'results' && entry.data[key] !== null && entry.data[key] !== undefined) {
-            details.push({
-              key,
-              label: `${key}: ${entry.data[key]}`,
-              value: entry.data[key],
-              formattedValue: String(entry.data[key]),
-              type: 'string'
-            });
-          }
-        });
-      }
     }
 
     return details;

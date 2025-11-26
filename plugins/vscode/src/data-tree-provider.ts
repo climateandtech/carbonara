@@ -246,6 +246,10 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     }
   }
 
+  getCoreServices() {
+    return this.coreServices;
+  }
+
   async refresh(): Promise<void> {
     // Load new data in background without clearing cache
     // This prevents showing "Loading..." message during refresh
@@ -389,6 +393,12 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       if (element.children) {
         return element.children;
       }
+
+      // Handle entry expansion - load detail fields from database
+      if (element.type === "entry" && element.entryId && this.coreServices) {
+        return this.loadEntryDetails(element.entryId, element.toolName);
+      }
+
       return [];
     } else {
       // Load root items with real data
@@ -729,6 +739,63 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
     }
   }
 
+  /**
+   * Load detail fields for an entry when it's expanded
+   */
+  private async loadEntryDetails(
+    entryId: number,
+    toolName?: string
+  ): Promise<DataItem[]> {
+    if (!this.coreServices || !this.workspaceFolder) {
+      return [];
+    }
+
+    try {
+      const projectPath = this.workspaceFolder.uri.fsPath;
+
+      // Load all assessment data and find the entry by ID
+      const allEntries =
+        await this.coreServices.dataService.getAssessmentData();
+      const entry = allEntries.find((e) => e.id === entryId);
+
+      if (!entry) {
+        console.warn(`Entry with ID ${entryId} not found`);
+        return [];
+      }
+
+      // Get detail fields using the schema
+      const details =
+        await this.coreServices.vscodeProvider.createDataDetails(entry);
+
+      // Filter fields for semgrep - only show severity counts and target
+      let filteredDetails = details;
+      if (toolName === "semgrep") {
+        filteredDetails = details.filter(
+          (detail) =>
+            detail.key === "error_count" ||
+            detail.key === "warning_count" ||
+            detail.key === "info_count" ||
+            detail.key === "target"
+        );
+      }
+
+      // Convert DataDetail[] to DataItem[] children
+      return filteredDetails.map(
+        (detail) =>
+          new DataItem(
+            detail.label,
+            "",
+            vscode.TreeItemCollapsibleState.None,
+            "detail",
+            toolName
+          )
+      );
+    } catch (error) {
+      console.error("Error loading entry details:", error);
+      return [];
+    }
+  }
+
   private async createGroupedItems(): Promise<DataItem[]> {
     if (!this.coreServices || !this.workspaceFolder) {
       return [
@@ -1036,7 +1103,7 @@ export class DataItem extends vscode.TreeItem {
     // Set icons
     switch (type) {
       case "group":
-        // No icon for group
+        this.iconPath = new vscode.ThemeIcon("eye");
         break;
       case "folder":
         // No icon for folders
@@ -1048,10 +1115,10 @@ export class DataItem extends vscode.TreeItem {
         // No icon for findings
         break;
       case "entry":
-        this.iconPath = new vscode.ThemeIcon("file");
+        this.iconPath = new vscode.ThemeIcon("eye");
         break;
       case "detail":
-        this.iconPath = new vscode.ThemeIcon("symbol-property");
+        // No icon for detail items
         break;
       case "error":
         this.iconPath = new vscode.ThemeIcon("error");
@@ -1064,9 +1131,24 @@ export class DataItem extends vscode.TreeItem {
         break;
     }
 
+    // Add command to open virtual document when clicked (for entries and groups)
+    if (this.type === "entry" && this.entryId) {
+      this.command = {
+        command: "carbonara.openEntryDocument",
+        title: "View Entry",
+        arguments: [this.entryId],
+      };
+    } else if (this.type === "group" && this.toolName) {
+      this.command = {
+        command: "carbonara.openGroupDocument",
+        title: "View Summary",
+        arguments: [this.toolName],
+      };
+    }
+
     // Add command to open file when clicked (for Semgrep results)
     if (this.toolName === "semgrep" && this.filePath) {
-      if (this.type === "file" || this.type === "entry") {
+      if (this.type === "file") {
         // Open file without jumping to specific line
         this.command = {
           command: "carbonara.openSemgrepFile",

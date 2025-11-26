@@ -140,34 +140,34 @@
           {
             "key": "totalBytes",
             "label": "📊 Data Transfer",
-            "path": "data.results.totalBytes",
+            "path": "data.totalBytes",
             "type": "bytes",
             "format": "{value} KB ({valueMB} MB)"
           },
           {
             "key": "requestCount",
             "label": "🔗 HTTP Requests",
-            "path": "data.results.requestCount",
+            "path": "data.metadata.resourceCount",
             "type": "number"
           },
           {
             "key": "loadTime",
             "label": "⚡ Load Time",
-            "path": "data.results.loadTime,data.results.performance.loadTime",
+            "path": "data.metadata.loadTime",
             "type": "time",
             "format": "{value}ms"
           },
           {
             "key": "carbonEstimate",
             "label": "🌱 CO2 Estimate",
-            "path": "data.results.carbonEstimate,data.results.co2Estimate",
+            "path": "data.carbonEmissions.total",
             "type": "carbon",
             "format": "{value}g"
           },
           {
             "key": "energyEstimate",
             "label": "⚡ Energy",
-            "path": "data.results.energyEstimate",
+            "path": "data.energyUsage.total",
             "type": "energy",
             "format": "{value} kWh"
           }

@@ -13,6 +13,11 @@ import {
   DataTreeProvider,
   SemgrepFindingDecorationProvider,
 } from "./data-tree-provider";
+import {
+  AssessmentDataContentProvider,
+  openEntryDocument,
+  openGroupDocument,
+} from "./assessment-data-content-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import { DeploymentsTreeProvider } from "./deployments-tree-provider";
 import { WelcomeTreeProvider } from "./welcome-tree-provider";
@@ -32,6 +37,7 @@ let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
 let deploymentsTreeProvider: DeploymentsTreeProvider;
+let assessmentDataContentProvider: AssessmentDataContentProvider;
 
 let currentProjectPath: string | null = null;
 
@@ -102,6 +108,27 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerFileDecorationProvider(semgrepDecorationProvider)
   );
   console.log("✅ Semgrep decoration provider registered");
+
+  // Register virtual document content provider for assessment data
+  assessmentDataContentProvider = new AssessmentDataContentProvider();
+  const contentProviderDisposable = vscode.workspace.registerTextDocumentContentProvider(
+    "carbonara-data",
+    assessmentDataContentProvider
+  );
+  context.subscriptions.push(contentProviderDisposable);
+
+  // Set core services on content provider when data tree provider initializes
+  // Poll for core services to be ready (they initialize asynchronously)
+  const checkAndSetCoreServices = () => {
+    const coreServices = dataTreeProvider.getCoreServices();
+    if (coreServices) {
+      assessmentDataContentProvider.setCoreServices(coreServices);
+    } else {
+      // Check again after a short delay
+      setTimeout(checkAndSetCoreServices, 500);
+    }
+  };
+  checkAndSetCoreServices();
 
   // Set up Semgrep to refresh Data & Results when database updates
   setOnDatabaseUpdateCallback(() => {
@@ -189,6 +216,14 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "carbonara.openDeploymentConfig",
       (deployment) => deploymentsTreeProvider.openDeploymentConfig(deployment)
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.openEntryDocument",
+      (entryId: number) => openEntryDocument(entryId, assessmentDataContentProvider)
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.openGroupDocument",
+      (toolName: string) => openGroupDocument(toolName, assessmentDataContentProvider)
     ),
   ];
 
