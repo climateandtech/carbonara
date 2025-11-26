@@ -364,7 +364,7 @@
     "copy-deps": "node scripts/copy-deps.js",
     "watch": "tsc -watch -p ./",
     "package": "npm run build && vsce package --no-dependencies && (vsce ls 2>/dev/null || echo '⚠️  vsce ls failed (non-critical - package was created successfully)')",
-    "test:package": "npm run build && vsce package --no-dependencies 2>&1 | (grep -q 'DONE  Packaged' || (echo '❌ Package creation failed - DONE message not found' && exit 1)) && (ls carbonara-vscode-*.vsix >/dev/null 2>&1 && echo '✅ Package created successfully' || (echo '❌ Package file not found' && exit 1))",
+    "test:package": "npm run build && vsce package --no-dependencies 2>&1 && (ls carbonara-vscode-*.vsix >/dev/null 2>&1 && echo '✅ Package created successfully' || (echo '❌ Package file not found' && exit 1))",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",
