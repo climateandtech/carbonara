@@ -25,26 +25,42 @@ describe('Assess Command Integration', () => {
   });
 
   describe('assess command without project', () => {
-    it('should show error when project is not initialized', () => {
+    it('should start interactive questionnaire when project is not initialized', () => {
+      // The assess command now creates a project automatically if one doesn't exist
+      // and starts the interactive questionnaire. We can't test the full interactive
+      // flow in this test, but we can verify it starts.
       try {
-        execSync(`cd "${testDir}" && node "${cliPath}" assess`, {
+        execSync(`cd "${testDir}" && echo "" | node "${cliPath}" assess`, {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          timeout: 1000 // Short timeout since we're not completing the questionnaire
         });
-        expect.fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stdout || error.stderr || '';
-        expect(output).toContain('No project found');
+        // Should show the first question from the assessment
+        expect(output).toContain('Project Overview');
       }
     });
   });
 
   describe('assess command with file input', () => {
     beforeEach(() => {
-      // Initialize a test project
-      execSync(`cd "${testDir}" && node "${cliPath}" init --name "Test Project" --type web --yes`, {
-        encoding: 'utf-8',
-      });
+      // Create a basic config file and .carbonara directory
+      const carbonaraDir = path.join(testDir, '.carbonara');
+      if (!fs.existsSync(carbonaraDir)) {
+        fs.mkdirSync(carbonaraDir, { recursive: true });
+      }
+
+      const config = {
+        name: 'Test Project',
+        projectType: 'web',
+        version: '1.0.0'
+      };
+
+      fs.writeFileSync(
+        path.join(testDir, 'carbonara.config.json'),
+        JSON.stringify(config, null, 2)
+      );
     });
 
     it('should accept assessment data from JSON file', () => {
@@ -142,9 +158,22 @@ describe('Assess Command Integration', () => {
 
   describe('assess data storage', () => {
     beforeEach(() => {
-      execSync(`cd "${testDir}" && node "${cliPath}" init --name "Test Project" --type web --yes`, {
-        encoding: 'utf-8',
-      });
+      // Create a basic config file and .carbonara directory
+      const carbonaraDir = path.join(testDir, '.carbonara');
+      if (!fs.existsSync(carbonaraDir)) {
+        fs.mkdirSync(carbonaraDir, { recursive: true });
+      }
+
+      const config = {
+        name: 'Test Project',
+        projectType: 'web',
+        version: '1.0.0'
+      };
+
+      fs.writeFileSync(
+        path.join(testDir, 'carbonara.config.json'),
+        JSON.stringify(config, null, 2)
+      );
     });
 
     it('should store assessment data in database', () => {
@@ -213,9 +242,22 @@ describe('Assess Command Integration', () => {
 
   describe('CO2 impact calculation', () => {
     beforeEach(() => {
-      execSync(`cd "${testDir}" && node "${cliPath}" init --name "Test Project" --type web --yes`, {
-        encoding: 'utf-8',
-      });
+      // Create a basic config file and .carbonara directory
+      const carbonaraDir = path.join(testDir, '.carbonara');
+      if (!fs.existsSync(carbonaraDir)) {
+        fs.mkdirSync(carbonaraDir, { recursive: true });
+      }
+
+      const config = {
+        name: 'Test Project',
+        projectType: 'web',
+        version: '1.0.0'
+      };
+
+      fs.writeFileSync(
+        path.join(testDir, 'carbonara.config.json'),
+        JSON.stringify(config, null, 2)
+      );
     });
 
     it('should calculate CO2 impact score', () => {

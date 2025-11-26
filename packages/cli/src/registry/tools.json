@@ -2,7 +2,7 @@
   "tools": [
     {
       "id": "assessment-questionnaire",
-      "name": "assessment questionnaire",
+      "name": "Assessment Questionnaire",
       "description": "Interactive CO2 sustainability assessment questionnaire",
       "command": {
         "executable": "built-in",
