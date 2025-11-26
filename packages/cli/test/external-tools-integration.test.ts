@@ -501,6 +501,7 @@ describe('External Tools - Integration Tests', () => {
       checkCommand: p.checkCommand,
       expectedOutput: p.expectedOutput,
       errorMessage: p.errorMessage,
+      installCommand: p.installCommand,
       setupInstructions: p.setupInstructions
     }));
     

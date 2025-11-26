@@ -15,4 +15,5 @@ alwaysApply: true
 - Keep tests simple but powerful
 - Ensure tests actually test something
 - Keep test files DRY
-- IMPORTANT use existing test helpers and tools 
+- IMPORTANT use existing test helpers and tools
+- In case of bugs? Try to write  test first that confirms them (fails), fix that bug. Close coverage gaps for each bug

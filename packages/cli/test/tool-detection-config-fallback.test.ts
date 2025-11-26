@@ -51,7 +51,7 @@ describe('Tool Detection with Config Fallback', () => {
     }
   });
 
-  test('should use config flag when detection fails but installation succeeded', async () => {
+  test('should show as not installed when detection fails, even if config flag is set', async () => {
     const registry = getToolRegistry();
     
     // Mark tool as installed in config (simulating successful installation)
@@ -60,13 +60,18 @@ describe('Tool Detection with Config Fallback', () => {
     // Refresh to check detection
     await registry.refreshInstalledTools();
     
-    // Detection will likely fail (tool not actually installed), but config flag should make it pass
+    // Detection will likely fail (tool not actually installed)
     const isInstalled = await registry.isToolInstalled('if-webpage-scan');
     
-    // Should return true because of config fallback (even if actual detection fails)
-    // Note: This test verifies the fallback mechanism works
-    // In real scenarios, if tool is actually installed, detection would also pass
-    expect(isInstalled).toBe(true);
+    // Detection failure should take precedence - show as NOT INSTALLED (red)
+    // Config flag is only used to allow running, not to change display status
+    // This ensures users see accurate installation status
+    expect(isInstalled).toBe(false);
+    
+    // However, the config flag should still allow running (checked in analyze command)
+    const { isToolMarkedInstalled } = await import('../src/utils/config.js');
+    const canRun = await isToolMarkedInstalled('if-webpage-scan', testDir);
+    expect(canRun).toBe(true); // Config flag allows running even if detection fails
   });
 
   test('should not trust detection if previously flagged as failed', async () => {
@@ -100,25 +105,30 @@ describe('Tool Detection with Config Fallback', () => {
     expect(isInstalled).toBe(false);
   });
 
-  test('should check plugin packages from manifestTemplate', async () => {
+  test('should check detection commands are configured correctly', async () => {
     const registry = getToolRegistry();
     const tool = registry.getTool('if-webpage-scan');
     
     expect(tool).toBeDefined();
-    expect(tool?.manifestTemplate).toBeDefined();
+    expect(tool?.detection).toBeDefined();
     
-    // Extract plugin packages
-    const plugins = registry.extractPluginPackages(tool!.manifestTemplate!);
+    // Tool should have detection.commands array (new approach)
+    const detection = tool!.detection as any;
+    expect(detection.commands).toBeDefined();
+    expect(Array.isArray(detection.commands)).toBe(true);
+    expect(detection.commands.length).toBeGreaterThan(0);
     
-    // Should extract @tngtech/if-webpage-plugins
-    expect(plugins).toContain('@tngtech/if-webpage-plugins');
+    // Should include commands to check both base package and plugin package
+    const commands = detection.commands as string[];
+    expect(commands.some(cmd => cmd.includes('@grnsft/if'))).toBe(true);
+    expect(commands.some(cmd => cmd.includes('@tngtech/if-webpage-plugins') || cmd.includes('npm list'))).toBe(true);
     
     // The tool installation.package should include base packages
     expect(tool!.installation.package).toContain('@grnsft/if');
     expect(tool!.installation.package).toContain('@tngtech/if-webpage-plugins');
     
-    // So when checking installation, both base and plugin packages should be verified
-    // This test verifies the extraction works, actual detection is tested elsewhere
+    // Detection commands should verify both base and plugin packages
+    // This test verifies the explicit detection commands are configured correctly
   });
 });
 

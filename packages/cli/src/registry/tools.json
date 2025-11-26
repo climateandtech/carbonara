@@ -223,7 +223,7 @@
       },
       "detection": {
         "method": "command",
-        "target": "greenframe --version"
+        "commands": ["greenframe --version"]
       },
       "prerequisites": [
         {
@@ -310,7 +310,10 @@
       },
       "detection": {
         "method": "command",
-        "target": "if-run --version"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins"
+        ]
       },
       "prerequisites": [
         {
@@ -481,7 +484,10 @@
       },
       "detection": {
         "method": "command",
-        "target": "if-run --version"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins"
+        ]
       },
       "parameters": [
         {
@@ -571,7 +577,10 @@
       },
       "detection": {
         "method": "command",
-        "target": "if-run --version"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins"
+        ]
       },
       "parameters": [
         {
@@ -861,7 +870,10 @@
       },
       "detection": {
         "method": "command",
-        "target": "if-run --version"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins"
+        ]
       },
       "parameters": [
         {

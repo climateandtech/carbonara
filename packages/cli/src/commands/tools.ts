@@ -37,11 +37,33 @@ async function listTools() {
   
   if (installedTools.length > 0) {
     console.log(chalk.green('\n✅ Installed Tools:'));
-    installedTools.forEach(tool => {
-      console.log(`  ${chalk.white(tool.id)} - ${chalk.cyan(tool.name)}`);
+    for (const tool of installedTools) {
+      // Check prerequisites
+      const prereqCheck = await registry.checkToolPrerequisites(tool.id);
+      const hasMissingPrereqs = !prereqCheck.allAvailable;
+      
+      if (hasMissingPrereqs) {
+        console.log(`  ${chalk.white(tool.id)} - ${chalk.cyan(tool.name)} ${chalk.yellow('⚠️  Prerequisites missing')}`);
+      } else {
+        console.log(`  ${chalk.white(tool.id)} - ${chalk.cyan(tool.name)}`);
+      }
+      
       if (tool.description) {
         console.log(`    ${chalk.gray(tool.description)}`);
       }
+      
+      // Show missing prerequisites
+      if (hasMissingPrereqs) {
+        prereqCheck.missing.forEach(({ prerequisite }) => {
+          console.log(`    ${chalk.yellow('⚠️  Missing:')} ${chalk.white(prerequisite.name)}`);
+          if (prerequisite.setupInstructions) {
+            console.log(`       ${chalk.dim(prerequisite.setupInstructions)}`);
+          } else if (prerequisite.installCommand) {
+            console.log(`       ${chalk.dim('Run:')} ${chalk.white(prerequisite.installCommand)}`);
+          }
+        });
+      }
+      
       // Use the first parameter name from the tool's parameters, or default to 'url'
       let paramDisplay = '<url>';
       if (tool.parameters && tool.parameters.length > 0) {
@@ -50,7 +72,7 @@ async function listTools() {
         paramDisplay = param.required ? `<${param.name}>` : `[${param.name}]`;
       }
       console.log(`    ${chalk.dim('Usage:')} carbonara analyze ${tool.id} ${paramDisplay}`);
-    });
+    }
   }
   
   const notInstalledTools = [];

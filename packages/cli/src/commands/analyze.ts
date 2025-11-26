@@ -90,6 +90,23 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     process.exit(1);
   }
 
+  // Check prerequisites if tool is installed
+  if (tool.prerequisites && tool.prerequisites.length > 0) {
+    const prereqCheck = await registry.checkToolPrerequisites(toolId);
+    if (!prereqCheck.allAvailable) {
+      console.warn(chalk.yellow(`\n⚠️  Missing prerequisites for ${tool.name}:`));
+      prereqCheck.missing.forEach(({ prerequisite, error }) => {
+        console.warn(chalk.yellow(`  • ${prerequisite.name}: ${error}`));
+        if (prerequisite.setupInstructions) {
+          console.log(chalk.dim(`    ${prerequisite.setupInstructions}`));
+        } else if (prerequisite.installCommand) {
+          console.log(chalk.dim(`    Run: ${prerequisite.installCommand}`));
+        }
+      });
+      console.log(chalk.yellow('\n⚠️  Continuing anyway, but the tool may fail...\n'));
+    }
+  }
+
   const spinner = ora(`Running ${tool.name} analysis...`).start();
 
   try {
@@ -238,41 +255,6 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
   }
 }
 
-/**
- * Extracts all unique plugin package names from a manifest template.
- * Looks for 'path' fields in plugin definitions.
- * This works programmatically for any tool with a manifestTemplate.
- */
-function extractPluginPackages(manifest: any): string[] {
-  const packages = new Set<string>();
-  
-  const extractFromObject = (obj: any): void => {
-    if (!obj || typeof obj !== 'object') {
-      return;
-    }
-    
-    // Check if this object has a 'path' field (plugin definition)
-    if (obj.path && typeof obj.path === 'string' && obj.path.startsWith('@')) {
-      // Extract package name (e.g., "@tngtech/if-webpage-plugins" from path)
-      const packageName = obj.path.split('/').slice(0, 2).join('/');
-      if (packageName.includes('@') && packageName.includes('/')) {
-        packages.add(packageName);
-      }
-    }
-    
-    // Recursively check all nested objects and arrays
-    for (const value of Object.values(obj)) {
-      if (Array.isArray(value)) {
-        value.forEach(item => extractFromObject(item));
-      } else if (value && typeof value === 'object') {
-        extractFromObject(value);
-      }
-    }
-  };
-  
-  extractFromObject(manifest);
-  return Array.from(packages);
-}
 
 async function runCarbonaraSWD(url: string, options: AnalyzeOptions, tool: AnalysisTool): Promise<any> {
   const analyzer = new CarbonaraSWDAnalyzer();
@@ -426,52 +408,8 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     throw new Error(`Tool ${tool.id} does not have a manifest template configured`);
   }
 
-  // Verify all required plugin packages are installed and accessible
-  // This includes both base packages and plugin packages extracted from manifestTemplate
-  if (tool.installation?.package && tool.installation.global === false) {
-    // Collect all packages to check: base packages + plugin packages from manifest
-    const packages = new Set<string>();
-    
-    // Add base installation packages
-    tool.installation.package.split(' ').filter(p => p.trim()).forEach(p => packages.add(p.trim()));
-    
-    // Extract plugin packages from manifestTemplate if it exists
-    if (tool.manifestTemplate) {
-      const pluginPackages = extractPluginPackages(tool.manifestTemplate);
-      pluginPackages.forEach(pkg => packages.add(pkg));
-    }
-    
-    const missingPackages: string[] = [];
-    
-    for (const packageName of Array.from(packages)) {
-      const nodeModulesPath = path.join(process.cwd(), 'node_modules', packageName.split('/').join(path.sep));
-      
-      if (!fs.existsSync(nodeModulesPath)) {
-        // Check with npm list as fallback
-        try {
-          const { execa } = await import('execa');
-          const npmResult = await execa('npm', ['list', '--depth=0', packageName], { 
-            stdio: 'pipe',
-            cwd: process.cwd(),
-            reject: false,
-            timeout: 5000
-          });
-          if (npmResult.exitCode !== 0 || npmResult.stdout.includes('(empty)') || npmResult.stdout.includes('(no packages)')) {
-            missingPackages.push(packageName);
-          }
-        } catch {
-          missingPackages.push(packageName);
-        }
-      }
-    }
-    
-    if (missingPackages.length > 0) {
-      throw new Error(
-        `Missing required plugin packages: ${missingPackages.join(', ')}\n` +
-        `Please install with: ${tool.installation.command || tool.installation.instructions}`
-      );
-    }
-  }
+  // Note: Package verification is now handled by explicit detection commands in tools.json
+  // If we reach here, the tool was detected as installed, so packages should be available
 
   // Load project and get CO2 variables for intelligent defaults
   let co2Variables: any = {};

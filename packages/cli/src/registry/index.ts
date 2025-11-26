@@ -124,147 +124,91 @@ export class AnalysisToolRegistry {
         case 'built-in':
           return true; // Built-in tools are always available
         case 'command':
-          // Best practice: Use the tool's own command (--help or --version) to check if installed
-          // For tools installed via npx, we first check if the package is installed locally,
-          // then try the tool's command directly (not via npx)
+          // Support both detection.target (backward compatible) and detection.commands (array)
+          const commands: string[] = (tool.detection as any).commands || 
+            (tool.detection.target ? [tool.detection.target] : []);
           
-          // For local installations, first verify ALL packages are actually installed
-          // This is important for tools with plugins (e.g., IF tools need both @grnsft/if and @tngtech/if-webpage-plugins)
-          if (tool.installation?.global === false && tool.installation?.package) {
-            // Collect all packages to check: base packages + plugin packages from manifest
-            const packages = new Set<string>();
-            
-            // Add base installation packages
-            tool.installation.package.split(' ').filter(p => p.trim()).forEach(p => packages.add(p.trim()));
-            
-            // Extract plugin packages from manifestTemplate if it exists
-            if (tool.manifestTemplate) {
-              const pluginPackages = this.extractPluginPackages(tool.manifestTemplate);
-              pluginPackages.forEach(pkg => packages.add(pkg));
-            }
-            
-            const installedPackages: string[] = [];
-            const missingPackages: string[] = [];
-            
-            // Check each package - ALL must be installed
-            for (const pkg of Array.from(packages)) {
-              const packageName = pkg.trim();
-              const nodeModulesPath = path.join(process.cwd(), 'node_modules', packageName.split('/').join(path.sep));
-              
-              let isInstalled = false;
-              
-              // Check if package exists in node_modules
-              if (fs.existsSync(nodeModulesPath)) {
-                isInstalled = true;
-              } else {
-                // Fallback: check with npm list
-                try {
-                  const npmResult = await execa('npm', ['list', '--depth=0', packageName], { 
-                    stdio: 'pipe',
-                    cwd: process.cwd(),
-                    reject: false,
-                    timeout: 5000
-                  });
-                  if (npmResult.exitCode === 0 && !npmResult.stdout.includes('(empty)') && !npmResult.stdout.includes('(no packages)')) {
-                    isInstalled = true;
-                  }
-                } catch {
-                  // npm list failed, assume not installed
-                }
-              }
-              
-              if (isInstalled) {
-                installedPackages.push(packageName);
-              } else {
-                missingPackages.push(packageName);
-              }
-            }
-            
-            // ALL packages must be installed for the tool to be detected
-            if (missingPackages.length > 0) {
-              console.log(`❌ Tool ${tool.id} missing required packages: ${missingPackages.join(', ')}`);
-              // Check config flag as fallback
-              try {
-                const { isToolMarkedInstalled } = await import('../utils/config.js');
-                if (await isToolMarkedInstalled(tool.id)) {
-                  return true;
-                }
-              } catch {
-                // Config check failed
-              }
-              return false;
-            }
-            
-            console.log(`✅ Tool ${tool.id} all required packages installed: ${installedPackages.join(', ')}`);
-            
-            // Package is installed locally - now try the tool's command
-            // For local installations, we need to use npx to run the command
-            // Check if the tool's executable uses npx (e.g., "npx" with --package flag)
-            let detectionCommand = tool.detection.target;
-            
-            // If the tool's command uses npx with --package, we should use the same for detection
-            if (tool.command.executable === 'npx' && tool.command.args[0]?.startsWith('--package=')) {
-              // Extract package name from command args
-              const packageMatch = tool.command.args[0].match(/--package=([^\s]+)/);
-              if (packageMatch && packageMatch[1]) {
-                const packageName = packageMatch[1];
-                // Extract the actual command from detection.target
-                let commandPart = detectionCommand;
-                if (detectionCommand.startsWith('npx ')) {
-                  const match = detectionCommand.match(/npx\s+(?:--package=[^\s]+\s+)?(.+)/);
-                  if (match && match[1]) {
-                    commandPart = match[1];
-                  }
-                }
-                // Use npx with the package for detection
-                detectionCommand = `npx --package=${packageName} ${commandPart}`;
-              }
-            } else if (detectionCommand.startsWith('npx ')) {
-              // If detection already uses npx, keep it as is
-              // Extract command after npx --package=... or just after npx
-              const match = detectionCommand.match(/npx\s+(?:--package=[^\s]+\s+)?(.+)/);
-              if (match && match[1]) {
-                detectionCommand = match[1];
-              }
-            }
-            
-            // Try running the tool's command
+          if (commands.length === 0) {
+            console.log(`⚠️  Tool ${tool.id} has no detection commands configured`);
+            return false;
+          }
+          
+          const failedCommands: Array<{ command: string; error: string }> = [];
+          
+          // Test each command sequentially - ALL must pass
+          for (const command of commands) {
             try {
-              const result = await execaCommand(detectionCommand, { 
+              const result = await execaCommand(command, { 
                 stdio: 'pipe', 
                 timeout: 5000,
                 reject: false,
-                cwd: process.cwd() // Use project directory for local installations
+                cwd: process.cwd()
               });
+              
+              // Check stderr for npm/npx errors indicating tool not installed
+              const stderr = result.stderr || '';
+              const stdout = result.stdout || '';
+              const combinedOutput = stderr + stdout;
+              
+              // Check for "could not determine executable" - means tool is not installed
+              if (combinedOutput.includes('could not determine executable') || 
+                  combinedOutput.includes('npm error could not determine executable')) {
+                failedCommands.push({
+                  command,
+                  error: 'Tool not installed (could not determine executable)'
+                });
+                continue;
+              }
               
               // Exit code 127 means command not found
               if (result.exitCode === 127) {
-                // Check if detection was previously flagged as failed (false positive)
-                try {
-                  const { loadProjectConfig } = await import('../utils/config.js');
-                  const config = await loadProjectConfig();
-                  if (config?.tools?.[tool.id]?.detectionFailed) {
-                    // Detection was previously incorrect, don't trust it
-                    return false;
-                  }
-                } catch {
-                  // Config check failed, continue
-                }
-                
-                // Check config flag as fallback
-                try {
-                  const { isToolMarkedInstalled } = await import('../utils/config.js');
-                  if (await isToolMarkedInstalled(tool.id)) {
-                    return true;
-                  }
-                } catch {
-                  // Config check failed
-                }
-                return false;
+                failedCommands.push({
+                  command,
+                  error: 'Command not found'
+                });
+                continue;
               }
               
-              // Command succeeded (even if exit code is non-zero, it means the tool exists)
-              return true;
+              // For npm list commands, check if package is actually listed
+              if (command.startsWith('npm list')) {
+                if (result.exitCode !== 0 || 
+                    result.stdout.includes('(empty)') || 
+                    result.stdout.includes('(no packages)')) {
+                  failedCommands.push({
+                    command,
+                    error: 'Package not found in npm list'
+                  });
+                  continue;
+                }
+              }
+              
+              // For npx commands, check if they failed with npm errors
+              if (command.startsWith('npx ') && result.exitCode !== 0) {
+                // If npx fails with npm error, tool is likely not installed
+                if (combinedOutput.includes('npm error')) {
+                  failedCommands.push({
+                    command,
+                    error: 'Tool not installed (npx error)'
+                  });
+                  continue;
+                }
+                // If npx command fails but no npm error, tool might be installed but command failed
+                // Check if we got any output (tool exists) vs no output (tool doesn't exist)
+                if (combinedOutput.trim().length === 0) {
+                  // No output means tool likely doesn't exist
+                  failedCommands.push({
+                    command,
+                    error: 'Tool not installed (no output)'
+                  });
+                  continue;
+                }
+                // Tool exists (got output) but command failed - this is OK for detection
+                // (e.g., --version might not be supported but tool is installed)
+                // Continue to next command
+              }
+              
+              // Command succeeded (exit code 0) or tool exists but command had wrong args (non-zero but has output)
+              // Continue to next command
             } catch (error: any) {
               // Check if it's a "command not found" error
               const errorMessage = error.message || String(error);
@@ -275,69 +219,39 @@ export class AnalysisToolRegistry {
                 errorMessage.includes('ENOENT');
               
               if (isCommandNotFound) {
-                // Check config flag as fallback
-                try {
-                  const { isToolMarkedInstalled } = await import('../utils/config.js');
-                  if (await isToolMarkedInstalled(tool.id)) {
-                    return true;
-                  }
-                } catch {
-                  // Config check failed
-                }
-                return false;
+                failedCommands.push({
+                  command,
+                  error: errorMessage || 'Command not found'
+                });
+              } else {
+                // Other error - tool might be installed but command failed for other reasons
+                // Consider this as a pass (tool exists, just had an error)
               }
-              
-              // Other error - tool might be installed but command failed for other reasons
-              return true;
             }
           }
           
-          // For global installations or tools without local package check, use detection.target directly
-          try {
-            const result = await execaCommand(tool.detection.target, { 
-              stdio: 'pipe', 
-              timeout: 5000,
-              reject: false
+          // If any command failed, show which ones failed
+          if (failedCommands.length > 0) {
+            console.log(`❌ Tool ${tool.id} detection failed:`);
+            const passedCommands = commands.filter(cmd => 
+              !failedCommands.some(fc => fc.command === cmd)
+            );
+            passedCommands.forEach(cmd => {
+              console.log(`   ✓ ${cmd} (passed)`);
+            });
+            failedCommands.forEach(({ command, error }) => {
+              console.log(`   ✗ ${command} (failed: ${error})`);
             });
             
-            // Exit code 127 means command not found - check config flag as fallback
-            if (result.exitCode === 127) {
-              try {
-                const { isToolMarkedInstalled } = await import('../utils/config.js');
-                if (await isToolMarkedInstalled(tool.id)) {
-                  return true;
-                }
-              } catch {
-                // Config check failed
-              }
-              return false;
-            }
-            
-            // Command exists - tool is available
-            return true;
-          } catch (error: any) {
-            // Check if it's a "command not found" error
-            const errorMessage = error.message || String(error);
-            const isCommandNotFound = 
-              error.exitCode === 127 ||
-              errorMessage.includes('command not found') ||
-              errorMessage.includes('Command not found') ||
-              errorMessage.includes('ENOENT');
-            
-            // If command not found, check config flag as fallback
-            if (isCommandNotFound) {
-              try {
-                const { isToolMarkedInstalled } = await import('../utils/config.js');
-                if (await isToolMarkedInstalled(tool.id)) {
-                  return true; // Installation succeeded, trust the config flag
-                }
-              } catch {
-                // Config check failed, continue with normal detection
-              }
-            }
-            
-            return !isCommandNotFound;
+            // Detection failed = tool is NOT installed
+            // This takes precedence over config flags - if detection fails, show as not installed (red)
+            // Config flags are only used to allow running, not to change display status
+            return false;
           }
+          
+          // All commands passed
+          console.log(`✅ Tool ${tool.id} all detection commands passed`);
+          return true;
         case 'npm':
           // Check if npm package is globally installed
           const result = await execa('npm', ['list', '-g', tool.detection.target], { stdio: 'pipe' });
@@ -361,6 +275,46 @@ export class AnalysisToolRegistry {
       await this.refreshInstalledTools();
     }
     return this.registry.tools.filter(tool => this.installedTools.get(tool.id) === true);
+  }
+
+  /**
+   * Checks if all prerequisites for a tool are available.
+   * Returns true if all prerequisites are met, false otherwise.
+   */
+  async checkToolPrerequisites(toolId: string): Promise<{
+    allAvailable: boolean;
+    missing: Array<{ prerequisite: any; error: string }>;
+  }> {
+    const tool = this.getTool(toolId);
+    if (!tool || !tool.prerequisites || tool.prerequisites.length === 0) {
+      return { allAvailable: true, missing: [] };
+    }
+
+    try {
+      const { checkPrerequisites } = await import('@carbonara/core');
+      const prerequisites = tool.prerequisites.map((p: any) => ({
+        type: p.type,
+        name: p.name,
+        checkCommand: p.checkCommand,
+        expectedOutput: p.expectedOutput,
+        errorMessage: p.errorMessage,
+        installCommand: p.installCommand,
+        setupInstructions: p.setupInstructions,
+      }));
+
+      const result = await checkPrerequisites(prerequisites);
+      return result;
+    } catch (error) {
+      console.error(`Failed to check prerequisites for ${toolId}:`, error);
+      // If we can't check, assume all are missing
+      return {
+        allAvailable: false,
+        missing: tool.prerequisites.map((p: any) => ({
+          prerequisite: p,
+          error: p.errorMessage || 'Prerequisite check failed'
+        }))
+      };
+    }
   }
 
   getTool(id: string): AnalysisTool | undefined {
@@ -452,41 +406,6 @@ export class AnalysisToolRegistry {
     fs.writeFileSync(registryPath, JSON.stringify(this.registry, null, 2));
   }
 
-  /**
-   * Extracts all unique plugin package names from a manifest template.
-   * Looks for 'path' fields in plugin definitions.
-   * Made public for testing purposes.
-   */
-  extractPluginPackages(manifest: any): string[] {
-    const packages = new Set<string>();
-    
-    const extractFromObject = (obj: any): void => {
-      if (!obj || typeof obj !== 'object') {
-        return;
-      }
-      
-      // Check if this object has a 'path' field (plugin definition)
-      if (obj.path && typeof obj.path === 'string' && obj.path.startsWith('@')) {
-        // Extract package name (e.g., "@tngtech/if-webpage-plugins" from path)
-        const packageName = obj.path.split('/').slice(0, 2).join('/');
-        if (packageName.includes('@') && packageName.includes('/')) {
-          packages.add(packageName);
-        }
-      }
-      
-      // Recursively check all nested objects and arrays
-      for (const value of Object.values(obj)) {
-        if (Array.isArray(value)) {
-          value.forEach(item => extractFromObject(item));
-        } else if (value && typeof value === 'object') {
-          extractFromObject(value);
-        }
-      }
-    };
-    
-    extractFromObject(manifest);
-    return Array.from(packages);
-  }
 }
 
 // Singleton instance

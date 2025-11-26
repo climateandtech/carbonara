@@ -51,7 +51,10 @@ describe('External Tools - Generic Tests', () => {
       
       // Detection config
       expect(tool.detection.method).toMatch(/^(command|npm|file)$/);
-      expect(tool.detection.target).toBeTruthy();
+      // Tools can use either detection.target (backward compatible) or detection.commands (array)
+      const hasTarget = !!(tool.detection as any).target;
+      const hasCommands = Array.isArray((tool.detection as any).commands) && (tool.detection as any).commands.length > 0;
+      expect(hasTarget || hasCommands).toBe(true);
       
       // Command config
       expect(tool.command.executable).toBeTruthy();
@@ -281,8 +284,15 @@ describe('External Tools - Generic Tests', () => {
           expect(tool.installation.package).toBe(firstTool.installation.package);
           
           // Detection targets should be similar (same base command)
-          const firstTarget = firstTool.detection.target.split(' ')[0];
-          const toolTarget = tool.detection.target.split(' ')[0];
+          // Handle both detection.target and detection.commands
+          const getFirstCommand = (detection: any): string => {
+            if (detection.commands && Array.isArray(detection.commands) && detection.commands.length > 0) {
+              return detection.commands[0].split(' ')[0];
+            }
+            return detection.target?.split(' ')[0] || '';
+          };
+          const firstTarget = getFirstCommand(firstTool.detection);
+          const toolTarget = getFirstCommand(tool.detection);
           expect(toolTarget).toBe(firstTarget);
         });
       }

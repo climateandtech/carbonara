@@ -21,7 +21,8 @@ export interface AnalysisTool {
   };
   detection?: {
     method: "command" | "npm" | "file" | "built-in";
-    target: string;
+    target?: string;
+    commands?: string[]; // Array of detection commands (new)
   };
   prerequisites?: Array<{
     type: string;
@@ -40,6 +41,10 @@ export interface AnalysisTool {
   }>;
   isInstalled?: boolean;
   prerequisitesMissing?: boolean; // True if tool is installed but prerequisites are missing
+  lastError?: {
+    message: string;
+    timestamp: string;
+  }; // Last error from execution (from config)
 }
 
 export class ToolItem extends vscode.TreeItem {
@@ -58,7 +63,9 @@ export class ToolItem extends vscode.TreeItem {
     if (tool.type === "built-in") {
       statusText = "Built-in";
     } else if (tool.isInstalled) {
-      if (tool.prerequisitesMissing) {
+      if (tool.lastError) {
+        statusText = "Error";
+      } else if (tool.prerequisitesMissing) {
         statusText = "Prerequisites missing";
       } else {
         statusText = "Installed";
@@ -78,9 +85,9 @@ export class ToolItem extends vscode.TreeItem {
         new vscode.ThemeColor("charts.green")
       );
     } else if (tool.isInstalled) {
-      if (tool.prerequisitesMissing) {
-        // Prerequisites missing: yellow full circle
-      this.iconPath = new vscode.ThemeIcon(
+      if (tool.lastError || tool.prerequisitesMissing) {
+        // Execution error or prerequisites missing: yellow full circle
+        this.iconPath = new vscode.ThemeIcon(
           "circle-filled",
           new vscode.ThemeColor("charts.yellow")
         );
@@ -88,8 +95,8 @@ export class ToolItem extends vscode.TreeItem {
         // Installed and ready: green circle
         this.iconPath = new vscode.ThemeIcon(
           "circle-filled",
-        new vscode.ThemeColor("charts.green")
-      );
+          new vscode.ThemeColor("charts.green")
+        );
       }
     } else {
       // Not installed: red circle (outline)
@@ -104,10 +111,12 @@ export class ToolItem extends vscode.TreeItem {
       // Special context for semgrep to show custom buttons
       this.contextValue = tool.id === "semgrep" ? "builtin-tool-semgrep" : "builtin-tool";
     } else if (tool.isInstalled) {
-      if (tool.prerequisitesMissing) {
+      if (tool.lastError) {
+        this.contextValue = "installed-tool-error";
+      } else if (tool.prerequisitesMissing) {
         this.contextValue = "installed-tool-prerequisites-missing";
       } else {
-      this.contextValue = "installed-tool";
+        this.contextValue = "installed-tool";
       }
     } else {
       this.contextValue = "uninstalled-tool";
@@ -120,6 +129,17 @@ export class ToolItem extends vscode.TreeItem {
     // Add description
     if (this.tool.description) {
       parts.push(this.tool.description);
+    }
+    
+    // Add last error if present
+    if (this.tool.lastError) {
+      if (parts.length > 0) {
+        parts.push(""); // Empty line separator
+      }
+      parts.push("**⚠️ Last Error:**");
+      parts.push(`\`${this.tool.lastError.message}\``);
+      const errorDate = new Date(this.tool.lastError.timestamp);
+      parts.push(`*Error occurred: ${errorDate.toLocaleString()}*`);
     }
     
     // Add installation instructions summary
@@ -371,6 +391,19 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
   }
 
+  private async loadLastError(toolId: string): Promise<{ message: string; timestamp: string } | undefined> {
+    if (!this.workspaceFolder) {
+      return undefined;
+    }
+    try {
+      const { getToolLastError } = await import("@carbonara/cli/dist/utils/config.js");
+      return await getToolLastError(toolId, this.workspaceFolder.uri.fsPath) || undefined;
+    } catch (configError) {
+      // Silently fail - config check is optional
+      return undefined;
+    }
+  }
+
   private async loadBundledRegistry(): Promise<boolean> {
     try {
       // Look for registry bundled with the extension
@@ -402,6 +435,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             prerequisitesMissing = !(await this.checkToolPrerequisites(tool));
           }
           
+          // Load lastError from config
+          const lastError = await this.loadLastError(tool.id);
+          
           return {
             id: tool.id,
             name: tool.name,
@@ -414,6 +450,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             prerequisites: tool.prerequisites,
             isInstalled,
             prerequisitesMissing,
+            lastError,
           };
         })
       );
@@ -448,6 +485,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             prerequisitesMissing = !(await this.checkToolPrerequisites(tool));
           }
           
+          // Load lastError from config
+          const lastError = await this.loadLastError(tool.id);
+          
           return {
             id: tool.id,
             name: tool.name,
@@ -460,6 +500,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             prerequisites: tool.prerequisites,
             isInstalled,
             prerequisitesMissing,
+            lastError,
           };
         })
       );
@@ -494,6 +535,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           if (isInstalled && tool.prerequisites && tool.prerequisites.length > 0) {
             prerequisitesMissing = !(await this.checkToolPrerequisites(tool));
           }
+          
+          // Load lastError from config
+          const lastError = await this.loadLastError(tool.id);
           
           return {
           id: tool.id,
@@ -538,7 +582,16 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
     try {
       if (tool.detection.method === "command") {
-        const command = tool.detection.target.split(" ")[0];
+        // Support both detection.target (backward compatible) and detection.commands (array)
+        const commands: string[] = (tool.detection as any).commands || 
+          (tool.detection.target ? [tool.detection.target] : []);
+        
+        if (commands.length === 0) {
+          return false;
+        }
+        
+        // Test the first command
+        const command = commands[0].split(" ")[0];
         await this.runCommand(command, ["--version"]);
         return true;
       }
@@ -1144,6 +1197,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             prerequisitesMissing = !(await this.checkToolPrerequisites(tool));
           }
           
+          // Load lastError from config
+          const lastError = await this.loadLastError(tool.id);
+          
           return {
             ...tool,
             type: isBuiltIn ? "built-in" : "external",
@@ -1151,6 +1207,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             vscodeCommand: tool.vscodeCommand,
             isInstalled,
             prerequisitesMissing,
+            lastError,
           };
         })
       );
@@ -1233,237 +1290,97 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return false;
     }
 
-    if (!tool.detection.target) {
-      throw new Error(
-        `Tool ${tool.id} has no detection target command specified`
-      );
+    // Support both detection.target (backward compatible) and detection.commands (array)
+    const commands: string[] = (tool.detection as any).commands || 
+      (tool.detection.target ? [tool.detection.target] : []);
+
+    if (commands.length === 0) {
+      console.log(`⚠️  Tool ${tool.id} has no detection commands configured`);
+      return false;
     }
 
-    // Best practice: Use the tool's own command (--help or --version) to check if installed
-    // For tools installed via npx, we first check if the package is installed locally,
-    // then try the tool's command directly (not via npx)
-    
-    // For local installations, first verify ALL packages are actually installed
-    // This is important for tools with plugins (e.g., IF tools need both @grnsft/if and @tngtech/if-webpage-plugins)
-    if (tool.installation?.global === false && tool.installation?.package) {
-      // Collect all packages to check: base packages + plugin packages from manifest
-      const packages = new Set<string>();
-      
-      // Add base installation packages
-      tool.installation.package.split(" ").filter((p: string) => p.trim()).forEach((p: string) => packages.add(p.trim()));
-      
-      // Extract plugin packages from manifestTemplate if it exists
-      if (tool.manifestTemplate) {
-        const pluginPackages = this.extractPluginPackages(tool.manifestTemplate);
-        pluginPackages.forEach((pkg: string) => packages.add(pkg));
-      }
-      
-      const installedPackages: string[] = [];
-      const missingPackages: string[] = [];
-      
-      // Check each package - ALL must be installed
-      for (const pkg of Array.from(packages)) {
-        const pkgName = pkg.trim();
-        // Check node_modules path (handle scoped packages like @grnsft/if)
-        const packagePath = pkgName.split("/").join(path.sep);
-        const nodeModulesPath = path.join(
-          this.workspaceFolder?.uri.fsPath || process.cwd(),
-          "node_modules",
-          packagePath
-        );
-        
-        let isInstalled = false;
-        
-        // Check if package exists in node_modules
-        if (fs.existsSync(nodeModulesPath)) {
-          isInstalled = true;
-        } else {
-          // Fallback: check with npm list
-          try {
-            const result = await this.runCommand("npm", ["list", "--depth=0", pkgName]);
-            if (!result.includes("(empty)") && !result.includes("(no packages)") && !result.includes("npm ERR")) {
-              isInstalled = true;
-            }
-          } catch (npmError: any) {
-            // npm list failed, assume not installed
-            console.log(`⚠️ Tool ${tool.id} package ${pkgName} check failed: ${npmError.message || npmError}`);
-          }
-        }
-        
-        if (isInstalled) {
-          installedPackages.push(pkgName);
-        } else {
-          missingPackages.push(pkgName);
-        }
-      }
-      
-      // ALL packages must be installed for the tool to be detected
-      if (missingPackages.length > 0) {
-        console.log(`❌ Tool ${tool.id} missing required packages: ${missingPackages.join(", ")}`);
-        // Check config flag as fallback
-        if (this.workspaceFolder) {
-          try {
-            if (await isToolMarkedInstalled(tool.id, this.workspaceFolder.uri.fsPath)) {
-              console.log(`✅ Tool ${tool.id} is marked as installed in config (installation succeeded)`);
-              return true;
-            }
-          } catch (configError) {
-            // Config check failed
-            console.error(`Failed to check config for ${tool.id}:`, configError);
-          }
-        }
-        console.log(`❌ Tool ${tool.id} packages are not installed locally`);
-        return false;
-      }
-      
-      console.log(`✅ Tool ${tool.id} all required packages installed: ${installedPackages.join(", ")}`);
-      
-      // All packages are installed locally - now try the tool's command
-      // For local installations, we need to use npx to run the command
-      // Check if the tool's executable uses npx (e.g., "npx" with --package flag)
-      let detectionCommand = tool.detection.target;
-      
-      // If the tool's command uses npx with --package, we should use the same for detection
-      if (tool.command?.executable === "npx" && tool.command?.args?.[0]?.startsWith("--package=")) {
-        // Extract package name from command args
-        const packageMatch = tool.command.args[0].match(/--package=([^\s]+)/);
-        if (packageMatch && packageMatch[1]) {
-          const packageName = packageMatch[1];
-          // Extract the actual command from detection.target
-          let commandPart = detectionCommand;
-          if (detectionCommand.startsWith("npx ")) {
-            const match = detectionCommand.match(/npx\s+(?:--package=[^\s]+\s+)?(.+)/);
-            if (match && match[1]) {
-              commandPart = match[1];
-            }
-          }
-          // Use npx with the package for detection
-          detectionCommand = `npx --package=${packageName} ${commandPart}`;
-        }
-      } else if (detectionCommand.startsWith("npx ")) {
-        // If detection already uses npx, keep it as is
-        // Extract command after npx --package=... or just after npx
-        const match = detectionCommand.match(/npx\s+(?:--package=[^\s]+\s+)?(.+)/);
-        if (match && match[1]) {
-          detectionCommand = match[1];
-        }
-      }
-      
-      // Try running the tool's command
+    const failedCommands: Array<{ command: string; error: string }> = [];
+
+    // Test each command sequentially - ALL must pass
+    for (const command of commands) {
       try {
-        await this.runCommand("sh", ["-c", detectionCommand]);
-        return true; // Command succeeded
+        await this.runCommand("sh", ["-c", command]);
+        // Command succeeded - continue to next command
       } catch (error: any) {
         // Check if it's a "command not found" error
         const errorMessage = error.message || String(error);
         const isCommandNotFound = 
+          error.exitCode === 127 ||
           errorMessage.includes("command not found") ||
           errorMessage.includes("Command not found") ||
-          errorMessage.includes("ENOENT") ||
-          (error.exitCode === 127);
-        
+          errorMessage.includes("ENOENT");
+
         if (isCommandNotFound) {
-          // Check config flag as fallback
-          if (this.workspaceFolder) {
-            try {
-              if (await isToolMarkedInstalled(tool.id, this.workspaceFolder.uri.fsPath)) {
-                console.log(`✅ Tool ${tool.id} is marked as installed in config (installation succeeded)`);
-                return true;
-              }
-            } catch (configError) {
-              // Config check failed
-              console.error(`Failed to check config for ${tool.id}:`, configError);
-            }
+          failedCommands.push({
+            command,
+            error: errorMessage || "Command not found"
+          });
+        } else {
+          // For npm list commands, check if package is actually listed
+          if (command.startsWith("npm list")) {
+            // npm list returns non-zero exit code if package not found
+            failedCommands.push({
+              command,
+              error: "Package not found in npm list"
+            });
+          } else {
+            // Other error - tool might be installed but command failed for other reasons
+            // Consider this as a pass (tool exists, just had an error)
           }
-          console.log(`❌ Tool ${tool.id} command not found: ${detectionCommand}`);
-          return false;
         }
-        
-        // Other error - tool might be installed but command failed for other reasons
-        console.log(`⚠️ Tool ${tool.id} command failed but tool exists: ${errorMessage}`);
-        return true;
       }
     }
-    
-    // For global installations or tools without local package check, use detection.target directly
-    try {
-      const command = tool.detection.target;
-      await this.runCommand("sh", ["-c", command]);
-      return true; // Command succeeded
-    } catch (error: any) {
-      // Check if the error is "command not found" (exit code 127) vs other errors
-      // If command not found, tool is definitely not installed
-      // If other error (like permission denied, help text, etc.), tool might be installed
-      const errorMessage = error.message || String(error);
-      const isCommandNotFound = 
-        errorMessage.includes("command not found") ||
-        errorMessage.includes("Command not found") ||
-        errorMessage.includes("ENOENT") ||
-        (error.exitCode === 127);
-      
-      if (isCommandNotFound) {
-        // Command not found - check config flag as fallback (installation succeeded but detection fails)
-        if (this.workspaceFolder) {
-          try {
-            if (await isToolMarkedInstalled(tool.id, this.workspaceFolder.uri.fsPath)) {
-              console.log(`✅ Tool ${tool.id} is marked as installed in config (installation succeeded)`);
-              return true; // Installation succeeded, trust the config flag
-            }
-          } catch (configError) {
-            // Config check failed, continue with normal detection
-            console.error(`Failed to check config for ${tool.id}:`, configError);
+
+    // If any command failed, show which ones failed
+    if (failedCommands.length > 0) {
+      console.log(`❌ Tool ${tool.id} detection failed:`);
+      const passedCommands = commands.filter(cmd => 
+        !failedCommands.some(fc => fc.command === cmd)
+      );
+      passedCommands.forEach(cmd => {
+        console.log(`   ✓ ${cmd} (passed)`);
+      });
+      failedCommands.forEach(({ command, error }) => {
+        console.log(`   ✗ ${command} (failed: ${error})`);
+      });
+
+      // Check if detection was previously flagged as failed (false positive)
+      if (this.workspaceFolder) {
+        try {
+          const { loadProjectConfig } = await import("@carbonara/cli/dist/utils/config.js");
+          const config = await loadProjectConfig(this.workspaceFolder.uri.fsPath);
+          if (config?.tools?.[tool.id]?.detectionFailed) {
+            // Detection was previously incorrect, don't trust it
+            return false;
           }
+        } catch {
+          // Config check failed, continue
         }
-        
-        // Command not found - try checking npm packages as fallback for npm-installed tools
-        if (tool.installation?.type === "npm" && tool.installation?.package) {
-          try {
-            const packages = tool.installation.package.split(" ").filter((p: string) => p.trim());
-            for (const pkg of packages) {
-              const pkgName = pkg.trim();
-              const result = await this.runCommand("npm", ["list", "-g", pkgName]);
-              if (!result.includes("(empty)") && !result.includes("npm ERR")) {
-                console.log(`✅ Tool ${tool.id} package ${pkgName} is installed globally (detected via npm)`);
-                return true; // Package is installed
-              }
-            }
-          } catch (npmError) {
-            // npm check failed, fall through
-            console.error(`Failed to check npm package for ${tool.id}:`, npmError);
-          }
-        }
-      console.error(
-          `❌ Tool ${tool.id} is not installed (command not found): ${errorMessage}`
-        );
-        return false; // Command not found, tool is definitely not installed
-      } else {
-        // Command exists but failed for other reasons (permission, help text, etc.)
-        // This likely means the tool is installed but the command failed
-        console.log(
-          `⚠️ Tool ${tool.id} detection command failed but command exists (may be installed): ${errorMessage}`
-        );
-        // Try to check if the command exists by checking npm global packages
-        // For npm global packages, check if the package is installed
-        if (tool.installation?.type === "npm" && tool.installation?.package) {
-          try {
-            const packages = tool.installation.package.split(" ").filter((p: string) => p.trim());
-            for (const pkg of packages) {
-              const pkgName = pkg.trim();
-              const result = await this.runCommand("npm", ["list", "-g", pkgName]);
-              if (!result.includes("(empty)") && !result.includes("npm ERR")) {
-                console.log(`✅ Tool ${tool.id} package ${pkgName} is installed globally`);
-                return true; // Package is installed
-              }
-            }
-          } catch (npmError) {
-            // npm check failed, fall through to return false
-            console.error(`Failed to check npm package for ${tool.id}:`, npmError);
-          }
-        }
-        // If we can't verify via npm, assume not installed to be safe
-        return false;
       }
+
+      // Check config flag as fallback
+      if (this.workspaceFolder) {
+        try {
+          if (await isToolMarkedInstalled(tool.id, this.workspaceFolder.uri.fsPath)) {
+            console.log(`✅ Tool ${tool.id} is marked as installed in config (installation succeeded)`);
+            return true;
+          }
+        } catch (configError) {
+          // Config check failed
+          console.error(`Failed to check config for ${tool.id}:`, configError);
+        }
+      }
+      return false;
     }
+
+    // All commands passed
+    console.log(`✅ Tool ${tool.id} all detection commands passed`);
+    return true;
   }
 
   private async findCarbonaraCLI(): Promise<string | null> {
@@ -1563,39 +1480,4 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     });
   }
 
-  /**
-   * Extracts all unique plugin package names from a manifest template.
-   * Looks for 'path' fields in plugin definitions.
-   * This works programmatically for any tool with a manifestTemplate.
-   */
-  private extractPluginPackages(manifest: any): string[] {
-    const packages = new Set<string>();
-    
-    const extractFromObject = (obj: any): void => {
-      if (!obj || typeof obj !== 'object') {
-        return;
-      }
-      
-      // Check if this object has a 'path' field (plugin definition)
-      if (obj.path && typeof obj.path === 'string' && obj.path.startsWith('@')) {
-        // Extract package name (e.g., "@tngtech/if-webpage-plugins" from path)
-        const packageName = obj.path.split('/').slice(0, 2).join('/');
-        if (packageName.includes('@') && packageName.includes('/')) {
-          packages.add(packageName);
-        }
-      }
-      
-      // Recursively check all nested objects and arrays
-      for (const value of Object.values(obj)) {
-        if (Array.isArray(value)) {
-          value.forEach((item: any) => extractFromObject(item));
-        } else if (value && typeof value === 'object') {
-          extractFromObject(value);
-        }
-      }
-    };
-    
-    extractFromObject(manifest);
-    return Array.from(packages);
-  }
 }
