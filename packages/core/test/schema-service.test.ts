@@ -27,7 +27,7 @@ describe("SchemaService", () => {
       const co2Schema = schemaService.getToolSchema("assessment-questionnaire");
       expect(co2Schema).toBeDefined();
       expect(co2Schema?.id).toBe("assessment-questionnaire");
-      expect(co2Schema?.name).toBe("assessment questionnaire");
+      expect(co2Schema?.name).toBe("Assessment Questionnaire");
 
       const greenframeSchema = schemaService.getToolSchema("greenframe");
       expect(greenframeSchema).toBeDefined();
