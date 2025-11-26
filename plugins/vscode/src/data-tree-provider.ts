@@ -247,6 +247,20 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   }
 
   async refresh(): Promise<void> {
+    // Re-initialize services if they're not ready but project is now initialized
+    if (!this.coreServices && this.workspaceFolder) {
+      const configPath = path.join(
+        this.workspaceFolder.uri.fsPath,
+        ".carbonara",
+        "carbonara.config.json"
+      );
+      if (require("fs").existsSync(configPath)) {
+        // Config exists now, re-initialize services
+        await this.initializeCoreServices();
+        return; // initializeCoreServices will fire the event
+      }
+    }
+
     // Load new data in background without clearing cache
     // This prevents showing "Loading..." message during refresh
     if (this.coreServices && this.workspaceFolder) {
