@@ -58,7 +58,7 @@ describe('Assess Command Integration', () => {
       };
 
       fs.writeFileSync(
-        path.join(testDir, 'carbonara.config.json'),
+        path.join(carbonaraDir, 'carbonara.config.json'),
         JSON.stringify(config, null, 2)
       );
     });
@@ -171,7 +171,7 @@ describe('Assess Command Integration', () => {
       };
 
       fs.writeFileSync(
-        path.join(testDir, 'carbonara.config.json'),
+        path.join(carbonaraDir, 'carbonara.config.json'),
         JSON.stringify(config, null, 2)
       );
     });
@@ -255,7 +255,7 @@ describe('Assess Command Integration', () => {
       };
 
       fs.writeFileSync(
-        path.join(testDir, 'carbonara.config.json'),
+        path.join(carbonaraDir, 'carbonara.config.json'),
         JSON.stringify(config, null, 2)
       );
     });
