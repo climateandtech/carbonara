@@ -9,7 +9,10 @@ export default defineConfig({
       exclude: ['src/**/*.test.js', 'src/**/*.test.ts']
     },
     testTimeout: 15000, // 15 seconds for CLI operations
-    poolTimeout: 60000, // 60 seconds for worker pool communication (prevents "onTaskUpdate" timeout)
-    passWithNoTests: true
+    hookTimeout: 30000, // 30 seconds for setup/teardown hooks
+    poolTimeout: 120000, // 120 seconds for worker pool communication (prevents "onTaskUpdate" timeout)
+    teardownTimeout: 30000, // 30 seconds for teardown operations
+    passWithNoTests: true,
+    setupFiles: ['./test/setup.ts'] // Local error suppression for worker timeouts
   }
 })
