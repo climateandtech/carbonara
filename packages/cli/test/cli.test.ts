@@ -11,7 +11,8 @@ describe('Carbonara CLI - Tests', () => {
   beforeEach(() => {
     testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbonara-test-'));
     // Simple, predictable path - CLI is always in ../dist relative to test
-    cliPath = path.resolve(__dirname, '../dist/index.js');   
+    cliPath = path.resolve(__dirname, '../dist/index.js');
+    vi.clearAllMocks();
   });
 
   afterEach(() => {

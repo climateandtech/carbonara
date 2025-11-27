@@ -363,13 +363,16 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   // 2. Handle parameter mappings (derived values)
   if (tool.parameterMappings) {
     for (const [mappedName, mapping] of Object.entries(tool.parameterMappings)) {
+      // Type guard for mapping
+      const mappingObj = mapping as { source?: string; transform?: string; type?: 'string' | 'number' | 'boolean' };
+      
       // Ensure placeholder has braces
       let placeholder = `{${mappedName}}`;
       
-      if (mapping.transform && mapping.source) {
+      if (mappingObj.transform && mappingObj.source) {
         // Get source value - find the source parameter's placeholder
-        const sourceParam = tool.parameters?.find(p => p.name === mapping.source);
-        let sourcePlaceholder = sourceParam?.placeholder || `{${mapping.source}}`;
+        const sourceParam = tool.parameters?.find(p => p.name === mappingObj.source);
+        let sourcePlaceholder = sourceParam?.placeholder || `{${mappingObj.source}}`;
         // Ensure source placeholder has braces
         if (!sourcePlaceholder.startsWith('{') || !sourcePlaceholder.endsWith('}')) {
           sourcePlaceholder = `{${sourcePlaceholder}}`;
@@ -379,19 +382,19 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
         if (sourceValue !== undefined) {
           // Apply transform (e.g., "1 - {source}")
           // Replace {source} placeholder in transform expression with actual value
-          let transformExpr = mapping.transform;
+          let transformExpr = mappingObj.transform;
           // Replace {source} with the actual value
           transformExpr = transformExpr.replace(/{source}/g, String(sourceValue));
           // Also replace the parameter name placeholder if present
-          transformExpr = transformExpr.replace(new RegExp(`{${mapping.source}}`, 'g'), String(sourceValue));
+          transformExpr = transformExpr.replace(new RegExp(`{${mappingObj.source}}`, 'g'), String(sourceValue));
           
           try {
             // Simple evaluation for basic math expressions
             const value = Function(`"use strict"; return (${transformExpr})`)();
             // Ensure correct type based on mapping type
-            if (mapping.type === 'number') {
+            if (mappingObj.type === 'number') {
               parameterValues[placeholder] = Number(value);
-            } else if (mapping.type === 'boolean') {
+            } else if (mappingObj.type === 'boolean') {
               parameterValues[placeholder] = Boolean(value);
             } else {
               parameterValues[placeholder] = value;

@@ -8,7 +8,11 @@ import { getToolRegistry, AnalysisTool } from '../src/registry/index.js';
 
 const execAsync = promisify(exec);
 
-describe('Tool Detection - Local Installation E2E', () => {
+// Skip e2e tests in CI environment - they require actual npm installs and network access
+const isCI = process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true';
+const testSuite = isCI ? describe.skip : describe;
+
+testSuite('Tool Detection - Local Installation E2E', () => {
   let testDir: string;
   let originalCwd: string;
 

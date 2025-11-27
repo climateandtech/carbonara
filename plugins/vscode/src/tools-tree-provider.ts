@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
+import * as os from "os";
 import { spawn } from "child_process";
 import { UI_TEXT } from "./constants/ui-text";
 import { markToolInstalled, recordToolError, isToolMarkedInstalled, flagDetectionFailed } from "@carbonara/cli/dist/utils/config.js";
@@ -39,6 +40,16 @@ export interface AnalysisTool {
     type: "boolean" | "string" | "number";
     default?: any;
   }>;
+  parameters?: Array<{
+    name: string;
+    required: boolean;
+    type?: 'string' | 'number' | 'boolean';
+    description?: string;
+    placeholder?: string;
+    default?: any;
+  }>;
+  parameterDefaults?: Record<string, any>;
+  parameterMappings?: Record<string, { source: string; transform?: string; type?: 'string' | 'number' | 'boolean' }>;
   isInstalled?: boolean;
   prerequisitesMissing?: boolean; // True if tool is installed but prerequisites are missing
   lastError?: {
@@ -476,6 +487,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             installation: tool.installation,
             detection: tool.detection,
             prerequisites: tool.prerequisites,
+            parameters: tool.parameters,
+            parameterDefaults: tool.parameterDefaults,
+            parameterMappings: tool.parameterMappings,
             isInstalled,
             prerequisitesMissing,
             lastError,
@@ -530,6 +544,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             installation: tool.installation,
             detection: tool.detection,
             prerequisites: tool.prerequisites,
+            parameters: tool.parameters,
+            parameterDefaults: tool.parameterDefaults,
+            parameterMappings: tool.parameterMappings,
             isInstalled,
             prerequisitesMissing,
             lastError,
@@ -585,6 +602,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           installation: tool.installation,
           detection: tool.detection,
             prerequisites: tool.prerequisites,
+            parameters: tool.parameters,
+            parameterDefaults: tool.parameterDefaults,
+            parameterMappings: tool.parameterMappings,
             isInstalled,
             prerequisitesMissing,
             lastError,
@@ -1336,15 +1356,28 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return false;
     }
 
-    // During E2E tests, force external tools to be "not installed" for predictable results
-    // BUT allow local installations to be checked (they use npm list, not just command detection)
-    if (
-      process.env.CARBONARA_E2E_TEST === "true" &&
-      tool.detection?.method === "command" &&
-      tool.installation?.global !== false // Allow local installations (global: false) to be checked
-    ) {
-      return false;
+    // FIXME: We need to find a way to mock tools in E2E tests instead of skipping detection.
+    // Currently, we skip detection for E2E tests to avoid timeouts and command execution issues,
+    // but this means E2E tests can't verify tool installation status. A better approach would be
+    // to mock the tool detection commands (e.g., mock `runCommand` or use a test registry with
+    // pre-configured installation status) so E2E tests can verify the UI behavior with different
+    // tool states (installed, not installed, prerequisites missing, etc.).
+    // During E2E tests, skip actual detection to avoid timeouts and command execution issues
+    // BUT allow unit tests that explicitly test detection to run (they mock runCommand)
+    if (process.env.CARBONARA_E2E_TEST === "true") {
+      // For E2E tests, force external tools to be "not installed" for predictable results
+      // BUT allow local installations to be checked (they use npm list, not just command detection)
+      if (
+        tool.detection?.method === "command" &&
+        tool.installation?.global !== false // Allow local installations (global: false) to be checked
+      ) {
+        return false;
+      }
     }
+    // Note: We don't skip detection for unit tests (NODE_ENV === "test") because
+    // some unit tests explicitly test detection by mocking runCommand. Those tests
+    // will fail if we skip detection entirely. Instead, we rely on test timeouts
+    // and proper mocking to handle test scenarios.
 
     if (!tool.detection) {
       return false;
@@ -1368,16 +1401,31 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     // Test each command sequentially - ALL must pass
     for (const command of commands) {
       try {
-        await this.runCommand("sh", ["-c", command]);
+        const output = await this.runCommand("sh", ["-c", command]);
         // Command succeeded - continue to next command
+        // For npm list commands, also verify package is in output
+        if (command.startsWith("npm list")) {
+          const packageMatch = command.match(/npm list\s+([^\s|]+)/);
+          const packageName = packageMatch ? packageMatch[1] : null;
+          if (packageName && !output.includes(packageName) && !output.includes(packageName.split('/').pop() || '')) {
+            // Package not found in output even though command succeeded
+            failedCommands.push({
+              command,
+              error: "Package not found in npm list output"
+            });
+            continue;
+          }
+        }
       } catch (error: any) {
-        // Check if it's a "command not found" error
+        // Check if it's a "command not found" error or directory doesn't exist
         const errorMessage = error.message || String(error);
         const isCommandNotFound = 
           error.exitCode === 127 ||
           errorMessage.includes("command not found") ||
           errorMessage.includes("Command not found") ||
-          errorMessage.includes("ENOENT");
+          errorMessage.includes("ENOENT") ||
+          errorMessage.includes("spawn") ||
+          errorMessage.includes("uv_cwd");
 
         if (isCommandNotFound) {
           failedCommands.push({
@@ -1387,11 +1435,33 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         } else {
           // For npm list commands, check if package is actually listed
           if (command.startsWith("npm list")) {
-            // npm list returns non-zero exit code if package not found
-            failedCommands.push({
-              command,
-              error: "Package not found in npm list"
-            });
+            // Extract package name from command (e.g., "npm list @tngtech/if-webpage-plugins")
+            // Handle commands with || operator by checking the first package name
+            const packageMatch = command.match(/npm list\s+([^\s|]+)/);
+            const packageName = packageMatch ? packageMatch[1] : null;
+            
+            // Check if package is actually in the output (from error.stdout if available)
+            const output = (error as any).stdout || (error as any).stderr || errorMessage || "";
+            const hasPackage = packageName ? 
+              (output.includes(packageName) || 
+               output.includes(packageName.split('/').pop() || '') ||
+               output.includes(packageName.replace('@', ''))) :
+              false;
+            
+            const isEmpty = output.includes('(empty)') || 
+                           output.includes('(no packages)');
+            
+            // If package is found in output, it's installed (even if exit code is non-zero)
+            // Command with || operator: if package is found, it's installed
+            if (!hasPackage && isEmpty) {
+              failedCommands.push({
+                command,
+                error: "Package not found in npm list"
+              });
+            } else {
+              // Package found in output - consider it installed even if exit code is non-zero
+              // (this handles the || operator case where first command fails but second succeeds)
+            }
           } else {
             // Other error - tool might be installed but command failed for other reasons
             // Consider this as a pass (tool exists, just had an error)
@@ -1507,11 +1577,35 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
   private runCommand(command: string, args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
-      const workspaceRoot = this.workspaceFolder?.uri.fsPath || process.cwd();
+      // Use a safe working directory - check if paths exist before using them
+      let safeCwd: string | undefined = this.workspaceFolder?.uri.fsPath;
+      
+      // Check if workspace folder exists
+      if (safeCwd) {
+        try {
+          fs.accessSync(safeCwd, fs.constants.F_OK);
+        } catch {
+          // Workspace folder doesn't exist, try process.cwd()
+          safeCwd = undefined;
+        }
+      }
+      
+      // If no workspace folder or it doesn't exist, try process.cwd()
+      if (!safeCwd) {
+        try {
+          const cwd = process.cwd();
+          fs.accessSync(cwd, fs.constants.F_OK);
+          safeCwd = cwd;
+        } catch {
+          // process.cwd() doesn't exist either, use a safe fallback
+          safeCwd = os.homedir() || os.tmpdir();
+        }
+      }
+      
       const childProcess = spawn(command, args, {
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
-        cwd: workspaceRoot,
+        cwd: safeCwd,
       });
 
       let stdout = "";

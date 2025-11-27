@@ -10,6 +10,10 @@ suite('ToolsTreeProvider Unit Tests', () => {
     let testWorkspaceFolder: vscode.WorkspaceFolder;
 
     setup(() => {
+        // Set test environment to skip tool detection
+        process.env.NODE_ENV = 'test';
+        process.env.MOCHA_TEST = 'true';
+
         // Mock workspace folders
         originalWorkspaceFolders = vscode.workspace.workspaceFolders;
 
@@ -61,7 +65,8 @@ suite('ToolsTreeProvider Unit Tests', () => {
     });
 
     suite('Workspace Tools Registry Loading', () => {
-        test('with external tools in registry -> should show external tools', async () => {
+        test('with external tools in registry -> should show external tools', async function() {
+            this.timeout(5000); // Increase timeout for this test
             // Load tools from actual registry (which includes both built-in and external)
             await (provider as any).loadTools();
             
@@ -158,7 +163,8 @@ suite('ToolsTreeProvider Unit Tests', () => {
             }
         });
 
-        test('should have expected tool structure', async () => {
+        test('should have expected tool structure', async function() {
+            this.timeout(5000); // Increase timeout for this test
             // Wait for tools to load
             await (provider as any).loadTools();
             
@@ -178,7 +184,9 @@ suite('ToolsTreeProvider Unit Tests', () => {
             });
         });
 
-        test('should load tools with parameterDefaults and parameterMappings from tools.json', async () => {
+        test('should load tools with parameterDefaults and parameterMappings from tools.json', async function() {
+            this.timeout(5000); // Increase timeout for this test
+            
             // Wait for tools to load
             await (provider as any).loadTools();
             
@@ -186,6 +194,9 @@ suite('ToolsTreeProvider Unit Tests', () => {
             
             // Find IF Webpage Scan tool (should have parameterDefaults and parameterMappings)
             const ifWebpageTool = children.find(child => child.tool.id === 'if-webpage-scan');
+            
+            // Tool should be found if registry is loaded correctly
+            assert.ok(ifWebpageTool, 'IF Webpage Scan tool should be found in registry');
             
             if (ifWebpageTool) {
                 const tool = ifWebpageTool.tool as any;
@@ -225,7 +236,9 @@ suite('ToolsTreeProvider Unit Tests', () => {
             const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None, analyzeCommand);
 
             assert.strictEqual(toolItem.label, 'Test Tool');
-            assert.strictEqual(toolItem.tooltip, 'A test tool');
+            // Tooltip now includes installation instructions
+            assert.ok((toolItem.tooltip as string).includes('A test tool'), 'Tooltip should include description');
+            assert.ok((toolItem.tooltip as string).includes('Installation Instructions'), 'Tooltip should include installation instructions');
             assert.strictEqual(toolItem.description, 'Built-in');
             assert.strictEqual(toolItem.contextValue, 'builtin-tool');
             assert.strictEqual(toolItem.command?.command, 'carbonara.analyzeTool');
@@ -250,7 +263,9 @@ suite('ToolsTreeProvider Unit Tests', () => {
             const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None, installCommand);
 
             assert.strictEqual(toolItem.label, 'External Tool');
-            assert.strictEqual(toolItem.tooltip, 'An external tool');
+            // Tooltip now includes installation instructions
+            assert.ok((toolItem.tooltip as string).includes('An external tool'), 'Tooltip should include description');
+            assert.ok((toolItem.tooltip as string).includes('Installation Instructions'), 'Tooltip should include installation instructions');
             assert.strictEqual(toolItem.description, 'Not installed');
             assert.strictEqual(toolItem.contextValue, 'uninstalled-tool');
             assert.strictEqual(toolItem.command?.command, 'carbonara.installTool');
@@ -721,7 +736,8 @@ suite('ToolsTreeProvider Unit Tests', () => {
     });
 
     suite('Installation Instructions for Fresh Installation', () => {
-        test('should include browser installation in IF Webpage Scan instructions', async () => {
+        test('should include browser installation in IF Webpage Scan instructions', async function() {
+            this.timeout(15000); // Increase timeout for this test (tool loading and detection can be slow)
             // Load tools from actual registry
             await (provider as any).loadTools();
             
@@ -746,19 +762,19 @@ suite('ToolsTreeProvider Unit Tests', () => {
             
             const instructions = ifWebpageScanTool.installation.instructions;
             
-            // Should include npm install commands
+            // Should include npm install commands (actual format: npm install @grnsft/if @tngtech/if-webpage-plugins)
             assert.ok(
-                instructions.includes('npm install -g @grnsft/if'),
+                instructions.includes('npm install') && instructions.includes('@grnsft/if'),
                 'Instructions should include Impact Framework installation'
             );
             assert.ok(
-                instructions.includes('npm install -g @tngtech/if-webpage-plugins'),
+                instructions.includes('@tngtech/if-webpage-plugins'),
                 'Instructions should include webpage plugins installation'
             );
             
-            // Should include browser installation command
+            // Should include browser installation command (actual format: npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome)
             assert.ok(
-                instructions.includes('npx puppeteer browsers install chrome'),
+                instructions.includes('puppeteer browsers install'),
                 'Instructions should include Puppeteer browser installation command'
             );
             
@@ -782,7 +798,8 @@ suite('ToolsTreeProvider Unit Tests', () => {
             );
         });
 
-        test('should generate complete installation document with browser setup', async () => {
+        test('should generate complete installation document with browser setup', async function() {
+            this.timeout(10000); // Increase timeout for this test (tool loading can be slow)
             // Import the installation provider
             const { ToolInstallationProvider } = await import('../../tool-installation-provider');
             const installationProvider = new ToolInstallationProvider();
@@ -808,17 +825,17 @@ suite('ToolsTreeProvider Unit Tests', () => {
                 'Document should include Installation section'
             );
             
-            // Verify installation instructions include browser installation
+            // Verify installation instructions include browser installation (actual format: npm install @grnsft/if @tngtech/if-webpage-plugins)
             assert.ok(
-                documentContent.includes('npm install -g @grnsft/if'),
+                documentContent.includes('npm install') && documentContent.includes('@grnsft/if'),
                 'Document should include Impact Framework installation'
             );
             assert.ok(
-                documentContent.includes('npm install -g @tngtech/if-webpage-plugins'),
+                documentContent.includes('@tngtech/if-webpage-plugins'),
                 'Document should include webpage plugins installation'
             );
             assert.ok(
-                documentContent.includes('npx puppeteer browsers install chrome'),
+                documentContent.includes('puppeteer browsers install'),
                 'Document should include Puppeteer browser installation command'
             );
             
@@ -831,7 +848,8 @@ suite('ToolsTreeProvider Unit Tests', () => {
     });
 
     suite('Error Handling in analyzeTool', () => {
-        test('should handle errors gracefully when CLI command fails', async () => {
+        test('should handle errors gracefully when CLI command fails', async function() {
+            this.timeout(10000); // Increase timeout for this test (tool loading can be slow)
             // Mock a tool
             const mockTool = {
                 id: 'test-tool',

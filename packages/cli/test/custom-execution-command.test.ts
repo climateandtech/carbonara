@@ -1,4 +1,4 @@
-import { describe, test, beforeEach, afterEach, expect } from 'vitest';
+import { describe, test, beforeEach, afterEach, expect, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -12,12 +12,50 @@ import {
   recordToolError,
   getToolLastError
 } from '../src/utils/config.js';
+import { execa, execaCommand } from 'execa';
+
+// Mock execa to control detection results for CI reliability
+vi.mock('execa', () => ({
+  execa: vi.fn(),
+  execaCommand: vi.fn()
+}));
 
 describe('Custom Execution Command', () => {
   let testDir: string;
   let originalCwd: string;
+  let mockExeca: ReturnType<typeof vi.fn>;
+  let mockExecaCommand: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
+    mockExeca = vi.mocked(execa);
+    mockExecaCommand = vi.mocked(execaCommand);
+    
+    // Default: mock detection to fail (tool not installed)
+    mockExecaCommand.mockImplementation((command: string) => {
+      if (command.includes('npm list')) {
+        return Promise.resolve({
+          exitCode: 0,
+          stdout: '(empty)',
+          stderr: '',
+          command: '',
+          escapedCommand: '',
+          killed: false,
+          signal: null,
+          timedOut: false
+        } as any);
+      }
+      return Promise.resolve({
+        exitCode: 127,
+        stdout: '',
+        stderr: 'command not found',
+        command: '',
+        escapedCommand: '',
+        killed: false,
+        signal: null,
+        timedOut: false
+      } as any);
+    });
     // Create isolated test directory
     testDir = mkdtempSync(path.join(os.tmpdir(), 'carbonara-custom-exec-test-'));
     originalCwd = process.cwd();

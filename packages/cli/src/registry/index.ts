@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { execa, execaCommand } from 'execa';
 import { fileURLToPath } from 'url';
 
@@ -19,12 +20,12 @@ export interface AnalysisTool {
     type: 'npm' | 'pip' | 'binary' | 'docker' | 'built-in';
     package: string;
     global?: boolean;
-    command?: string; // Command to install the tool (for automated installation)
-    instructions: string; // Installation instructions (for documentation)
+    instructions: string;
   };
   detection: {
     method: 'command' | 'npm' | 'file' | 'built-in';
-    target: string;
+    target?: string;
+    commands?: string[]; // Array of detection commands (for tools with multiple checks)
     expectedOutput?: string;
   };
   options?: Array<{
@@ -38,15 +39,15 @@ export interface AnalysisTool {
     required: boolean;
     type?: 'string' | 'number' | 'boolean';
     description?: string;
-    default?: any; // Default value if not provided
-    placeholder?: string; // Placeholder name in manifest (defaults to {name})
+    placeholder?: string; // Placeholder name (may differ from name)
+    default?: any; // Default value
   }>;
   parameterDefaults?: Record<string, any>; // Default values for parameters
   parameterMappings?: Record<string, {
-    source?: string; // Source parameter name (for derived values)
+    source: string; // Source parameter name
     transform?: string; // Transform expression (e.g., "1 - {source}")
-    type?: 'string' | 'number' | 'boolean'; // Type for the placeholder
-  }>; // Mappings for derived/computed parameters
+    type?: 'string' | 'number' | 'boolean'; // Output type
+  }>; // Parameter mappings (derived values)
   manifestTemplate?: any; // For Impact Framework tools
   display?: any; // For display configuration
   prerequisites?: Array<{
@@ -58,7 +59,6 @@ export interface AnalysisTool {
     installCommand?: string;
     setupInstructions?: string;
   }>;
-  displayName?: string; // Display name override (e.g., "Impact Framework" for IF tools)
 }
 
 export interface ToolRegistry {
@@ -98,6 +98,10 @@ export class AnalysisToolRegistry {
   async refreshInstalledTools(): Promise<void> {
     this.installedTools.clear();
     
+    // Check for config flags that override detection
+    const { loadProjectConfig } = await import('../utils/config.js');
+    const config = await loadProjectConfig();
+    
     // Run all tool checks in parallel with a global timeout
     type ToolCheckResult = { tool: AnalysisTool; isInstalled: boolean };
     
@@ -112,7 +116,25 @@ export class AnalysisToolRegistry {
     
     const results = await Promise.all(checks);
     results.forEach((result: ToolCheckResult) => {
-      this.installedTools.set(result.tool.id, result.isInstalled);
+      let isInstalled = result.isInstalled;
+      
+      // Check config flags that override detection
+      if (config?.tools?.[result.tool.id]) {
+        const toolConfig = config.tools[result.tool.id];
+        
+        // If custom execution command is set, mark as installed (user manually installed it)
+        if (toolConfig.customExecutionCommand) {
+          isInstalled = true;
+        }
+        
+        // If detection was previously flagged as failed, don't trust detection
+        // (but custom execution command takes precedence)
+        if (toolConfig.detectionFailed && !toolConfig.customExecutionCommand) {
+          isInstalled = false;
+        }
+      }
+      
+      this.installedTools.set(result.tool.id, isInstalled);
     });
     
     this.toolsRefreshed = true;
@@ -120,160 +142,116 @@ export class AnalysisToolRegistry {
 
   private async checkToolInstallation(tool: AnalysisTool): Promise<boolean> {
     try {
-      // Check if user has manually installed with custom execution command
-      // If so, mark as installed (detection is bypassed, user knows it's installed)
-      // NOTE: Only custom execution command bypasses detection - config flags (isToolMarkedInstalled)
-      // are only used to allow running, not to change display status
-      try {
-        const { getCustomExecutionCommand } = await import('../utils/config.js');
-        const customExecCommand = await getCustomExecutionCommand(tool.id);
-        if (customExecCommand) {
-          // User has manually installed with custom command - trust them, mark as installed
-          // Detection is bypassed because user provided their own command
-          return true;
-        }
-      } catch {
-        // Config check failed, continue with default detection
-      }
-      
       switch (tool.detection.method) {
         case 'built-in':
           return true; // Built-in tools are always available
         case 'command':
-          // Support both detection.target (backward compatible) and detection.commands (array)
-          const commands: string[] = (tool.detection as any).commands || 
-            (tool.detection.target ? [tool.detection.target] : []);
-          
-          if (commands.length === 0) {
-            console.log(`⚠️  Tool ${tool.id} has no detection commands configured`);
-            return false;
-          }
-          
-          const failedCommands: Array<{ command: string; error: string }> = [];
-          
-          // Test each command sequentially - ALL must pass
-          for (const command of commands) {
-            try {
-              const result = await execaCommand(command, { 
-                stdio: 'pipe', 
-                timeout: 5000,
-                reject: false,
-                cwd: process.cwd()
-              });
-              
-              // Check stderr for npm/npx errors indicating tool not installed
-              const stderr = result.stderr || '';
-              const stdout = result.stdout || '';
-              const combinedOutput = stderr + stdout;
-              
-              // Check for "could not determine executable" - means tool is not installed
-              if (combinedOutput.includes('could not determine executable') || 
-                  combinedOutput.includes('npm error could not determine executable')) {
-                failedCommands.push({
-                  command,
-                  error: 'Tool not installed (could not determine executable)'
+          // Check if tool has commands array (new approach) or target (old approach)
+          const detection = tool.detection as any;
+          if (detection.commands && Array.isArray(detection.commands)) {
+            // New approach: check all commands, ALL must pass
+            const commands: string[] = detection.commands;
+            const failedCommands: Array<{ command: string; error: string }> = [];
+            
+            for (const command of commands) {
+              try {
+                // Use a safe working directory
+                let safeCwd = process.cwd();
+                try {
+                  fs.accessSync(safeCwd, fs.constants.F_OK);
+                } catch {
+                  safeCwd = os.homedir() || os.tmpdir();
+                }
+                
+                const result = await execaCommand(command, { 
+                  stdio: 'pipe', 
+                  timeout: 5000,
+                  reject: false,
+                  cwd: safeCwd
                 });
-                continue;
-              }
-              
-              // Exit code 127 means command not found
-              if (result.exitCode === 127) {
-                failedCommands.push({
-                  command,
-                  error: 'Command not found'
-                });
-                continue;
-              }
-              
-              // For npm list commands, check if package is actually listed
-              if (command.startsWith('npm list')) {
-                if (result.exitCode !== 0 || 
-                    result.stdout.includes('(empty)') || 
-                    result.stdout.includes('(no packages)')) {
+                
+                // For npm list commands, check if package is in output
+                if (command.startsWith('npm list')) {
+                  const packageMatch = command.match(/npm list\s+([^\s|]+)/);
+                  const packageName = packageMatch ? packageMatch[1] : null;
+                  if (packageName) {
+                    const hasPackage = result.stdout.includes(packageName) || 
+                                      result.stdout.includes(packageName.split('/').pop() || '') ||
+                                      result.stdout.includes(packageName.replace('@', ''));
+                    const isEmpty = result.stdout.includes('(empty)') || 
+                                   result.stdout.includes('(no packages)');
+                    
+                    if (!hasPackage && isEmpty) {
+                      failedCommands.push({
+                        command,
+                        error: 'Package not found in npm list'
+                      });
+                      continue;
+                    }
+                  }
+                }
+                
+                // Command succeeded - continue to next command
+              } catch (error: any) {
+                // Check if it's a "command not found" error
+                const errorMessage = error.message || String(error);
+                const isCommandNotFound = 
+                  error.exitCode === 127 ||
+                  errorMessage.includes("command not found") ||
+                  errorMessage.includes("Command not found") ||
+                  errorMessage.includes("ENOENT") ||
+                  errorMessage.includes("spawn") ||
+                  errorMessage.includes("uv_cwd");
+                
+                if (isCommandNotFound) {
                   failedCommands.push({
                     command,
-                    error: 'Package not found in npm list'
+                    error: errorMessage || "Command not found"
                   });
-                  continue;
+                } else if (command.startsWith("npm list")) {
+                  // For npm list, check if package is in output even if command failed
+                  const packageMatch = command.match(/npm list\s+([^\s|]+)/);
+                  const packageName = packageMatch ? packageMatch[1] : null;
+                  const output = (error as any).stdout || (error as any).stderr || errorMessage || "";
+                  const hasPackage = packageName ? 
+                    (output.includes(packageName) || 
+                     output.includes(packageName.split('/').pop() || '') ||
+                     output.includes(packageName.replace('@', ''))) :
+                    false;
+                  
+                  if (!hasPackage || output.includes('(empty)') || output.includes('(no packages)')) {
+                    failedCommands.push({
+                      command,
+                      error: "Package not found in npm list"
+                    });
+                  }
+                } else {
+                  // Other error - tool might be installed but command failed for other reasons
+                  // Consider this as a pass (tool exists, just had an error)
                 }
-              }
-              
-              // For npx commands, check if they failed with npm errors
-              if (command.startsWith('npx ') && result.exitCode !== 0) {
-                // If npx fails with npm error, tool is likely not installed
-                if (combinedOutput.includes('npm error')) {
-                  failedCommands.push({
-                    command,
-                    error: 'Tool not installed (npx error)'
-                  });
-                  continue;
-                }
-                // If npx command fails but no npm error, tool might be installed but command failed
-                // Check if we got any output (tool exists) vs no output (tool doesn't exist)
-                if (combinedOutput.trim().length === 0) {
-                  // No output means tool likely doesn't exist
-                  failedCommands.push({
-                    command,
-                    error: 'Tool not installed (no output)'
-                  });
-                  continue;
-                }
-                // Tool exists (got output) but command failed - this is OK for detection
-                // (e.g., --version might not be supported but tool is installed)
-                // Continue to next command
-              }
-              
-              // Command succeeded (exit code 0) or tool exists but command had wrong args (non-zero but has output)
-              // Continue to next command
-            } catch (error: any) {
-              // Check if it's a "command not found" error
-              const errorMessage = error.message || String(error);
-              const isCommandNotFound = 
-                error.exitCode === 127 ||
-                errorMessage.includes('command not found') ||
-                errorMessage.includes('Command not found') ||
-                errorMessage.includes('ENOENT');
-              
-              if (isCommandNotFound) {
-                failedCommands.push({
-                  command,
-                  error: errorMessage || 'Command not found'
-                });
-              } else {
-                // Other error - tool might be installed but command failed for other reasons
-                // Consider this as a pass (tool exists, just had an error)
               }
             }
-          }
-          
-          // If any command failed, show which ones failed
-          if (failedCommands.length > 0) {
-            console.log(`❌ Tool ${tool.id} detection failed:`);
-            const passedCommands = commands.filter(cmd => 
-              !failedCommands.some(fc => fc.command === cmd)
-            );
-            passedCommands.forEach(cmd => {
-              console.log(`   ✓ ${cmd} (passed)`);
-            });
-            failedCommands.forEach(({ command, error }) => {
-              console.log(`   ✗ ${command} (failed: ${error})`);
-            });
             
-            // Detection failed = tool is NOT installed
-            // This takes precedence over config flags - if detection fails, show as not installed (red)
-            // Config flags are only used to allow running, not to change display status
+            // If any command failed, tool is not installed
+            return failedCommands.length === 0;
+          } else if (tool.detection.target) {
+            // Old approach: single target command
+            try {
+              await execaCommand(tool.detection.target, { stdio: 'pipe', timeout: 5000 });
+              return true;
+            } catch (error: any) {
+              // If the command exists but fails (like help commands), that's still installed
+              return error.exitCode !== 127 && !error.message.includes('command not found');
+            }
+          } else {
             return false;
           }
-          
-          // All commands passed
-          console.log(`✅ Tool ${tool.id} all detection commands passed`);
-          return true;
         case 'npm':
           // Check if npm package is globally installed
-          const result = await execa('npm', ['list', '-g', tool.detection.target], { stdio: 'pipe' });
+          const result = await execa('npm', ['list', '-g', tool.detection.target!], { stdio: 'pipe' });
           return !result.stdout.includes('(empty)');
         case 'file':
-          return fs.existsSync(tool.detection.target);
+          return fs.existsSync(tool.detection.target!);
         default:
           return false;
       }
@@ -293,46 +271,6 @@ export class AnalysisToolRegistry {
     return this.registry.tools.filter(tool => this.installedTools.get(tool.id) === true);
   }
 
-  /**
-   * Checks if all prerequisites for a tool are available.
-   * Returns true if all prerequisites are met, false otherwise.
-   */
-  async checkToolPrerequisites(toolId: string): Promise<{
-    allAvailable: boolean;
-    missing: Array<{ prerequisite: any; error: string }>;
-  }> {
-    const tool = this.getTool(toolId);
-    if (!tool || !tool.prerequisites || tool.prerequisites.length === 0) {
-      return { allAvailable: true, missing: [] };
-    }
-
-    try {
-      const { checkPrerequisites } = await import('@carbonara/core');
-      const prerequisites = tool.prerequisites.map((p: any) => ({
-        type: p.type,
-        name: p.name,
-        checkCommand: p.checkCommand,
-        expectedOutput: p.expectedOutput,
-        errorMessage: p.errorMessage,
-        installCommand: p.installCommand,
-        setupInstructions: p.setupInstructions,
-      }));
-
-      const result = await checkPrerequisites(prerequisites);
-      return result;
-    } catch (error) {
-      console.error(`Failed to check prerequisites for ${toolId}:`, error);
-      // If we can't check, assume all are missing
-      return {
-        allAvailable: false,
-        missing: tool.prerequisites.map((p: any) => ({
-          prerequisite: p,
-          error: p.errorMessage || 'Prerequisite check failed'
-        }))
-      };
-    }
-  }
-
   getTool(id: string): AnalysisTool | undefined {
     return this.registry.tools.find(tool => tool.id === id);
   }
@@ -347,6 +285,39 @@ export class AnalysisToolRegistry {
   getInstallationInstructions(id: string): string | undefined {
     const tool = this.getTool(id);
     return tool?.installation.instructions;
+  }
+
+  async checkToolPrerequisites(toolId: string): Promise<{
+    allAvailable: boolean;
+    missing: Array<{ prerequisite: any; reason: string }>;
+  }> {
+    const tool = this.getTool(toolId);
+    if (!tool || !tool.prerequisites || tool.prerequisites.length === 0) {
+      return { allAvailable: true, missing: [] };
+    }
+
+    // Use the core package's checkPrerequisites function
+    const { checkPrerequisites } = await import('@carbonara/core');
+    const prerequisites = tool.prerequisites.map((p: any) => ({
+      type: p.type,
+      name: p.name,
+      checkCommand: p.checkCommand,
+      expectedOutput: p.expectedOutput,
+      errorMessage: p.errorMessage,
+      installCommand: p.installCommand,
+      setupInstructions: p.setupInstructions,
+    }));
+
+    const result = await checkPrerequisites(prerequisites);
+    
+    // Map the result to match the expected format
+    return {
+      allAvailable: result.allAvailable,
+      missing: result.missing.map(({ prerequisite, error }) => ({
+        prerequisite,
+        reason: error
+      }))
+    };
   }
 
   async installTool(id: string): Promise<boolean> {
@@ -421,7 +392,6 @@ export class AnalysisToolRegistry {
     const registryPath = path.join(__dirname, 'tools.json');
     fs.writeFileSync(registryPath, JSON.stringify(this.registry, null, 2));
   }
-
 }
 
 // Singleton instance

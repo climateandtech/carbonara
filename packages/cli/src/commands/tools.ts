@@ -26,7 +26,7 @@ export async function toolsCommand(options: ToolsOptions) {
   }
 }
 
-async function listTools() {
+export async function listTools() {
   const registry = getToolRegistry();
   
   console.log(chalk.blue('🛠️  Analysis Tools Registry'));
