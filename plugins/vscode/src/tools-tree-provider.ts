@@ -38,12 +38,17 @@ export class ToolItem extends vscode.TreeItem {
     super(tool.name, collapsibleState);
 
     this.tooltip = tool.description;
-    this.description =
-      tool.type === "built-in"
-        ? "Built-in"
-        : tool.isInstalled
-          ? "Installed"
-          : "Not installed";
+    // If tool name is empty, it's an info message - use the description directly
+    if (tool.name === "") {
+      this.description = tool.description;
+    } else {
+      this.description =
+        tool.type === "built-in"
+          ? "Built-in"
+          : tool.isInstalled
+            ? "Installed"
+            : "Not installed";
+    }
 
     // Set icon based on installation status
     if (tool.type === "built-in") {
@@ -66,7 +71,8 @@ export class ToolItem extends vscode.TreeItem {
     // Set context value for different actions
     if (tool.type === "built-in") {
       // Special context for semgrep to show custom buttons
-      this.contextValue = tool.id === "semgrep" ? "builtin-tool-semgrep" : "builtin-tool";
+      this.contextValue =
+        tool.id === "semgrep" ? "builtin-tool-semgrep" : "builtin-tool";
     } else if (tool.isInstalled) {
       this.contextValue = "installed-tool";
     } else {
@@ -104,11 +110,10 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     return element;
   }
 
-  getChildren(element?: ToolItem): Thenable<ToolItem[]> {
-    // Check if workspace is open
+  getChildren(element?: ToolItem): ToolItem[] | Promise<ToolItem[]> {
     if (!this.workspaceFolder) {
       // No workspace open - return empty
-      return Promise.resolve([]);
+      return [];
     }
 
     // Check if Carbonara is initialized
@@ -118,12 +123,18 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       "carbonara.config.json"
     );
 
-    if (!fs.existsSync(configPath)) {
+    if (!require("fs").existsSync(configPath)) {
       // Workspace exists but Carbonara is not initialized
+      // Set context to hide buttons
+      vscode.commands.executeCommand(
+        "setContext",
+        "carbonara.toolsInitialized",
+        false
+      );
       // Show a single item with description styling
-      const descriptionItem = new ToolItem(
+      const messageItem = new ToolItem(
         {
-          id: "not-initialized-description",
+          id: "not-initialized",
           name: "",
           description: "Initialise Carbonara to access analysis tools",
           type: "built-in" as const,
@@ -132,10 +143,17 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         },
         vscode.TreeItemCollapsibleState.None
       );
-      descriptionItem.iconPath = undefined; // No icon
-      descriptionItem.contextValue = "description-text";
-      return Promise.resolve([descriptionItem]);
+      messageItem.iconPath = new vscode.ThemeIcon("info");
+      messageItem.contextValue = "info-message";
+      return [messageItem];
     }
+
+    // Set context to show buttons
+    vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.toolsInitialized",
+      true
+    );
 
     // Always show tools
     if (element) {
@@ -215,7 +233,9 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     try {
       // HIGHEST PRIORITY: Check if CARBONARA_REGISTRY_PATH is set (for testing/override)
       if (process.env.CARBONARA_REGISTRY_PATH) {
-        if (await this.loadFromRegistryPath(process.env.CARBONARA_REGISTRY_PATH)) {
+        if (
+          await this.loadFromRegistryPath(process.env.CARBONARA_REGISTRY_PATH)
+        ) {
           this._onDidChangeTreeData.fire();
           return;
         }

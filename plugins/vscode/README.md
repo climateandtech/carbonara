@@ -1,11 +1,11 @@
 # Carbonara VS Code Extension
 
-A VS Code extension for CO2 assessment and web sustainability analysis, integrated with the Carbonara CLI tool.
+A VS Code extension for assessment questionnaire and web sustainability analysis, integrated with the Carbonara CLI tool.
 
 ## Features
 
 - **Project Initialization**: Set up Carbonara projects directly from VS Code
-- **CO2 Assessment**: Run comprehensive sustainability questionnaires
+- **assessment questionnaire**: Run comprehensive sustainability questionnaires
 - **Website Analysis**: Analyze website carbon footprints using Greenframe
 - **Data Management**: View, export, and manage assessment data
 - **Status Monitoring**: Real-time project status in the status bar
@@ -57,7 +57,7 @@ Access commands via:
   - Set up Carbonara configuration and database
   - Choose project type (Web, Mobile, Desktop, API, Other)
 
-- **Run CO2 Assessment** (`carbonara.runAssessment`)
+- **Run assessment questionnaire** (`carbonara.runAssessment`)
   - Complete interactive sustainability questionnaire
   - Get CO2 impact scoring based on project characteristics
 

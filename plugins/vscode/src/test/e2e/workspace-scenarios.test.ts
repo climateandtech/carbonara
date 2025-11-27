@@ -124,14 +124,14 @@ test.describe("Workspace Scenarios - Project State Testing", () => {
 
         // Look for assessment data from our fixture
         const assessmentPanel = vscode.window.locator(
-          'h3:has-text("CO2 Assessment")'
+          'h3:has-text("assessment questionnaire")'
         );
         if (await assessmentPanel.isVisible({ timeout: 3000 })) {
           // Look for completed project info section
-          const projectInfoSection = vscode.window.locator(
+          const projectOverviewSection = vscode.window.locator(
             "text=Project Information"
           );
-          if (await projectInfoSection.isVisible({ timeout: 3000 })) {
+          if (await projectOverviewSection.isVisible({ timeout: 3000 })) {
           }
         }
       } catch (error) {}

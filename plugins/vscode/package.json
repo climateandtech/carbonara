@@ -39,7 +39,7 @@
       },
       {
         "command": "carbonara.runAssessment",
-        "title": "Run CO2 Assessment"
+        "title": "Run assessment questionnaire"
       },
       {
         "command": "carbonara.analyzeWebsite",
@@ -65,7 +65,7 @@
       {
         "command": "carbonara.completeAssessment",
         "title": "Complete Assessment",
-        "icon": "$(check)"
+        "icon": "$(play)"
       },
       {
         "command": "carbonara.refreshAssessment",
@@ -173,9 +173,8 @@
         },
         {
           "id": "carbonara.assessmentTree",
-          "name": "CO2 Assessment",
-          "icon": "$(checklist)",
-          "visibility": "collapsed"
+          "name": "assessment questionnaire",
+          "icon": "$(checklist)"
         },
         {
           "id": "carbonara.dataTree",
@@ -201,42 +200,37 @@
       "view/title": [
         {
           "command": "carbonara.completeAssessment",
-          "when": "view == carbonara.assessmentTree",
-          "group": "navigation"
-        },
-        {
-          "command": "carbonara.refreshAssessment",
-          "when": "view == carbonara.assessmentTree",
+          "when": "view == carbonara.assessmentTree && carbonara.assessmentInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.refreshData",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.exportDataJson",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.exportDataCsv",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.clearAllData",
-          "when": "view == carbonara.dataTree",
+          "when": "view == carbonara.dataTree && carbonara.dataInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.refreshTools",
-          "when": "view == carbonara.toolsTree",
+          "when": "view == carbonara.toolsTree && carbonara.toolsInitialized",
           "group": "navigation"
         },
         {
           "command": "carbonara.refreshDeployments",
-          "when": "view == carbonara.deploymentsTree",
+          "when": "view == carbonara.deploymentsTree && carbonara.deploymentsInitialized",
           "group": "navigation"
         }
       ],
@@ -343,7 +337,7 @@
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",
     "test:local": "node ./dist/test/runTest.js",
-    "test:ci-check": "if [ \"$CI\" = \"true\" ]; then echo 'Skipping VSCode tests in CI environment'; exit 0; else npm run test:local; fi",
+    "test:ci-check": "sh -c 'if [ \"$CI\" = \"true\" ]; then echo \"Skipping VSCode tests in CI environment\"; exit 0; else npm run test:local; fi' --",
     "test:ui": "playwright test e2e --workers=1",
     "test:ui:simple": "playwright test e2e/simple-ui.spec.ts --workers=1",
     "test:ui:comprehensive": "playwright test e2e/carbonara-ui-comprehensive.spec.ts --workers=1",

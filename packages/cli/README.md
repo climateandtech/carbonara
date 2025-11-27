@@ -1,6 +1,6 @@
 # Carbonara CLI
 
-A command-line tool for CO2 assessment and web sustainability analysis with pluggable analyzer architecture.
+A command-line tool for assessment questionnaire and web sustainability analysis with pluggable analyzer architecture.
 
 ## Installation
 
@@ -42,7 +42,7 @@ carbonara analyze greenframe https://example.com --save
 carbonara analyze impact-framework https://example.com --save
 ```
 
-### CO2 Assessment
+### assessment questionnaire
 
 ```bash
 # Interactive questionnaire
@@ -63,6 +63,7 @@ carbonara assess
 ## Project Structure
 
 When you run `carbonara init`, it creates a `.carbonara/` directory containing:
+
 - `.carbonara/carbonara.config.json` - Project configuration
 - `.carbonara/carbonara.db` - SQLite database for assessment data
 
@@ -71,7 +72,7 @@ When you run `carbonara init`, it creates a `.carbonara/` directory containing:
 ```json
 {
   "name": "My Project",
-  "description": "Project description", 
+  "description": "Project description",
   "projectType": "web",
   "projectId": 1,
   "created": "2024-01-01T00:00:00.000Z"
@@ -89,44 +90,54 @@ When you run `carbonara init`, it creates a `.carbonara/` directory containing:
 ### Project Management Commands
 
 #### `carbonara init [options]`
+
 Initialize a new Carbonara project in the current directory.
 
 **Options:**
+
 - `-p, --path <path>` - Project path (default: current directory)
 
 **Creates:**
+
 - `.carbonara/carbonara.config.json` - Project configuration file
 - `.carbonara/carbonara.db` - SQLite database for storing assessment data
 
 #### `carbonara assess [options]`
-Run interactive CO2 assessment questionnaire.
+
+Run interactive assessment questionnaire questionnaire.
 
 **Options:**
+
 - `-i, --interactive` - Interactive mode (default: true)
 - `-f, --file <file>` - Load from configuration file
 
-**Assessment covers:**
-- Project scope (users, traffic, lifespan)
+**Assessment Questionnaire covers:**
+
+- Project Overview (users, traffic, lifespan)
 - Infrastructure (hosting, location, storage)
 - Development practices (team size, CI/CD, testing)
 - Features (real-time, media, AI/ML, blockchain, IoT)
-- Sustainability goals
+- Sustainability and goals
 
 ### Analysis Commands
 
 #### `carbonara analyze <tool-id> <url> [options]`
+
 Run analysis with a registered tool.
 
 **Arguments:**
+
 - `<tool-id>` - ID of the analysis tool (e.g., "greenframe", "impact-framework")
 - `<url>` - URL to analyze
 
 **Options:**
+
 - `-s, --save` - Save results to data lake
 - `-o, --output <format>` - Output format (json|table, default: table)
 - `--scroll-to-bottom` - Scroll to bottom of page during analysis (for web analyzers)
 
 **Examples:**
+
 ```bash
 carbonara analyze greenframe https://example.com --save
 carbonara analyze greenframe https://example.com --output json
@@ -134,14 +145,17 @@ carbonara analyze impact-framework https://example.com --scroll-to-bottom --save
 ```
 
 #### `carbonara tools [options]`
+
 Manage analysis tools.
 
 **Options:**
+
 - `-l, --list` - List all registered tools and their installation status
 - `-i, --install <tool-id>` - Install a specific tool
 - `-r, --refresh` - Refresh installation status of all tools
 
 **Examples:**
+
 ```bash
 carbonara tools --list                    # Show all available tools
 carbonara tools --install greenframe      # Install Greenframe CLI
@@ -151,15 +165,18 @@ carbonara tools --refresh                 # Update installation status
 ### Data Management Commands
 
 #### `carbonara data [options]`
+
 Manage stored assessment data.
 
 **Options:**
+
 - `-l, --list` - List all stored data
 - `-s, --show` - Show detailed project analysis
 - `-e, --export <format>` - Export data (json|csv)
 - `-c, --clear` - Clear all data
 
 **Examples:**
+
 ```bash
 carbonara data --list                     # List all stored assessments
 carbonara data --show                     # Show detailed analysis
@@ -168,9 +185,11 @@ carbonara data --clear                    # Clear all stored data
 ```
 
 #### `carbonara import [options]`
+
 Import analysis data from files or databases.
 
 **Options:**
+
 - `-f, --file <path>` - Import from JSON/CSV file
 - `-d, --database <path>` - Import from another Carbonara database
 - `--format <format>` - Force file format (json|csv)
@@ -178,6 +197,7 @@ Import analysis data from files or databases.
 - `-o, --overwrite` - Overwrite duplicate records
 
 **Examples:**
+
 ```bash
 carbonara import --file analysis-results.json
 carbonara import --database ../other-project/carbonara.db
@@ -185,6 +205,7 @@ carbonara import --file data.csv --format csv --overwrite
 ```
 
 ### Global Options
+
 - `-h, --help` - Display help for command
 - `-V, --version` - Display version number
 

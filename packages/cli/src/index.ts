@@ -15,7 +15,9 @@ const { version } = packageJson;
 
 program
   .name("carbonara")
-  .description("CLI tool for CO2 assessment and sustainability tooling")
+  .description(
+    "CLI tool for assessment questionnaire and sustainability tooling"
+  )
   .version(version);
 
 program
@@ -26,7 +28,7 @@ program
 
 program
   .command("assess")
-  .description("Run CO2 assessment questionnaire")
+  .description("Run assessment questionnaire questionnaire")
   .option("-i, --interactive", "Interactive mode", true)
   .option("-f, --file <file>", "Load from configuration file")
   .action(assessCommand);
@@ -51,9 +53,7 @@ program
   .option("--timeout <ms>", "Analysis timeout in milliseconds", "30000")
   .action(analyzeCommand);
 
-const toolsCmd = program
-  .command("tools")
-  .description("Manage analysis tools");
+const toolsCmd = program.command("tools").description("Manage analysis tools");
 
 toolsCmd
   .command("list")

@@ -89,7 +89,10 @@ export async function initCommand(options: InitOptions) {
     const dbExists = fs.existsSync(dbPath);
 
     if (dbExists) {
-      console.log(chalk.yellow("⚠️  Database already exists:"), ".carbonara/carbonara.db");
+      console.log(
+        chalk.yellow("⚠️  Database already exists:"),
+        ".carbonara/carbonara.db"
+      );
     } else {
       console.log(chalk.gray("Creating new database at:"), dbPath);
     }
@@ -104,7 +107,7 @@ export async function initCommand(options: InitOptions) {
 
     const description = await input({
       message: "Project description:",
-      default: "A Carbonara CO2 assessment project",
+      default: "A Carbonara assessment questionnaire project",
     });
 
     const projectType = await select({
@@ -185,7 +188,7 @@ export async function initCommand(options: InitOptions) {
     console.log(
       chalk.gray("  1. Run"),
       chalk.white("carbonara assess"),
-      chalk.gray("to start CO2 assessment")
+      chalk.gray("to start assessment questionnaire")
     );
     console.log(
       chalk.gray("  2. Run"),

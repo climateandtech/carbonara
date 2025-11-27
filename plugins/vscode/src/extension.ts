@@ -386,6 +386,7 @@ async function initProject() {
   assessmentTreeProvider.refresh();
   dataTreeProvider.refresh();
   toolsTreeProvider.refresh();
+  deploymentsTreeProvider.refresh();
   checkProjectStatus();
 
   vscode.window.showInformationMessage(
