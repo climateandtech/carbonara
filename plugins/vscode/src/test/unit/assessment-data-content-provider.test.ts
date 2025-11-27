@@ -62,7 +62,7 @@ suite("AssessmentDataContentProvider", () => {
               icon: "🧪",
               groupName: "Test Results",
               entryTemplate: "🧪 {url} - {date}",
-              descriptionTemplate: "Test result: {result}",
+              descriptionTemplate: "{date}",
               fields: [
                 {
                   key: "url",
@@ -266,6 +266,219 @@ suite("AssessmentDataContentProvider", () => {
     const content = await providerEmpty.provideTextDocumentContent(uri);
     
     ok(content.includes("No entries found"), "Should show no entries message");
+  });
+
+  test("should replace {totalKB} in carbonara-swd entry content", async () => {
+    const mockDataServiceSWD = {
+      getAssessmentData: async () => [{
+        id: 10,
+        tool_name: "carbonara-swd",
+        timestamp: "2024-01-01T00:00:00Z",
+        data: {
+          url: "https://example.com",
+          totalBytes: 270 * 1024, // 270 KB
+          carbonEmissions: { total: 0.028 },
+          energyUsage: { total: 0.000075 },
+          metadata: {
+            loadTime: 42436,
+            resourceCount: 23
+          }
+        },
+        project_id: 1,
+        data_type: "web-analysis"
+      }]
+    } as unknown as DataService;
+
+    const mockSchemaServiceSWD = {
+      getToolSchema: (toolId: string) => {
+        if (toolId === "carbonara-swd") {
+          return {
+            id: "carbonara-swd",
+            name: "Carbonara SWD",
+            display: {
+              category: "Website Analysis",
+              icon: "",
+              groupName: "SWD Analysis",
+              entryTemplate: "{url}",
+              descriptionTemplate: "{date}: {totalKB} KB",
+              fields: [
+                { key: "url", label: "URL", path: "data.url", type: "url" as const },
+                { key: "totalBytes", label: "Data Transfer", path: "data.totalBytes", type: "bytes" as const }
+              ]
+            }
+          };
+        }
+        return null;
+      },
+      extractValue: (entry: any, path: string) => {
+        const parts = path.split(".");
+        let current = entry;
+        for (const part of parts) {
+          if (current && typeof current === "object" && part in current) {
+            current = current[part];
+          } else {
+            return null;
+          }
+        }
+        return current;
+      },
+      formatValue: (value: any, type: string, format?: string) => String(value)
+    } as unknown as SchemaService;
+
+    const mockVSCodeProviderSWD = {
+      createDataDetails: async () => []
+    } as unknown as VSCodeDataProvider;
+
+    const providerSWD = new AssessmentDataContentProvider();
+    providerSWD.setCoreServices({
+      dataService: mockDataServiceSWD,
+      schemaService: mockSchemaServiceSWD,
+      vscodeProvider: mockVSCodeProviderSWD
+    });
+
+    const uri = createEntryUri(10);
+    const content = await providerSWD.provideTextDocumentContent(uri);
+    
+    // Should replace {totalKB} with computed value
+    ok(content.includes("270 KB"), "Should include computed totalKB value");
+    ok(!content.includes("{totalKB}"), "Should not contain unreplaced placeholder");
+    ok(content.includes("https://example.com"), "Should include URL from entryTemplate");
+  });
+
+  test("should replace {count} in deployment-scan entry content", async () => {
+    const deployments = [
+      { provider: "AWS", environment: "production", region: "us-east-1", country: "US" },
+      { provider: "GCP", environment: "staging", region: "europe-west1", country: "NL" }
+    ];
+
+    const mockDataServiceDeploy = {
+      getAssessmentData: async () => [{
+        id: 20,
+        tool_name: "deployment-scan",
+        timestamp: "2024-01-01T00:00:00Z",
+        data: {
+          deployments,
+          total_count: deployments.length
+        },
+        project_id: 1,
+        data_type: "infrastructure-analysis"
+      }]
+    } as unknown as DataService;
+
+    const mockSchemaServiceDeploy = {
+      getToolSchema: (toolId: string) => {
+        if (toolId === "deployment-scan") {
+          return {
+            id: "deployment-scan",
+            name: "Deployment Scanner",
+            display: {
+              category: "Infrastructure",
+              icon: "",
+              groupName: "Deployment Analysis",
+              entryTemplate: "Deployment Scan",
+              descriptionTemplate: "{date}: {count} deployments",
+              fields: [
+                { key: "provider", label: "Provider", path: "data.deployments[*].provider", type: "string" as const }
+              ]
+            }
+          };
+        }
+        return null;
+      },
+      extractValue: (entry: any, path: string) => {
+        if (path === "data.deployments") {
+          return entry.data?.deployments || null;
+        }
+        if (path === "data.total_count") {
+          return entry.data?.total_count || null;
+        }
+        return null;
+      },
+      formatValue: (value: any, type: string, format?: string) => String(value)
+    } as unknown as SchemaService;
+
+    const mockVSCodeProviderDeploy = {
+      createDataDetails: async () => []
+    } as unknown as VSCodeDataProvider;
+
+    const providerDeploy = new AssessmentDataContentProvider();
+    providerDeploy.setCoreServices({
+      dataService: mockDataServiceDeploy,
+      schemaService: mockSchemaServiceDeploy,
+      vscodeProvider: mockVSCodeProviderDeploy
+    });
+
+    const uri = createEntryUri(20);
+    const content = await providerDeploy.provideTextDocumentContent(uri);
+    
+    // Should replace {count} with computed value from deployments array length
+    ok(content.includes("2 deployments"), "Should include computed count value");
+    ok(!content.includes("{count}"), "Should not contain unreplaced placeholder");
+    ok(content.includes("Deployment Scan"), "Should include label from entryTemplate");
+  });
+
+  test("should use total_count fallback for {count} when deployments array is missing", async () => {
+    const mockDataServiceDeployFallback = {
+      getAssessmentData: async () => [{
+        id: 21,
+        tool_name: "deployment-scan",
+        timestamp: "2024-01-01T00:00:00Z",
+        data: {
+          total_count: 5
+          // No deployments array
+        },
+        project_id: 1,
+        data_type: "infrastructure-analysis"
+      }]
+    } as unknown as DataService;
+
+    const mockSchemaServiceDeployFallback = {
+      getToolSchema: (toolId: string) => {
+        if (toolId === "deployment-scan") {
+          return {
+            id: "deployment-scan",
+            name: "Deployment Scanner",
+            display: {
+              category: "Infrastructure",
+              icon: "",
+              groupName: "Deployment Analysis",
+              entryTemplate: "Deployment Scan",
+              descriptionTemplate: "{date}: {count} deployments",
+              fields: []
+            }
+          };
+        }
+        return null;
+      },
+      extractValue: (entry: any, path: string) => {
+        if (path === "data.deployments") {
+          return null; // Missing deployments array
+        }
+        if (path === "data.total_count") {
+          return entry.data?.total_count || null;
+        }
+        return null;
+      },
+      formatValue: (value: any, type: string, format?: string) => String(value)
+    } as unknown as SchemaService;
+
+    const mockVSCodeProviderDeployFallback = {
+      createDataDetails: async () => []
+    } as unknown as VSCodeDataProvider;
+
+    const providerDeployFallback = new AssessmentDataContentProvider();
+    providerDeployFallback.setCoreServices({
+      dataService: mockDataServiceDeployFallback,
+      schemaService: mockSchemaServiceDeployFallback,
+      vscodeProvider: mockVSCodeProviderDeployFallback
+    });
+
+    const uri = createEntryUri(21);
+    const content = await providerDeployFallback.provideTextDocumentContent(uri);
+    
+    // Should use total_count as fallback
+    ok(content.includes("5 deployments"), "Should use total_count fallback");
+    ok(!content.includes("{count}"), "Should not contain unreplaced placeholder");
   });
 });
 

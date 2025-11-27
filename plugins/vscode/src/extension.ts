@@ -12,7 +12,9 @@ import { AssessmentTreeProvider } from "./assessment-tree-provider";
 import {
   DataTreeProvider,
   SemgrepFindingDecorationProvider,
+  ViewIconDecorationProvider,
 } from "./data-tree-provider";
+import { BadgeDecorationProvider } from "./badge-decoration-provider";
 import {
   AssessmentDataContentProvider,
   openEntryDocument,
@@ -108,6 +110,24 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerFileDecorationProvider(semgrepDecorationProvider)
   );
   console.log("✅ Semgrep decoration provider registered");
+
+  // Register decoration provider for view icons (eye icon)
+  const viewIconDecorationProvider = new ViewIconDecorationProvider();
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(viewIconDecorationProvider)
+  );
+  console.log("✅ View icon decoration provider registered");
+
+  // Register decoration provider for badges (colored circles)
+  const badgeDecorationProvider = new BadgeDecorationProvider();
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(badgeDecorationProvider)
+  );
+  console.log("✅ Badge decoration provider registered");
+  
+  // Store badge provider reference for tree providers
+  (dataTreeProvider as any).badgeProvider = badgeDecorationProvider;
+  (deploymentsTreeProvider as any).badgeProvider = badgeDecorationProvider;
 
   // Register virtual document content provider for assessment data
   assessmentDataContentProvider = new AssessmentDataContentProvider();

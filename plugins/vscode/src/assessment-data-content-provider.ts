@@ -79,9 +79,9 @@ export class AssessmentDataContentProvider
 
     try {
       // Get all entries and find the one we want
-      const allEntries =
+      const allEntriesData =
         await this.coreServices.dataService.getAssessmentData();
-      const entry = allEntries.find((e: AssessmentDataEntry) => e.id === entryId);
+      const entry = allEntriesData.find((e: AssessmentDataEntry) => e.id === entryId);
 
       if (!entry) {
         return `# Entry Not Found\n\nEntry with ID ${entryId} could not be found.`;
@@ -99,58 +99,108 @@ export class AssessmentDataContentProvider
         title = toolSchema.display.entryTemplate;
         description = toolSchema.display.descriptionTemplate;
         
-        // Replace template variables
-        const date = new Date(entry.timestamp).toLocaleDateString();
-        title = title.replace('{date}', date);
-        description = description.replace('{date}', date);
-        
-        // Replace field values in templates
-        toolSchema.display.fields.forEach((field: ToolDisplayField) => {
-          const value = this.coreServices!.schemaService.extractValue(entry, field.path);
-          if (value !== null && value !== undefined) {
-            const placeholder = `{${field.key}}`;
-            const formattedValue = this.coreServices!.schemaService.formatValue(value, field.type, field.format);
-            
-            title = title.replace(placeholder, formattedValue);
-            description = description.replace(placeholder, formattedValue);
-            
-            // Special handling for common fields
-            if (field.key === 'totalKB' && field.type === 'bytes' && value) {
-              const kb = Math.round(Number(value) / 1024);
-              title = title.replace('{totalKB}', kb.toString());
-              description = description.replace('{totalKB}', kb.toString());
-            }
+      // Replace template variables
+      const date = new Date(entry.timestamp).toLocaleDateString();
+      title = title.replace('{date}', date);
+      description = description.replace('{date}', date);
+      
+      // Special handling for computed values that don't have direct fields
+      // totalKB: computed from totalBytes (for carbonara-swd)
+      if (title.includes('{totalKB}') || description.includes('{totalKB}')) {
+        const totalBytes = this.coreServices!.schemaService.extractValue(entry, 'data.totalBytes');
+        if (totalBytes !== null && totalBytes !== undefined) {
+          const totalKB = Math.round(Number(totalBytes) / 1024);
+          title = title.replace('{totalKB}', totalKB.toString());
+          description = description.replace('{totalKB}', totalKB.toString());
+        }
+      }
+      
+      // count: computed from deployments array length (for deployment-scan)
+      if (title.includes('{count}') || description.includes('{count}')) {
+        const deployments = this.coreServices!.schemaService.extractValue(entry, 'data.deployments');
+        let count = 0;
+        if (Array.isArray(deployments)) {
+          count = deployments.length;
+        } else if (deployments === null || deployments === undefined) {
+          // Try total_count as fallback
+          const totalCount = this.coreServices!.schemaService.extractValue(entry, 'data.total_count');
+          if (totalCount !== null && totalCount !== undefined) {
+            count = Number(totalCount);
           }
-        });
+        }
+        title = title.replace('{count}', count.toString());
+        description = description.replace('{count}', count.toString());
+      }
+      
+      // Replace field values in templates
+      toolSchema.display.fields.forEach((field: ToolDisplayField) => {
+        const value = this.coreServices!.schemaService.extractValue(entry, field.path);
+        if (value !== null && value !== undefined) {
+          const placeholder = `{${field.key}}`;
+          const formattedValue = this.coreServices!.schemaService.formatValue(value, field.type, field.format);
+          
+          title = title.replace(placeholder, formattedValue);
+          description = description.replace(placeholder, formattedValue);
+        }
+      });
+      
+      // Remove any unreplaced placeholders
+      title = title.replace(/\{[^}]+\}/g, '').trim();
+      description = description.replace(/\{[^}]+\}/g, '').trim();
+      
+      // Fallback if empty
+      if (!title || title.length === 0) {
+        title = `${entry.tool_name} Assessment`;
+      }
+      if (!description || description.length === 0) {
+        description = date;
+      }
       }
 
       // Get details using the schema
       const details =
         await this.coreServices.vscodeProvider.createDataDetails(entry);
 
+      // Get badge color if available
+      const entriesForTool = allEntriesData.filter((e: AssessmentDataEntry) => e.tool_name === entry.tool_name);
+      const badgeColor = this.coreServices.vscodeProvider.calculateBadgeColor(entry, entry.tool_name, entriesForTool);
+
       // Format as markdown
       let markdown = `# ${title}\n\n`;
       markdown += `${description}\n\n`;
       markdown += `**Timestamp:** ${new Date(entry.timestamp).toLocaleString()}\n\n`;
+      
+      // Add badge if available
+      if (badgeColor && badgeColor !== 'none') {
+        markdown += `**Carbon Impact:** <span class="badge badge-${badgeColor}">●</span> ${badgeColor}\n\n`;
+      }
+      
       markdown += `---\n\n`;
 
-      // Add all details
+      // Add all details as a table
       if (details.length > 0) {
         markdown += `## Details\n\n`;
+        markdown += `| Field | Value |\n`;
+        markdown += `|-------|-------|\n`;
         for (const detail of details) {
-          // Extract emoji and label from formatted label (e.g., "🌐 URL: https://example.com")
-          const labelMatch = detail.label.match(/^([^\s]+)\s+(.+?):\s*(.*)$/);
-          if (labelMatch) {
-            const emoji = labelMatch[1];
-            const fieldLabel = labelMatch[2];
-            const value = labelMatch[3];
-            markdown += `### ${emoji} ${fieldLabel}\n\n`;
-            markdown += `${value}\n\n`;
+          // Extract label and value from formatted label
+          const colonIndex = detail.label.indexOf(':');
+          let fieldLabel = detail.label;
+          let value = '';
+          
+          if (colonIndex > 0) {
+            fieldLabel = detail.label.substring(0, colonIndex).trim();
+            value = detail.label.substring(colonIndex + 1).trim();
           } else {
-            // Fallback for labels without emoji
-            markdown += `### ${detail.label}\n\n`;
+            value = detail.formattedValue || String(detail.value || '');
           }
+          
+          // Remove emoji if present
+          fieldLabel = fieldLabel.replace(/^[^\s]+\s+/, '');
+          
+          markdown += `| ${fieldLabel} | ${value} |\n`;
         }
+        markdown += `\n`;
       }
 
       // Add raw data section (collapsed)
@@ -215,6 +265,34 @@ export class AssessmentDataContentProvider
           entryTitle = entryTitle.replace('{date}', date);
           entryDescription = entryDescription.replace('{date}', date);
           
+          // Special handling for computed values that don't have direct fields
+          // totalKB: computed from totalBytes (for carbonara-swd)
+          if (entryTitle.includes('{totalKB}') || entryDescription.includes('{totalKB}')) {
+            const totalBytes = this.coreServices!.schemaService.extractValue(entry, 'data.totalBytes');
+            if (totalBytes !== null && totalBytes !== undefined) {
+              const totalKB = Math.round(Number(totalBytes) / 1024);
+              entryTitle = entryTitle.replace('{totalKB}', totalKB.toString());
+              entryDescription = entryDescription.replace('{totalKB}', totalKB.toString());
+            }
+          }
+          
+          // count: computed from deployments array length (for deployment-scan)
+          if (entryTitle.includes('{count}') || entryDescription.includes('{count}')) {
+            const deployments = this.coreServices!.schemaService.extractValue(entry, 'data.deployments');
+            let count = 0;
+            if (Array.isArray(deployments)) {
+              count = deployments.length;
+            } else if (deployments === null || deployments === undefined) {
+              // Try total_count as fallback
+              const totalCount = this.coreServices!.schemaService.extractValue(entry, 'data.total_count');
+              if (totalCount !== null && totalCount !== undefined) {
+                count = Number(totalCount);
+              }
+            }
+            entryTitle = entryTitle.replace('{count}', count.toString());
+            entryDescription = entryDescription.replace('{count}', count.toString());
+          }
+          
           // Replace field values in templates
           toolSchema.display.fields.forEach((field: ToolDisplayField) => {
             const value = this.coreServices!.schemaService.extractValue(entry, field.path);
@@ -224,39 +302,67 @@ export class AssessmentDataContentProvider
               
               entryTitle = entryTitle.replace(placeholder, formattedValue);
               entryDescription = entryDescription.replace(placeholder, formattedValue);
-              
-              // Special handling for common fields
-              if (field.key === 'totalKB' && field.type === 'bytes') {
-                const kb = Math.round(Number(value) / 1024);
-                entryTitle = entryTitle.replace('{totalKB}', kb.toString());
-                entryDescription = entryDescription.replace('{totalKB}', kb.toString());
-              }
             }
           });
+          
+          // Remove any unreplaced placeholders
+          entryTitle = entryTitle.replace(/\{[^}]+\}/g, '').trim();
+          entryDescription = entryDescription.replace(/\{[^}]+\}/g, '').trim();
+          
+          // Fallback if empty
+          if (!entryTitle || entryTitle.length === 0) {
+            entryTitle = `Entry #${entry.id}`;
+          }
+          if (!entryDescription || entryDescription.length === 0) {
+            entryDescription = date;
+          }
         }
 
-        markdown += `### ${entryTitle}\n\n`;
-        markdown += `${entryDescription}\n\n`;
+        // Get badge color if available
+        const badgeColor = this.coreServices.vscodeProvider.calculateBadgeColor(entry, toolName, entries);
 
         // Get key details for summary
         const details =
           await this.coreServices.vscodeProvider.createDataDetails(entry);
 
-        // Show first 3-5 key details
-        const keyDetails = details.slice(0, 5);
-        if (keyDetails.length > 0) {
-          for (const detail of keyDetails) {
-            // Extract just the value part
-            const valueMatch = detail.label.match(/:\s*(.+)$/);
-            if (valueMatch) {
-              markdown += `- **${detail.key}:** ${valueMatch[1]}\n`;
-            } else {
-              markdown += `- ${detail.label}\n`;
-            }
-          }
+        markdown += `### ${entryTitle}\n\n`;
+        markdown += `${entryDescription}\n\n`;
+        
+        // Add badge if available
+        if (badgeColor && badgeColor !== 'none') {
+          markdown += `**Carbon Impact:** <span class="badge badge-${badgeColor}">●</span> ${badgeColor}\n\n`;
         }
 
-        markdown += `\n[View Full Entry](carbonara-data://entry/${entry.id})\n\n`;
+        // Show details as a table
+        if (details.length > 0) {
+          markdown += `| Field | Value |\n`;
+          markdown += `|-------|-------|\n`;
+          const keyDetails = details.slice(0, 5);
+          for (const detail of keyDetails) {
+            // Extract label and value
+            const colonIndex = detail.label.indexOf(':');
+            let fieldLabel = detail.label;
+            let value = '';
+            
+            if (colonIndex > 0) {
+              fieldLabel = detail.label.substring(0, colonIndex).trim();
+              value = detail.label.substring(colonIndex + 1).trim();
+            } else {
+              value = detail.formattedValue || String(detail.value || '');
+            }
+            
+            // Remove emoji if present
+            fieldLabel = fieldLabel.replace(/^[^\s]+\s+/, '');
+            
+            markdown += `| ${fieldLabel} | ${value} |\n`;
+          }
+          markdown += `\n`;
+        }
+
+        // Use command URI format: command:commandId?[arg1,arg2]
+        // For a single number argument, we need to encode the brackets
+        const commandUri = `command:carbonara.openEntryDocument?${encodeURIComponent(JSON.stringify([entry.id]))}`;
+        markdown += `[View Full Entry](${commandUri})\n\n`;
         markdown += `---\n\n`;
       }
 
@@ -288,26 +394,224 @@ export function createGroupUri(toolName: string): vscode.Uri {
 }
 
 /**
- * Open a virtual document for an entry
+ * Open a virtual document for an entry (as webview with markdown rendering)
  */
 export async function openEntryDocument(
   entryId: number,
   provider: AssessmentDataContentProvider
 ): Promise<void> {
   const uri = createEntryUri(entryId);
-  const doc = await vscode.workspace.openTextDocument(uri);
-  await vscode.window.showTextDocument(doc, { preview: false });
+  const markdown = await provider.provideTextDocumentContent(uri);
+  
+  // Create webview panel
+  const panel = vscode.window.createWebviewPanel(
+    'carbonaraEntryView',
+    `Entry #${entryId}`,
+    vscode.ViewColumn.Active,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true
+    }
+  );
+  
+  // Render markdown in webview
+  panel.webview.html = getMarkdownWebviewContent(markdown, panel.webview, provider);
+  
+  // Handle command links in markdown
+  panel.webview.onDidReceiveMessage(
+    message => {
+      if (message.command === 'openEntry') {
+        const targetEntryId = parseInt(message.entryId);
+        if (!isNaN(targetEntryId)) {
+          openEntryDocument(targetEntryId, provider);
+        }
+      } else if (message.command === 'openGroup') {
+        openGroupDocument(message.toolName, provider);
+      }
+    },
+    undefined,
+    []
+  );
 }
 
 /**
- * Open a virtual document for a group
+ * Open a virtual document for a group (as webview with markdown rendering)
  */
 export async function openGroupDocument(
   toolName: string,
   provider: AssessmentDataContentProvider
 ): Promise<void> {
   const uri = createGroupUri(toolName);
-  const doc = await vscode.workspace.openTextDocument(uri);
-  await vscode.window.showTextDocument(doc, { preview: false });
+  const markdown = await provider.provideTextDocumentContent(uri);
+  
+  // Create webview panel
+  const panel = vscode.window.createWebviewPanel(
+    'carbonaraGroupView',
+    `${toolName} Summary`,
+    vscode.ViewColumn.Active,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true
+    }
+  );
+  
+  // Render markdown in webview
+  panel.webview.html = getMarkdownWebviewContent(markdown, panel.webview, provider);
+  
+  // Handle command links in markdown
+  panel.webview.onDidReceiveMessage(
+    message => {
+      if (message.command === 'openEntry') {
+        const targetEntryId = parseInt(message.entryId);
+        if (!isNaN(targetEntryId)) {
+          openEntryDocument(targetEntryId, provider);
+        }
+      } else if (message.command === 'openGroup') {
+        openGroupDocument(message.toolName, provider);
+      }
+    },
+    undefined,
+    []
+  );
+}
+
+/**
+ * Generate HTML content for webview with markdown rendering
+ */
+function getMarkdownWebviewContent(
+  markdown: string,
+  webview: vscode.Webview,
+  provider: AssessmentDataContentProvider
+): string {
+  // Convert command URIs to clickable HTML links
+  const processedMarkdown = markdown.replace(
+    /\[([^\]]+)\]\(command:([^)]+)\)/g,
+    (match, text, command) => {
+      // Extract command and arguments
+      const [commandId, argsJson] = command.split('?');
+      if (commandId === 'carbonara.openEntryDocument' && argsJson) {
+        try {
+          const args = JSON.parse(decodeURIComponent(argsJson));
+          const entryId = args[0];
+          // Replace markdown link with proper HTML anchor tag
+          return `<a href="javascript:void(0);" data-entry-id="${entryId}" class="command-link">${text}</a>`;
+        } catch (e) {
+          return match;
+        }
+      }
+      return match;
+    }
+  );
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carbonara Data View</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body {
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
+      color: var(--vscode-foreground);
+      background-color: var(--vscode-editor-background);
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1, h2, h3 {
+      color: var(--vscode-textLink-foreground);
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+    code {
+      background-color: var(--vscode-textCodeBlock-background);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: var(--vscode-editor-font-family);
+    }
+    .badge {
+      display: inline-block;
+      margin-right: 4px;
+    }
+    .badge-green {
+      color: var(--vscode-charts-green);
+    }
+    .badge-yellow {
+      color: var(--vscode-charts-yellow);
+    }
+    .badge-orange {
+      color: var(--vscode-charts-orange);
+    }
+    .badge-red {
+      color: var(--vscode-charts-red);
+    }
+    pre {
+      background-color: var(--vscode-textCodeBlock-background);
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    pre code {
+      padding: 0;
+    }
+    a {
+      color: var(--vscode-textLink-foreground);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .command-link {
+      cursor: pointer;
+      color: var(--vscode-textLink-foreground);
+    }
+    details {
+      margin: 10px 0;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 10px 0;
+    }
+    th, td {
+      border: 1px solid var(--vscode-panel-border);
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: var(--vscode-list-activeSelectionBackground);
+    }
+  </style>
+</head>
+<body>
+  <div id="content"></div>
+  <script>
+    const vscode = acquireVsCodeApi();
+    const markdown = ${JSON.stringify(processedMarkdown)};
+    const html = marked.parse(markdown);
+    document.getElementById('content').innerHTML = html;
+    
+    // Handle command links
+    document.addEventListener('click', function(e) {
+      const link = e.target.closest('.command-link');
+      if (link) {
+        e.preventDefault();
+        const entryId = link.getAttribute('data-entry-id');
+        if (entryId) {
+          vscode.postMessage({
+            command: 'openEntry',
+            entryId: entryId
+          });
+        }
+      }
+    });
+  </script>
+</body>
+</html>`;
 }
 

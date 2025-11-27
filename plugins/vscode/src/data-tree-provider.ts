@@ -8,6 +8,7 @@ import {
   type DataGroup,
   type DataEntry as CoreDataEntry,
   type DataDetail,
+  ThresholdService,
 } from "@carbonara/core";
 import { UI_TEXT } from "./constants/ui-text";
 import { getSemgrepDataService } from "./semgrep-integration";
@@ -68,6 +69,29 @@ export class SemgrepFindingDecorationProvider
   }
 }
 
+/**
+ * Decoration provider for view icons (eye icon) on entries and groups
+ * Note: Eye icon is now shown only via tooltip on hover, not as a decoration
+ * This class is kept for potential future use but currently returns undefined
+ */
+export class ViewIconDecorationProvider
+  implements vscode.FileDecorationProvider
+{
+  private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<
+    vscode.Uri | vscode.Uri[] | undefined
+  >();
+  readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
+
+  provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
+    // Eye icon is now shown only via tooltip, not as decoration
+    return undefined;
+  }
+
+  refresh(): void {
+    this._onDidChangeFileDecorations.fire(undefined);
+  }
+}
+
 export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<
     DataItem | undefined | null | void
@@ -80,8 +104,11 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   private coreServices: Awaited<ReturnType<typeof setupCarbonaraCore>> | null =
     null;
   private cachedItems: DataItem[] | null = null;
+  public badgeProvider?: import("./badge-decoration-provider").BadgeDecorationProvider;
+  private thresholdService: ThresholdService;
 
   constructor() {
+    this.thresholdService = new ThresholdService();
     this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     // Initialize synchronously - don't wait
     this.initializeCoreServices();
@@ -281,6 +308,11 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   }
 
   getTreeItem(element: DataItem): vscode.TreeItem {
+    // Set badge color if entry/detail has badgeColor and resourceUri, and feature flag is enabled
+    const showBadges = vscode.workspace.getConfiguration("carbonara").get<boolean>("showBadges", true);
+    if (showBadges && element.badgeColor && element.resourceUri && this.badgeProvider) {
+      this.badgeProvider.setBadge(element.resourceUri, element.badgeColor);
+    }
     return element;
   }
 
@@ -687,30 +719,32 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
           );
 
         groups.forEach((group, groupIndex) => {
-          // Add group header
-          items.push(
-            new DataItem(
-              group.displayName,
-              group.toolName,
-              vscode.TreeItemCollapsibleState.Expanded,
-              "group",
-              group.toolName
-            )
-          );
-
-          // Add entries
-          group.entries.forEach((entry) => {
-            items.push(
-              new DataItem(
-                entry.label,
-                entry.description,
-                vscode.TreeItemCollapsibleState.Collapsed,
-                "entry",
-                entry.toolName,
-                entry.id
-              )
+          // Create entry items for this group
+          const entryItems = group.entries.map((entry) => {
+            return new DataItem(
+              entry.label,
+              entry.description,
+              vscode.TreeItemCollapsibleState.Collapsed,
+              "entry",
+              entry.toolName,
+              entry.id,
+              undefined,
+              undefined,
+              undefined,
+              entry.badgeColor
             );
           });
+
+          // Add group header with entries as children
+          const groupItem = new DataItem(
+            group.displayName,
+            group.toolName,
+            vscode.TreeItemCollapsibleState.Expanded,
+            "group",
+            group.toolName
+          );
+          groupItem.children = entryItems;
+          items.push(groupItem);
         });
       }
 
@@ -763,6 +797,11 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         return [];
       }
 
+      // Special handling for deployment-scan: show best and worst deployments
+      if (toolName === "deployment-scan") {
+        return this.loadDeploymentScanDetails(entry);
+      }
+
       // Get detail fields using the schema
       const details =
         await this.coreServices.vscodeProvider.createDataDetails(entry);
@@ -780,20 +819,145 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       }
 
       // Convert DataDetail[] to DataItem[] children
+      // Format label to make values stand out - put value in description
+      // Note: VSCode doesn't support custom colors for description, but it's visually distinct
       return filteredDetails.map(
-        (detail) =>
-          new DataItem(
-            detail.label,
-            "",
+        (detail) => {
+          // Parse label format: "Field Label: value" or "Label: value"
+          const colonIndex = detail.label.indexOf(':');
+          let fieldLabel = detail.label;
+          let value = '';
+          
+          if (colonIndex > 0) {
+            fieldLabel = detail.label.substring(0, colonIndex).trim();
+            value = detail.label.substring(colonIndex + 1).trim();
+          }
+          
+          return new DataItem(
+            fieldLabel,
+            value, // Value in description - appears in muted color (theme-dependent)
             vscode.TreeItemCollapsibleState.None,
             "detail",
             toolName
-          )
+          );
+        }
       );
     } catch (error) {
       console.error("Error loading entry details:", error);
       return [];
     }
+  }
+
+  /**
+   * Load best and worst deployments for deployment-scan entries
+   */
+  private loadDeploymentScanDetails(entry: any): DataItem[] {
+    const deployments = entry.data?.deployments || [];
+    
+    if (deployments.length === 0) {
+      return [
+        new DataItem(
+          "No deployments found",
+          "",
+          vscode.TreeItemCollapsibleState.None,
+          "info",
+          "deployment-scan"
+        )
+      ];
+    }
+
+    // Find best (lowest carbon_intensity) and worst (highest carbon_intensity) deployments
+    let bestDeployment: any = null;
+    let worstDeployment: any = null;
+    let bestIntensity: number | null = null;
+    let worstIntensity: number | null = null;
+
+    deployments.forEach((deployment: any) => {
+      const intensity = deployment.carbon_intensity;
+      if (intensity !== null && intensity !== undefined && !isNaN(intensity)) {
+        const numIntensity = Number(intensity);
+        if (bestIntensity === null || numIntensity < bestIntensity) {
+          bestIntensity = numIntensity;
+          bestDeployment = deployment;
+        }
+        if (worstIntensity === null || numIntensity > worstIntensity) {
+          worstIntensity = numIntensity;
+          worstDeployment = deployment;
+        }
+      }
+    });
+
+    const items: DataItem[] = [];
+
+    // Add best deployment
+    if (bestDeployment) {
+      const bestBadgeColor = this.calculateDeploymentBadgeColor(bestIntensity!);
+      const bestLabel = this.formatDeploymentLabel(bestDeployment, bestIntensity!);
+      const bestItem = new DataItem(
+        `Best deployment: ${bestLabel}`,
+        "",
+        vscode.TreeItemCollapsibleState.None,
+        "detail",
+        "deployment-scan",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        bestBadgeColor
+      );
+      // Set resourceUri for badge display
+      bestItem.resourceUri = vscode.Uri.parse(`carbonara-badge://deployment/best/${entry.id}`);
+      items.push(bestItem);
+    }
+
+    // Add worst deployment (only if different from best)
+    if (worstDeployment && worstDeployment !== bestDeployment) {
+      const worstBadgeColor = this.calculateDeploymentBadgeColor(worstIntensity!);
+      const worstLabel = this.formatDeploymentLabel(worstDeployment, worstIntensity!);
+      const worstItem = new DataItem(
+        `Worst deployment: ${worstLabel}`,
+        "",
+        vscode.TreeItemCollapsibleState.None,
+        "detail",
+        "deployment-scan",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        worstBadgeColor
+      );
+      // Set resourceUri for badge display
+      worstItem.resourceUri = vscode.Uri.parse(`carbonara-badge://deployment/worst/${entry.id}`);
+      items.push(worstItem);
+    }
+
+    return items;
+  }
+
+  /**
+   * Format deployment label: "provider - region - co2"
+   */
+  private formatDeploymentLabel(deployment: any, carbonIntensity: number): string {
+    const parts: string[] = [];
+    
+    if (deployment.provider) {
+      parts.push(deployment.provider);
+    }
+    if (deployment.region) {
+      parts.push(deployment.region);
+    }
+    if (carbonIntensity !== null && carbonIntensity !== undefined) {
+      parts.push(`${carbonIntensity} gCO2/kWh`);
+    }
+    
+    return parts.join(" - ");
+  }
+
+  /**
+   * Calculate badge color for a deployment based on carbon intensity
+   */
+  private calculateDeploymentBadgeColor(carbonIntensity: number): import("@carbonara/core").BadgeColor {
+    return this.thresholdService.getBadgeColor('carbonIntensity', carbonIntensity);
   }
 
   private async createGroupedItems(): Promise<DataItem[]> {
@@ -1031,6 +1195,7 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
 
 export class DataItem extends vscode.TreeItem {
   public children?: DataItem[];
+  public badgeColor?: import("@carbonara/core").BadgeColor;
 
   constructor(
     public readonly label: string,
@@ -1050,11 +1215,13 @@ export class DataItem extends vscode.TreeItem {
     public readonly entryId?: number,
     public readonly filePath?: string,
     public readonly resultData?: any,
-    command?: vscode.Command
+    command?: vscode.Command,
+    badgeColor?: import("@carbonara/core").BadgeColor
   ) {
     super(label, collapsibleState);
     this.tooltip = description;
     this.description = description;
+    this.badgeColor = badgeColor;
 
     // Set command if provided
     if (command) {
@@ -1100,9 +1267,15 @@ export class DataItem extends vscode.TreeItem {
         this.contextValue = "carbonara-data-item";
     }
 
+    // Set tooltips for entries and groups to show "Click to view" on hover
+    if (type === "entry" || type === "group") {
+      this.tooltip = "Click to view";
+    }
+
     // Set icons
     switch (type) {
       case "group":
+        // Eye icon for "click to view" - appears left of badge
         this.iconPath = new vscode.ThemeIcon("eye");
         break;
       case "folder":
@@ -1115,7 +1288,13 @@ export class DataItem extends vscode.TreeItem {
         // No icon for findings
         break;
       case "entry":
+        // Eye icon for "click to view" - appears left of badge
         this.iconPath = new vscode.ThemeIcon("eye");
+        // Set resourceUri for badge decoration if badgeColor is provided
+        if (this.entryId) {
+          // Use carbonara-badge scheme for badge decoration
+          this.resourceUri = vscode.Uri.parse(`carbonara-badge://entry/${this.entryId}`);
+        }
         break;
       case "detail":
         // No icon for detail items

@@ -28,6 +28,16 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "colors": {
+      "carbonara.treeItemValueForeground": {
+        "description": "Foreground color for values in Data & Results tree view",
+        "defaults": {
+          "dark": "#FFD700",
+          "light": "#B8860B",
+          "highContrast": "#FFD700"
+        }
+      }
+    },
     "commands": [
       {
         "command": "carbonara.showMenu",
@@ -313,6 +323,11 @@
           ],
           "default": "websocket",
           "description": "Transport method for server communication"
+        },
+        "carbonara.showBadges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show colored badges (pills) for entries in Data & Results and Deployment Insights views"
         }
       }
     },
