@@ -174,12 +174,28 @@ export class SchemaService {
         return `${value}ms`;
       
       case 'carbon':
+        if (typeof value === 'number') {
+          // Round to 3 decimal places for display
+          const rounded = Number(value.toFixed(3));
+          if (format) {
+            return format.replace('{value}', rounded.toString());
+          }
+          return `${rounded}g`;
+        }
         if (format) {
           return format.replace('{value}', value.toString());
         }
         return `${value}g`;
       
       case 'energy':
+        if (typeof value === 'number') {
+          // Round to 3 decimal places for display
+          const rounded = Number(value.toFixed(3));
+          if (format) {
+            return format.replace('{value}', rounded.toString());
+          }
+          return `${rounded} kWh`;
+        }
         if (format) {
           return format.replace('{value}', value.toString());
         }

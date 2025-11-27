@@ -112,13 +112,17 @@ describe('SchemaService', () => {
     });
 
     it('should format carbon values correctly', () => {
+      // Values are rounded to 3 decimal places for display
       expect(schemaService.formatValue(0.245, 'carbon')).toBe('0.245g');
       expect(schemaService.formatValue(1.5, 'carbon')).toBe('1.5g');
+      expect(schemaService.formatValue(0.03288727026638046, 'carbon')).toBe('0.033g');
     });
 
     it('should format energy values correctly', () => {
-      expect(schemaService.formatValue(0.0012, 'energy')).toBe('0.0012 kWh');
+      // Values are rounded to 3 decimal places for display
+      expect(schemaService.formatValue(0.0012, 'energy')).toBe('0.001 kWh');
       expect(schemaService.formatValue(2.5, 'energy')).toBe('2.5 kWh');
+      expect(schemaService.formatValue(0.000075, 'energy')).toBe('0 kWh');
     });
 
     it('should use custom format templates', () => {

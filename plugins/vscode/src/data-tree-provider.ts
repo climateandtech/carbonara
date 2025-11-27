@@ -833,13 +833,30 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
             value = detail.label.substring(colonIndex + 1).trim();
           }
           
-          return new DataItem(
+          // Create tooltip with full value for carbon and energy types
+          let tooltip = detail.label; // Default tooltip is the full label
+          if (detail.type === 'carbon' || detail.type === 'energy') {
+            // Show full unrounded value in tooltip
+            const originalValue = detail.value;
+            if (typeof originalValue === 'number') {
+              const unit = detail.type === 'carbon' ? 'g' : ' kWh';
+              const fullValue = `${originalValue}${unit}`;
+              // Only show tooltip if the value was actually rounded (different from displayed)
+              if (fullValue !== value) {
+                tooltip = `${fieldLabel}: ${fullValue}`;
+              }
+            }
+          }
+          
+          const detailItem = new DataItem(
             fieldLabel,
             value, // Value in description - appears in muted color (theme-dependent)
             vscode.TreeItemCollapsibleState.None,
             "detail",
             toolName
           );
+          detailItem.tooltip = tooltip;
+          return detailItem;
         }
       );
     } catch (error) {

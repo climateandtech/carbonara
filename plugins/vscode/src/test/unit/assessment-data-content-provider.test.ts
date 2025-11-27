@@ -117,6 +117,9 @@ suite("AssessmentDataContentProvider", () => {
             type: "string"
           }
         ];
+      },
+      calculateBadgeColor: (entry: any, toolName: string, allEntries: any[]) => {
+        return "none" as const;
       }
     } as unknown as VSCodeDataProvider;
 
@@ -132,13 +135,21 @@ suite("AssessmentDataContentProvider", () => {
   test("should create entry URI correctly", () => {
     const uri = createEntryUri(123);
     strictEqual(uri.scheme, "carbonara-data");
-    strictEqual(uri.path, "/entry/123");
+    // VSCode URIs with authority format: carbonara-data://entry/123
+    // authority = "entry", path = "/123"
+    strictEqual(uri.authority, "entry");
+    strictEqual(uri.path, "/123");
+    strictEqual(uri.toString(), "carbonara-data://entry/123");
   });
 
   test("should create group URI correctly", () => {
     const uri = createGroupUri("test-analyzer");
     strictEqual(uri.scheme, "carbonara-data");
-    strictEqual(uri.path, "/group/test-analyzer");
+    // VSCode URIs with authority format: carbonara-data://group/test-analyzer
+    // authority = "group", path = "/test-analyzer"
+    strictEqual(uri.authority, "group");
+    strictEqual(uri.path, "/test-analyzer");
+    strictEqual(uri.toString(), "carbonara-data://group/test-analyzer");
   });
 
   test("should return error when core services not initialized", async () => {
@@ -233,7 +244,10 @@ suite("AssessmentDataContentProvider", () => {
     } as unknown as SchemaService;
 
     const mockVSCodeProviderNoSchema = {
-      createDataDetails: async () => []
+      createDataDetails: async () => [],
+      calculateBadgeColor: (entry: any, toolName: string, allEntries: any[]) => {
+        return "none" as const;
+      }
     } as unknown as VSCodeDataProvider;
 
     const providerNoSchema = new AssessmentDataContentProvider();
@@ -326,7 +340,10 @@ suite("AssessmentDataContentProvider", () => {
     } as unknown as SchemaService;
 
     const mockVSCodeProviderSWD = {
-      createDataDetails: async () => []
+      createDataDetails: async () => [],
+      calculateBadgeColor: (entry: any, toolName: string, allEntries: any[]) => {
+        return "none" as const;
+      }
     } as unknown as VSCodeDataProvider;
 
     const providerSWD = new AssessmentDataContentProvider();
@@ -398,7 +415,10 @@ suite("AssessmentDataContentProvider", () => {
     } as unknown as SchemaService;
 
     const mockVSCodeProviderDeploy = {
-      createDataDetails: async () => []
+      createDataDetails: async () => [],
+      calculateBadgeColor: (entry: any, toolName: string, allEntries: any[]) => {
+        return "none" as const;
+      }
     } as unknown as VSCodeDataProvider;
 
     const providerDeploy = new AssessmentDataContentProvider();
@@ -463,7 +483,10 @@ suite("AssessmentDataContentProvider", () => {
     } as unknown as SchemaService;
 
     const mockVSCodeProviderDeployFallback = {
-      createDataDetails: async () => []
+      createDataDetails: async () => [],
+      calculateBadgeColor: (entry: any, toolName: string, allEntries: any[]) => {
+        return "none" as const;
+      }
     } as unknown as VSCodeDataProvider;
 
     const providerDeployFallback = new AssessmentDataContentProvider();

@@ -128,7 +128,7 @@ suite("DataTreeProvider Unit Tests", () => {
             vscode.TreeItemCollapsibleState.Collapsed,
             "entry"
           ),
-          expectedIcon: "file",
+          expectedIcon: null, // Entries no longer have icons (removed in favor of inline buttons)
         },
         {
           item: new DataItem(
@@ -137,7 +137,7 @@ suite("DataTreeProvider Unit Tests", () => {
             vscode.TreeItemCollapsibleState.None,
             "detail"
           ),
-          expectedIcon: "symbol-property",
+          expectedIcon: null, // Details don't have icons
         },
         {
           item: new DataItem(
@@ -161,11 +161,16 @@ suite("DataTreeProvider Unit Tests", () => {
 
       items.forEach(({ item, expectedIcon }) => {
         const treeItem = provider.getTreeItem(item);
-        assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
-        assert.strictEqual(
-          (treeItem.iconPath as vscode.ThemeIcon).id,
-          expectedIcon
-        );
+        if (expectedIcon === null) {
+          // Items without icons should have undefined iconPath
+          assert.strictEqual(treeItem.iconPath, undefined);
+        } else {
+          assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
+          assert.strictEqual(
+            (treeItem.iconPath as vscode.ThemeIcon).id,
+            expectedIcon
+          );
+        }
       });
     });
 

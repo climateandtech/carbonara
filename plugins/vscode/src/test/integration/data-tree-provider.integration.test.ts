@@ -270,14 +270,23 @@ suite("DataTreeProvider Integration Tests", () => {
         }
       );
 
-      // Wait for provider to refresh
+      // Wait for provider to refresh and data to load
       await provider.refresh();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const children = await provider.getChildren();
-      const entries = children.filter(
-        (child) => child.type === "entry" && child.toolName === "test-analyzer"
-      );
+      
+      // Wait for async data loading to complete
+      let attempts = 0;
+      let entries: DataItem[] = [];
+      while (attempts < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const children = await provider.getChildren();
+        entries = children.filter(
+          (child) => child.type === "entry" && child.toolName === "test-analyzer"
+        );
+        if (entries.length > 0) {
+          break;
+        }
+        attempts++;
+      }
 
       assert.ok(entries.length > 0, "Should have test-analyzer entries");
 
@@ -329,12 +338,21 @@ suite("DataTreeProvider Integration Tests", () => {
       );
 
       await provider.refresh();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const children = await provider.getChildren();
-      const entries = children.filter(
-        (child) => child.type === "entry" && child.toolName === "carbonara-swd"
-      );
+      
+      // Wait for async data loading to complete
+      let attempts = 0;
+      let entries: DataItem[] = [];
+      while (attempts < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const children = await provider.getChildren();
+        entries = children.filter(
+          (child) => child.type === "entry" && child.toolName === "carbonara-swd"
+        );
+        if (entries.length > 0) {
+          break;
+        }
+        attempts++;
+      }
 
       assert.ok(entries.length > 0, "Should have carbonara-swd entries");
 
@@ -381,12 +399,21 @@ suite("DataTreeProvider Integration Tests", () => {
       );
 
       await provider.refresh();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const children = await provider.getChildren();
-      const entries = children.filter(
-        (child) => child.type === "entry" && child.toolName === "semgrep"
-      );
+      
+      // Wait for async data loading to complete
+      let attempts = 0;
+      let entries: DataItem[] = [];
+      while (attempts < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const children = await provider.getChildren();
+        entries = children.filter(
+          (child) => child.type === "entry" && child.toolName === "semgrep"
+        );
+        if (entries.length > 0) {
+          break;
+        }
+        attempts++;
+      }
 
       assert.ok(entries.length > 0, "Should have semgrep entries");
 
@@ -634,7 +661,12 @@ suite("DataTreeProvider Integration Tests", () => {
         // Basic properties
         assert.strictEqual(treeItem.label, item.label);
         assert.strictEqual(treeItem.description, item.description);
-        assert.strictEqual(treeItem.tooltip, item.description);
+        // Entries and groups have "Click to view" tooltip, others use description
+        if (item.type === "entry" || item.type === "group") {
+          assert.strictEqual(treeItem.tooltip, "Click to view");
+        } else {
+          assert.strictEqual(treeItem.tooltip, item.description);
+        }
         assert.strictEqual(treeItem.collapsibleState, item.collapsibleState);
 
         // Context value
