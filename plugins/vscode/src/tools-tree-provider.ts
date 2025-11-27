@@ -1104,11 +1104,24 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         UI_TEXT.NOTIFICATIONS.ANALYSIS_COMPLETED(tool.name)
       );
 
+      // Clear any previous errors since the tool ran successfully
+      if (this.workspaceFolder) {
+        try {
+          const { clearToolError } = await import("@carbonara/cli/dist/utils/config.js");
+          await clearToolError(toolId, this.workspaceFolder.uri.fsPath);
+        } catch (configError) {
+          console.error(`[ToolsTreeProvider] Failed to clear tool error:`, configError);
+        }
+      }
+
       // Wait a moment for database file to be fully written to disk
       // The CLI closes the database connection, but file system writes may still be buffered
       // The file watcher should auto-refresh, but we add a manual refresh as fallback
       // after a delay to ensure the UI updates even if the file watcher misses the change
       await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Refresh tools tree to update status (clear error state, show green)
+      await this.refreshAsync();
 
       // Refresh data tree to show new results
       // This will reload the database from disk and update the UI

@@ -25,7 +25,13 @@ import yaml from 'js-yaml';
  * 
  * This test can be run repeatedly until it passes - it will guide you through setup.
  */
-describe('IF Webpage Scan - End-to-End', () => {
+// Skip e2e tests in CI environment - they require actual tool installation
+const isCI = process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true';
+
+// Use conditional describe to skip in CI
+const testSuite = isCI ? describe.skip : describe;
+
+testSuite('IF Webpage Scan - End-to-End', () => {
   const testUrl = 'https://example.com';
   let testDir: string;
   let cliPath: string;

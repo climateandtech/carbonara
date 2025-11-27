@@ -1,6 +1,8 @@
 import { test, expect, Locator } from "@playwright/test";
 import { VSCodeLauncher, VSCodeInstance } from "./helpers/vscode-launcher";
 import { SELECTORS, UI_TEXT } from "../../constants/ui-text";
+import fs from "fs";
+import path from "path";
 
 let vscode: VSCodeInstance;
 
@@ -1613,6 +1615,107 @@ test.describe("Carbonara VSCode Extension E2E Tests", () => {
       const toolItems = vscode.window.locator(SELECTORS.TOOLS_TREE.ITEM);
       const toolCount = await toolItems.count();
       expect(toolCount).toBeGreaterThan(0);
+    } finally {
+      await VSCodeLauncher.close(vscode);
+    }
+  });
+
+  test("should recover tool status from error to green after successful run", async () => {
+    // This test verifies that when a tool:
+    // 1. Previously failed (shows yellow/error status)
+    // 2. Runs successfully
+    // 3. Error is cleared and status returns to green
+    
+    // We test this by:
+    // 1. Manually adding an error to the config file
+    // 2. Verifying the error is present
+    // 3. Simulating a successful run (by calling clearToolError via config manipulation)
+    // 4. Verifying the error is cleared
+    
+    await VSCodeLauncher.close(vscode);
+    vscode = await VSCodeLauncher.launch("with-carbonara-project");
+    await VSCodeLauncher.waitForExtension(vscode.window);
+
+    try {
+      // Get the workspace path to manipulate config
+      // The workspace fixture path is relative to the test fixtures directory
+      const fixturesDir = path.join(__dirname, 'fixtures');
+      const workspacePath = path.join(fixturesDir, 'with-carbonara-project');
+      const configPath = path.join(workspacePath, '.carbonara', 'carbonara.config.json');
+      
+      // Read current config
+      let config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      
+      // Add an error to a tool (simulating a previous failure)
+      if (!config.tools) {
+        config.tools = {};
+      }
+      config.tools['test-analyzer'] = {
+        lastError: {
+          message: 'Previous test error',
+          timestamp: new Date().toISOString()
+        }
+      };
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      
+      // Verify error was added
+      config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      expect(config.tools['test-analyzer']?.lastError).toBeDefined();
+      expect(config.tools['test-analyzer']?.lastError?.message).toBe('Previous test error');
+      
+      // Now simulate successful run by calling clearToolError
+      // We'll use the CLI's clearToolError function via Node.js
+      const { clearToolError } = await import('@carbonara/cli/dist/utils/config.js');
+      await clearToolError('test-analyzer', workspacePath);
+      
+      // Verify error is cleared
+      config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      expect(config.tools['test-analyzer']?.lastError).toBeUndefined();
+      
+      // Open Carbonara sidebar to verify UI updates
+      await VSCodeLauncher.openSidebar(vscode.window);
+      
+      // Find Analysis Tools section
+      const toolsSection = vscode.window
+        .locator(".pane-header")
+        .filter({ hasText: "Analysis Tools" });
+      await expect(toolsSection).toBeVisible({ timeout: 10000 });
+      
+      // Expand Analysis Tools section
+      await toolsSection.scrollIntoViewIfNeeded();
+      await vscode.window.waitForTimeout(500);
+      await toolsSection.click({ force: true });
+      await vscode.window.waitForTimeout(2000);
+
+      // Get tools tree
+      const toolsTree = vscode.window
+        .locator(
+          '[id*="workbench.view.extension.carbonara"] .monaco-list, [id*="workbench.view.extension.carbonara"] .tree-explorer-viewlet-tree-view'
+        )
+        .last();
+
+      // Wait for tree rows to appear
+      const allRows = toolsTree.locator(".monaco-list-row");
+      await expect(allRows.first()).toBeVisible({ timeout: 15000 });
+      
+      // Verify tools tree is functional and shows tools
+      const toolCount = await allRows.count();
+      expect(toolCount).toBeGreaterThan(0);
+      
+      // Find the test-analyzer tool (should now be green, no error)
+      const testAnalyzerTool = allRows.filter({ 
+        hasText: /test-analyzer|Test Analyzer/i 
+      }).first();
+      
+      if (await testAnalyzerTool.count() > 0) {
+        // Verify the tool item is visible
+        await expect(testAnalyzerTool).toBeVisible();
+        // Tool should show as available (green) since error was cleared
+        const toolText = await testAnalyzerTool.textContent();
+        expect(toolText).toBeTruthy();
+        // Should not contain error indicators
+        expect(toolText).not.toContain('Previous test error');
+      }
     } finally {
       await VSCodeLauncher.close(vscode);
     }

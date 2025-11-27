@@ -135,6 +135,33 @@ export async function recordToolError(toolId: string, error: Error | string, pro
 }
 
 /**
+ * Clear the last error for a tool (called when tool runs successfully)
+ */
+export async function clearToolError(toolId: string, projectPath?: string): Promise<void> {
+  const config = await loadProjectConfig(projectPath);
+  if (!config) {
+    return;
+  }
+
+  if (!config.tools || !config.tools[toolId]) {
+    return;
+  }
+
+  // Clear the lastError if it exists
+  if (config.tools[toolId].lastError) {
+    delete config.tools[toolId].lastError;
+  }
+
+  // Also clear detectionFailed flag if it was set (tool is working now)
+  if (config.tools[toolId].detectionFailed) {
+    delete config.tools[toolId].detectionFailed;
+    delete config.tools[toolId].detectionFailedAt;
+  }
+
+  saveProjectConfig(config, projectPath);
+}
+
+/**
  * Check if a tool is marked as installed in the config
  */
 export async function isToolMarkedInstalled(toolId: string, projectPath?: string): Promise<boolean> {

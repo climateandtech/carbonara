@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import {
   markToolInstalled,
   recordToolError,
+  clearToolError,
   flagDetectionFailed,
   isToolMarkedInstalled,
   getToolLastError,
@@ -126,6 +127,76 @@ describe('Tool Status Config Functions', () => {
   test('should handle tool ID with hyphens correctly', async () => {
     await markToolInstalled('if-webpage-scan', testDir);
     expect(await isToolMarkedInstalled('if-webpage-scan', testDir)).toBe(true);
+  });
+
+  test('should clear tool error when tool runs successfully', async () => {
+    // Record an error first
+    await recordToolError('test-tool', 'Previous error message', testDir);
+    
+    // Verify error exists
+    let error = await getToolLastError('test-tool', testDir);
+    expect(error).not.toBeNull();
+    expect(error?.message).toBe('Previous error message');
+
+    // Clear the error (simulating successful run)
+    await clearToolError('test-tool', testDir);
+
+    // Verify error is cleared
+    error = await getToolLastError('test-tool', testDir);
+    expect(error).toBeNull();
+
+    // Verify config no longer has lastError
+    const config = await loadProjectConfig(testDir);
+    expect(config?.tools?.['test-tool']?.lastError).toBeUndefined();
+  });
+
+  test('should clear detectionFailed flag when tool runs successfully', async () => {
+    // Mark as installed and then flag detection as failed
+    await markToolInstalled('test-tool', testDir);
+    await flagDetectionFailed('test-tool', testDir);
+    
+    // Verify detectionFailed is set
+    let config = await loadProjectConfig(testDir);
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBe(true);
+    expect(config?.tools?.['test-tool']?.detectionFailedAt).toBeDefined();
+
+    // Clear the error (simulating successful run)
+    await clearToolError('test-tool', testDir);
+
+    // Verify detectionFailed is cleared
+    config = await loadProjectConfig(testDir);
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBeUndefined();
+    expect(config?.tools?.['test-tool']?.detectionFailedAt).toBeUndefined();
+  });
+
+  test('should clear both error and detectionFailed flag together', async () => {
+    // Set up both error and detectionFailed
+    await markToolInstalled('test-tool', testDir);
+    await recordToolError('test-tool', 'Error message', testDir);
+    await flagDetectionFailed('test-tool', testDir);
+    
+    // Verify both are set
+    let config = await loadProjectConfig(testDir);
+    expect(config?.tools?.['test-tool']?.lastError).toBeDefined();
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBe(true);
+
+    // Clear the error (simulating successful run)
+    await clearToolError('test-tool', testDir);
+
+    // Verify both are cleared
+    config = await loadProjectConfig(testDir);
+    expect(config?.tools?.['test-tool']?.lastError).toBeUndefined();
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBeUndefined();
+    expect(await getToolLastError('test-tool', testDir)).toBeNull();
+  });
+
+  test('should handle clearing error for tool that has no error gracefully', async () => {
+    // Clear error for tool that doesn't exist or has no error
+    await clearToolError('nonexistent-tool', testDir);
+    
+    // Should not throw, just do nothing
+    const config = await loadProjectConfig(testDir);
+    expect(config?.tools?.['nonexistent-tool']).toBeUndefined();
   });
 });
 
