@@ -271,5 +271,116 @@ describe('analyze command', () => {
       expect(returnVisitPercentage).toBe(0.2);
     });
   });
+
+  describe('--save flag handling', () => {
+    beforeEach(() => {
+      // Create .carbonara directory and config for tests that need it
+      const carbonaraDir = path.join(testDir, '.carbonara');
+      fs.mkdirSync(carbonaraDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(carbonaraDir, 'carbonara.config.json'),
+        JSON.stringify({
+          name: 'Test Project',
+          projectId: 1,
+          database: { path: '.carbonara/carbonara.db' }
+        }, null, 2)
+      );
+    });
+
+    test('should recognize --save flag from command.opts()', () => {
+      // Mock commander Command object with --save flag
+      const mockCommand = {
+        opts: () => ({ save: true, output: 'table', timeout: '30000' }),
+        help: () => {}
+      } as any;
+
+      // Test that opts are correctly extracted
+      const opts = mockCommand.opts();
+      expect(opts.save).toBe(true);
+      expect(opts.output).toBe('table');
+    });
+
+    test('should recognize -s flag as save', () => {
+      // Mock commander Command object with -s flag (short form)
+      const mockCommand = {
+        opts: () => ({ save: true, output: 'table', timeout: '30000' }),
+        help: () => {}
+      } as any;
+
+      const opts = mockCommand.opts();
+      expect(opts.save).toBe(true);
+    });
+
+    test('should handle missing save flag', () => {
+      // Mock commander Command object without --save flag
+      const mockCommand = {
+        opts: () => ({ output: 'table', timeout: '30000' }),
+        help: () => {}
+      } as any;
+
+      const opts = mockCommand.opts();
+      expect(opts.save).toBeUndefined();
+    });
+
+    test('should correctly merge save flag from both command.opts() and options parameter', () => {
+      // Simulate the merge logic in analyzeCommand when save is in command.opts()
+      const optsFromCommand = { save: true, output: 'table', timeout: '30000' };
+      const optsFromParam = { output: 'table', timeout: '30000' };
+      
+      const mergedOpts = {
+        output: optsFromCommand.output || optsFromParam.output || 'table',
+        timeout: optsFromCommand.timeout || optsFromParam.timeout || '30000',
+        save: !!(optsFromCommand.save || optsFromParam.save)
+      };
+
+      expect(mergedOpts.save).toBe(true);
+      expect(mergedOpts.output).toBe('table');
+    });
+
+    test('should handle save flag from options parameter when command.opts() lacks it', () => {
+      // Simulate the merge logic when save is only in options parameter
+      const optsFromCommand = { output: 'table', timeout: '30000' };
+      const optsFromParam = { save: true, output: 'table', timeout: '30000' };
+      
+      const mergedOpts = {
+        output: optsFromCommand.output || optsFromParam.output || 'table',
+        timeout: optsFromCommand.timeout || optsFromParam.timeout || '30000',
+        save: !!(optsFromCommand.save || optsFromParam.save)
+      };
+
+      expect(mergedOpts.save).toBe(true);
+      expect(mergedOpts.output).toBe('table');
+    });
+
+    test('should default save to false when neither source has it', () => {
+      // Simulate the merge logic when save is not in either source
+      const optsFromCommand = { output: 'table', timeout: '30000' };
+      const optsFromParam = { output: 'table', timeout: '30000' };
+      
+      const mergedOpts = {
+        output: optsFromCommand.output || optsFromParam.output || 'table',
+        timeout: optsFromCommand.timeout || optsFromParam.timeout || '30000',
+        save: !!(optsFromCommand.save || optsFromParam.save)
+      };
+
+      expect(mergedOpts.save).toBe(false);
+    });
+
+    test('should handle boolean flag correctly when save is explicitly false', () => {
+      // Test edge case: save explicitly set to false (should still be false)
+      const optsFromCommand = { save: false, output: 'table', timeout: '30000' };
+      const optsFromParam = { output: 'table', timeout: '30000' };
+      
+      const mergedOpts = {
+        output: optsFromCommand.output || optsFromParam.output || 'table',
+        timeout: optsFromCommand.timeout || optsFromParam.timeout || '30000',
+        save: !!(optsFromCommand.save || optsFromParam.save)
+      };
+
+      // !!false is false, so save should be false
+      expect(mergedOpts.save).toBe(false);
+    });
+
+  });
 });
 

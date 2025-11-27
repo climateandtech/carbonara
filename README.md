@@ -245,6 +245,16 @@ npm install && npm link
 npm run build && npm test
 ```
 
+**Running CLI commands during development** (without global installation):
+```bash
+# Run analysis tools directly from monorepo
+npm --workspace=@carbonara/cli start -- analyze if-webpage-scan https://climateandtech.com --save
+npm --workspace=@carbonara/cli start -- analyze carbonara-swd https://climateandtech.com --save
+
+# Or use node directly
+node packages/cli/dist/index.js analyze if-webpage-scan https://climateandtech.com --save
+```
+
 ### VS Code Extension Development
 ```bash
 cd plugins/vscode

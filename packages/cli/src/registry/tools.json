@@ -312,7 +312,7 @@
         "method": "command",
         "commands": [
           "npx --package=@grnsft/if if-run --help",
-          "npm list @tngtech/if-webpage-plugins"
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
         ]
       },
       "prerequisites": [
@@ -372,7 +372,8 @@
               "path": "@tngtech/if-webpage-plugins",
               "config": {
                 "scrollToBottom": "{scrollToBottom}",
-                "url": "{url}"
+                "url": "{url}",
+                "dataReloadRatio": 0.5
               }
             },
             "co2js": {
@@ -380,7 +381,8 @@
               "path": "@tngtech/if-webpage-plugins",
               "config": {
                 "type": "swd",
-                "version": 4
+                "version": 4,
+                "green-web-host": false
               }
             }
           }
@@ -396,7 +398,9 @@
                 {
                   "options": {
                     "firstVisitPercentage": "{firstVisitPercentage}",
-                    "returnVisitPercentage": "{returnVisitPercentage}"
+                    "returnVisitPercentage": "{returnVisitPercentage}",
+                    "green-web-host": false,
+                    "dataReloadRatio": 0.5
                   }
                 }
               ]
@@ -420,21 +424,14 @@
           {
             "key": "carbon",
             "label": "🌱 CO2 Emissions",
-            "path": "data.tree.children.child.outputs[0]['operational-carbon']",
+            "path": "data.tree.children.child.outputs[0]['estimated-carbon']",
             "type": "carbon",
             "format": "{value}g"
           },
           {
-            "key": "energy",
-            "label": "⚡ Energy",
-            "path": "data.tree.children.child.outputs[0]['energy']",
-            "type": "energy",
-            "format": "{value} kWh"
-          },
-          {
             "key": "networkBytes",
             "label": "📊 Data Transfer",
-            "path": "data.tree.children.child.outputs[0]['network-bytes']",
+            "path": "data.tree.children.child.outputs[0]['network/data/bytes']",
             "type": "bytes",
             "format": "{value} KB"
           }
@@ -486,7 +483,7 @@
         "method": "command",
         "commands": [
           "npx --package=@grnsft/if if-run --help",
-          "npm list @tngtech/if-webpage-plugins"
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
         ]
       },
       "parameters": [
@@ -579,7 +576,7 @@
         "method": "command",
         "commands": [
           "npx --package=@grnsft/if if-run --help",
-          "npm list @tngtech/if-webpage-plugins"
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
         ]
       },
       "parameters": [
@@ -872,7 +869,7 @@
         "method": "command",
         "commands": [
           "npx --package=@grnsft/if if-run --help",
-          "npm list @tngtech/if-webpage-plugins"
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
         ]
       },
       "parameters": [
