@@ -1,48 +1,40 @@
-# Carbonara VS Code Extension
+# Carbonara (beta version)
 
-A VS Code extension for CO2 assessment and web sustainability analysis, integrated with the Carbonara CLI tool.
+Carbonara is an open-source plugin to help developers understand and reduce the carbon impact of their code. It gives quick insights about (\(CO_{2}\)) emissions and energy usage, to empower climate-conscious decision making.
 
 ## Features
 
-- **Project Initialization**: Set up Carbonara projects directly from VS Code
-- **CO2 Assessment**: Run comprehensive sustainability questionnaires
-- **Website Analysis**: Analyze website carbon footprints using Greenframe
-- **Data Management**: View, export, and manage assessment data
-- **Status Monitoring**: Real-time project status in the status bar
-- **Configuration Management**: Easy access to project settings
+- **Assessment Questionnaire**: Gathers the specifics of your project from a sustainability point of view 
+- **Website Scan**: Analysis the carbon footprint of an URL
+- **Code Scan**: Identifies and highlights energy-consuming code patterns
+- **Deployment Insights**: Helps moving to less carbon-intensive hosting
+- **Carbon Reporting**: allows you to view, export, and compare your results over time
 
-## Installation
 
-### Method 1: Install from VSIX (Recommended)
-
-1. Download the `carbonara-vscode-0.1.0.vsix` file
-2. Open VS Code
-3. Open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
-4. Type "Extensions: Install from VSIX"
-5. Select the downloaded VSIX file
-
-### Method 2: Command Line Installation
+### Command Line Installation
 
 ```bash
 code --install-extension carbonara-vscode-0.1.0.vsix
 ```
 
-## Prerequisites
-
-The extension requires the Carbonara CLI tool to be available. It will automatically detect:
-
-1. **Monorepo Structure**: CLI at `packages/cli/src/index.js`
-2. **Global Installation**: CLI installed globally via npm
-3. **Local Installation**: CLI in the current workspace
-
 ## Usage
 
 ### Getting Started
 
-1. **Open a workspace** in VS Code
-2. **Click the Carbonara icon** in the status bar (bottom right)
-3. **Select "Initialize Project"** to set up Carbonara in your workspace
+1. **Open a workspace** in VSCode
+2. **Click the Carbonara icon** in the activity bar
+3. **Click the "Initialize Project" button** to set up Carbonara in your workspace. Once initialised, carbonara features will be enable and ready to use.  
 
+After initialization, your project will contain:
+
+```
+your-project/
+├── .carbonara/
+│   ├── carbonara.config.json    # Project configuration
+│   ├── carbonara.db            # SQLite database
+│   └── ...                     # Other Carbonara files
+└── schemas/                    # JSON schema files (optional)
+```
 ### Available Commands
 
 Access commands via:
@@ -76,60 +68,7 @@ Access commands via:
 - **Open Configuration** (`carbonara.openConfig`)
   - Quick access to `.carbonara/carbonara.config.json`
 
-### Status Bar Integration
 
-The status bar shows project status:
-
-- **$(pulse) Carbonara**: Project not initialized
-- **$(check) Carbonara**: Project initialized and ready
-
-### Project Structure
-
-After initialization, your project will contain:
-
-```
-your-project/
-├── .carbonara/
-│   ├── carbonara.config.json    # Project configuration
-│   ├── carbonara.db            # SQLite database
-│   └── ...                     # Other Carbonara files
-└── schemas/                    # JSON schema files (optional)
-```
-
-## Configuration
-
-The extension can be configured via VS Code settings:
-
-```json
-{
-  "carbonara.server.host": "localhost",
-  "carbonara.server.port": 3000,
-  "carbonara.autoConnect": true,
-  "carbonara.transport": "websocket"
-}
-```
-
-## Development
-
-### Building from Source
-
-```bash
-git clone <repository>
-cd plugins/vscode
-npm install
-npm run build
-npm run package
-```
-
-### Project Structure
-
-```
-src/
-└── extension.ts          # Main extension logic
-dist/
-├── extension.js          # Compiled JavaScript
-└── extension.js.map      # Source map
-```
 
 ## Troubleshooting
 
@@ -165,12 +104,15 @@ If you see database-related errors:
 4. Test thoroughly
 5. Submit a pull request
 
+## Report Bugs
+
+1. open a ticket in github.com/climateandtech/carbonara
+
 ## License
 
-ISC License - see LICENSE file for details.
+AGPL License - see LICENSE file for details.
 
 ## Links
 
 - [Carbonara CLI Documentation](../../packages/cli/README.md)
 - [VS Code Extension API](https://code.visualstudio.com/api)
-- [Greenframe Documentation](https://greenframe.io)
