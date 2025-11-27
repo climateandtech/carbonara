@@ -70,8 +70,8 @@ export class SemgrepFindingDecorationProvider
 }
 
 /**
- * Decoration provider for view icons (eye icon) on entries and groups
- * Note: Eye icon is now shown only via tooltip on hover, not as a decoration
+ * Decoration provider for view icons (open-preview icon) on entries and groups
+ * Note: Icons are now shown via inline menu contributions (group: "inline")
  * This class is kept for potential future use but currently returns undefined
  */
 export class ViewIconDecorationProvider
@@ -83,7 +83,7 @@ export class ViewIconDecorationProvider
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
   provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
-    // Eye icon is now shown only via tooltip, not as decoration
+    // Icons are now shown via inline menu contributions, not decorations
     return undefined;
   }
 
@@ -1275,8 +1275,7 @@ export class DataItem extends vscode.TreeItem {
     // Set icons
     switch (type) {
       case "group":
-        // Eye icon for "click to view" - appears left of badge
-        this.iconPath = new vscode.ThemeIcon("eye");
+        // No left-side icon - open-preview icon will appear on right via inline menu contribution
         break;
       case "folder":
         // No icon for folders
@@ -1288,11 +1287,10 @@ export class DataItem extends vscode.TreeItem {
         // No icon for findings
         break;
       case "entry":
-        // Eye icon for "click to view" - appears left of badge
-        this.iconPath = new vscode.ThemeIcon("eye");
-        // Set resourceUri for badge decoration if badgeColor is provided
+        // No left-side icon - open-preview icon will appear on right via inline menu contribution
+        // Set resourceUri for badge decoration if badgeColor is provided (green status pill)
         if (this.entryId) {
-          // Use carbonara-badge scheme for badge decoration
+          // Use carbonara-badge scheme for badge decoration (green status pill)
           this.resourceUri = vscode.Uri.parse(`carbonara-badge://entry/${this.entryId}`);
         }
         break;

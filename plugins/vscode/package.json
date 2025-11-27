@@ -162,6 +162,16 @@
       {
         "command": "carbonara.openDeploymentConfig",
         "title": "Open Deployment Configuration File"
+      },
+      {
+        "command": "carbonara.openEntryDocument",
+        "title": "View Entry",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "carbonara.openGroupDocument",
+        "title": "View Summary",
+        "icon": "$(open-preview)"
       }
     ],
     "viewsContainers": {
@@ -274,6 +284,16 @@
         {
           "command": "carbonara.deleteSemgrepResultsForFile",
           "when": "view == carbonara.dataTree && viewItem == carbonara-semgrep-file",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.openEntryDocument",
+          "when": "view == carbonara.dataTree && viewItem == carbonara-data-entry",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.openGroupDocument",
+          "when": "view == carbonara.dataTree && viewItem == carbonara-data-group",
           "group": "inline"
         }
       ],

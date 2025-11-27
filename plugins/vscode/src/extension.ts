@@ -239,11 +239,23 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand(
       "carbonara.openEntryDocument",
-      (entryId: number) => openEntryDocument(entryId, assessmentDataContentProvider)
+      (item: any) => {
+        // Handle both tree item (from inline button) and direct entryId (from command)
+        const entryId = item?.entryId ?? item;
+        if (typeof entryId === "number") {
+          openEntryDocument(entryId, assessmentDataContentProvider);
+        }
+      }
     ),
     vscode.commands.registerCommand(
       "carbonara.openGroupDocument",
-      (toolName: string) => openGroupDocument(toolName, assessmentDataContentProvider)
+      (item: any) => {
+        // Handle both tree item (from inline button) and direct toolName (from command)
+        const toolName = item?.toolName ?? item;
+        if (typeof toolName === "string") {
+          openGroupDocument(toolName, assessmentDataContentProvider);
+        }
+      }
     ),
   ];
 
