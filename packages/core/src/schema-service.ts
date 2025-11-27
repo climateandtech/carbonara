@@ -222,15 +222,29 @@ export class SchemaService {
       }
       
       // Navigate through the path
-      for (const part of pathParts) {
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        const isLastPart = i === pathParts.length - 1;
+        
         if (current === null || current === undefined) {
           break;
         }
         
         if (part.type === 'wildcard') {
-          // Array wildcard - get first element
-          if (Array.isArray(current) && current.length > 0) {
-            current = current[0];
+          // Array wildcard
+          if (Array.isArray(current)) {
+            if (isLastPart) {
+              // If wildcard is the last part, return the entire array
+              return current;
+            } else {
+              // Otherwise, get first element and continue
+              if (current.length > 0) {
+                current = current[0];
+              } else {
+                current = null;
+                break;
+              }
+            }
           } else {
             current = null;
             break;
