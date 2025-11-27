@@ -160,7 +160,14 @@ describe('Tools Command - Prerequisites Checking', () => {
     const originalGetInstalledTools = registry.getInstalledTools.bind(registry);
     registry.getInstalledTools = vi.fn(async () => []);
     
-    // Mock execaCommand (shouldn't be called when no tools are installed)
+    // Mock isToolInstalled to return false for all tools
+    // This prevents refreshInstalledTools() from being called, which would trigger execaCommand
+    const originalIsToolInstalled = registry.isToolInstalled.bind(registry);
+    registry.isToolInstalled = vi.fn(async () => false);
+    
+    // Mock refreshInstalledTools to do nothing (prevent tool detection)
+    const originalRefreshInstalledTools = registry.refreshInstalledTools.bind(registry);
+    registry.refreshInstalledTools = vi.fn(async () => {});
     
     try {
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -176,8 +183,10 @@ describe('Tools Command - Prerequisites Checking', () => {
       
       consoleLogSpy.mockRestore();
     } finally {
-      // Restore original method
+      // Restore original methods
       registry.getInstalledTools = originalGetInstalledTools;
+      registry.isToolInstalled = originalIsToolInstalled;
+      registry.refreshInstalledTools = originalRefreshInstalledTools;
     }
   });
 });
