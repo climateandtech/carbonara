@@ -434,6 +434,123 @@ test.describe("Data Accordion Expansion - Full Integration", () => {
       await VSCodeLauncher.close(vscode);
     }
   });
+
+  test("should display group view as table with normalized field names", async () => {
+    const vscode = await setupTest("with-analysis-data");
+
+    try {
+      // Click on Carbonara activity bar
+      const carbonaraActivityBar = vscode.window.locator(
+        '[aria-label*="Carbonara"]'
+      ).first();
+
+      if (await carbonaraActivityBar.isVisible({ timeout: 5000 })) {
+        await carbonaraActivityBar.click();
+        await vscode.window.waitForTimeout(2000);
+      }
+
+      // Find and expand Data & Results section
+      const dataResultsHeader = vscode.window
+        .locator(".pane-header")
+        .filter({ hasText: "Data & Results" });
+
+      if (await dataResultsHeader.isVisible({ timeout: 5000 })) {
+        await dataResultsHeader.click();
+        await vscode.window.waitForTimeout(1000);
+      }
+
+      // Wait for tree to load
+      await vscode.window.waitForTimeout(2000);
+
+      // Find tree items (groups)
+      const treeItems = vscode.window.locator(
+        '[id*="workbench.view.extension.carbonara"] .monaco-list-row'
+      );
+
+      const itemCount = await treeItems.count();
+      expect(itemCount).toBeGreaterThan(0);
+
+      // Find a group item (e.g., "IF Webpage Analysis", "SWD Analysis", "CO2 Assessments")
+      let groupFound = false;
+      for (let i = 0; i < itemCount; i++) {
+        const item = treeItems.nth(i);
+        const text = await item.textContent();
+        
+        // Look for group headers (they typically have "Analysis" or "Assessments" in the name)
+        if (text && (text.includes("Analysis") || text.includes("Assessments"))) {
+          // Hover over the item to reveal the inline button
+          await item.hover();
+          await vscode.window.waitForTimeout(500);
+
+          // Find and click the open-preview button
+          const openPreviewButton = item.locator(
+            '.monaco-action-bar .action-item[aria-label*="View Summary"], ' +
+            'button[aria-label*="View Summary"]'
+          );
+
+          if (await openPreviewButton.isVisible({ timeout: 2000 })) {
+            await openPreviewButton.click();
+            await vscode.window.waitForTimeout(2000);
+
+            // Verify webview panel opened
+            const webviewPanel = vscode.window.locator('[aria-label*="Summary for"]');
+            await expect(webviewPanel).toBeVisible({ timeout: 5000 });
+
+            // Get webview content
+            const webviewFrame = vscode.window.frameLocator('iframe[src*="carbonara-data"]');
+            
+            // Verify table structure exists
+            const table = webviewFrame.locator('table, .markdown-body table');
+            await expect(table).toBeVisible({ timeout: 5000 });
+
+            // Verify table has headers (should include normalized field names)
+            const tableHeaders = webviewFrame.locator('table th, .markdown-body table th');
+            const headerCount = await tableHeaders.count();
+            expect(headerCount).toBeGreaterThan(0);
+
+            // Check for normalized field names (should see "CO2 Emissions" not "CO2 Estimate")
+            let hasNormalizedFields = false;
+            for (let j = 0; j < headerCount; j++) {
+              const header = tableHeaders.nth(j);
+              const headerText = await header.textContent();
+              
+              // Check for normalized names
+              if (headerText && (
+                headerText.includes("CO2 Emissions") ||
+                headerText.includes("Energy") ||
+                headerText.includes("Data Transfer") ||
+                headerText.includes("URL")
+              )) {
+                hasNormalizedFields = true;
+              }
+              
+              // Verify we don't see unnormalized names
+              if (headerText && (
+                headerText.includes("CO2 Estimate") && !headerText.includes("CO2 Emissions")
+              )) {
+                // This would be a failure - we should see normalized name
+                expect(headerText).toContain("CO2 Emissions");
+              }
+            }
+
+            expect(hasNormalizedFields).toBe(true);
+
+            // Verify table has data rows
+            const tableRows = webviewFrame.locator('table tr, .markdown-body table tr');
+            const rowCount = await tableRows.count();
+            expect(rowCount).toBeGreaterThan(1); // At least header + 1 data row
+
+            groupFound = true;
+            break;
+          }
+        }
+      }
+
+      expect(groupFound).toBe(true);
+    } finally {
+      await VSCodeLauncher.close(vscode);
+    }
+  });
 });
 
 

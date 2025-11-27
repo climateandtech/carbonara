@@ -394,21 +394,14 @@
           {
             "key": "carbon",
             "label": "CO2 Emissions",
-            "path": "data.tree.children.child.outputs[0]['operational-carbon']",
+            "path": "data.tree.children.child.outputs[0]['estimated-carbon'],data.tree.children.child.outputs[0].estimated-carbon",
             "type": "carbon",
             "format": "{value}g"
           },
           {
-            "key": "energy",
-            "label": "Energy",
-            "path": "data.tree.children.child.outputs[0]['energy']",
-            "type": "energy",
-            "format": "{value} kWh"
-          },
-          {
             "key": "networkBytes",
             "label": "Data Transfer",
-            "path": "data.tree.children.child.outputs[0]['network-bytes']",
+            "path": "data.tree.children.child.outputs[0]['network/data/bytes'],data.tree.children.child.outputs[0]['network-bytes']",
             "type": "bytes",
             "format": "{value} KB"
           }

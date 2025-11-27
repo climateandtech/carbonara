@@ -4,7 +4,7 @@
  */
 
 import * as vscode from "vscode";
-import { VSCodeDataProvider, DataDetail, DataService, SchemaService, type AssessmentDataEntry, type ToolDisplayField } from "@carbonara/core";
+import { VSCodeDataProvider, DataDetail, DataService, SchemaService, normalizeFieldLabel, type AssessmentDataEntry, type ToolDisplayField } from "@carbonara/core";
 
 export type CoreServices = {
   dataService: DataService;
@@ -170,9 +170,9 @@ export class AssessmentDataContentProvider
       markdown += `${description}\n\n`;
       markdown += `**Timestamp:** ${new Date(entry.timestamp).toLocaleString()}\n\n`;
       
-      // Add badge if available
+      // Add badge if available (just the badge, no text)
       if (badgeColor && badgeColor !== 'none') {
-        markdown += `**Carbon Impact:** <span class="badge badge-${badgeColor}">●</span> ${badgeColor}\n\n`;
+        markdown += `<span class="badge badge-${badgeColor}">●</span>\n\n`;
       }
       
       markdown += `---\n\n`;
@@ -248,123 +248,68 @@ export class AssessmentDataContentProvider
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
 
-      markdown += `## Entries\n\n`;
-
-      for (const entry of sortedEntries) {
-        // Use schema templates if available
-        let entryTitle = `Entry #${entry.id}`;
-        let entryDescription = new Date(entry.timestamp).toLocaleString();
-        
-        if (toolSchema?.display) {
-          // Use entryTemplate for title
-          entryTitle = toolSchema.display.entryTemplate;
-          entryDescription = toolSchema.display.descriptionTemplate;
-          
-          // Replace template variables
-          const date = new Date(entry.timestamp).toLocaleDateString();
-          entryTitle = entryTitle.replace('{date}', date);
-          entryDescription = entryDescription.replace('{date}', date);
-          
-          // Special handling for computed values that don't have direct fields
-          // totalKB: computed from totalBytes (for carbonara-swd)
-          if (entryTitle.includes('{totalKB}') || entryDescription.includes('{totalKB}')) {
-            const totalBytes = this.coreServices!.schemaService.extractValue(entry, 'data.totalBytes');
-            if (totalBytes !== null && totalBytes !== undefined) {
-              const totalKB = Math.round(Number(totalBytes) / 1024);
-              entryTitle = entryTitle.replace('{totalKB}', totalKB.toString());
-              entryDescription = entryDescription.replace('{totalKB}', totalKB.toString());
-            }
-          }
-          
-          // count: computed from deployments array length (for deployment-scan)
-          if (entryTitle.includes('{count}') || entryDescription.includes('{count}')) {
-            const deployments = this.coreServices!.schemaService.extractValue(entry, 'data.deployments');
-            let count = 0;
-            if (Array.isArray(deployments)) {
-              count = deployments.length;
-            } else if (deployments === null || deployments === undefined) {
-              // Try total_count as fallback
-              const totalCount = this.coreServices!.schemaService.extractValue(entry, 'data.total_count');
-              if (totalCount !== null && totalCount !== undefined) {
-                count = Number(totalCount);
-              }
-            }
-            entryTitle = entryTitle.replace('{count}', count.toString());
-            entryDescription = entryDescription.replace('{count}', count.toString());
-          }
-          
-          // Replace field values in templates
-          toolSchema.display.fields.forEach((field: ToolDisplayField) => {
-            const value = this.coreServices!.schemaService.extractValue(entry, field.path);
-            if (value !== null && value !== undefined) {
-              const placeholder = `{${field.key}}`;
-              const formattedValue = this.coreServices!.schemaService.formatValue(value, field.type, field.format);
-              
-              entryTitle = entryTitle.replace(placeholder, formattedValue);
-              entryDescription = entryDescription.replace(placeholder, formattedValue);
-            }
+      // Build table with all entries
+      // Use schema fields to determine columns - this is configured per tool
+      const columnFields: Array<{ key: string; label: string; field: ToolDisplayField }> = [];
+      
+      if (toolSchema?.display?.fields && toolSchema.display.fields.length > 0) {
+        // Use all fields from schema (per-tool configuration)
+        toolSchema.display.fields.forEach(field => {
+          // Remove emoji from label if present
+          let label = field.label.replace(/^[^\s]+\s+/, '').trim();
+          // Normalize field label to standardized name across tools
+          label = normalizeFieldLabel(label);
+          columnFields.push({ key: field.key, label, field });
+        });
+      } else {
+        // Fallback: if no schema fields, just show URL
+        const urlValue = entries[0]?.data?.url;
+        if (urlValue) {
+          columnFields.push({ 
+            key: 'url', 
+            label: 'URL', 
+            field: { key: 'url', label: 'URL', path: 'data.url', type: 'url' } 
           });
-          
-          // Remove any unreplaced placeholders
-          entryTitle = entryTitle.replace(/\{[^}]+\}/g, '').trim();
-          entryDescription = entryDescription.replace(/\{[^}]+\}/g, '').trim();
-          
-          // Fallback if empty
-          if (!entryTitle || entryTitle.length === 0) {
-            entryTitle = `Entry #${entry.id}`;
-          }
-          if (!entryDescription || entryDescription.length === 0) {
-            entryDescription = date;
-          }
         }
-
-        // Get badge color if available
-        const badgeColor = this.coreServices.vscodeProvider.calculateBadgeColor(entry, toolName, entries);
-
-        // Get key details for summary
-        const details =
-          await this.coreServices.vscodeProvider.createDataDetails(entry);
-
-        markdown += `### ${entryTitle}\n\n`;
-        markdown += `${entryDescription}\n\n`;
-        
-        // Add badge if available
-        if (badgeColor && badgeColor !== 'none') {
-          markdown += `**Carbon Impact:** <span class="badge badge-${badgeColor}">●</span> ${badgeColor}\n\n`;
-        }
-
-        // Show details as a table
-        if (details.length > 0) {
-          markdown += `| Field | Value |\n`;
-          markdown += `|-------|-------|\n`;
-          const keyDetails = details.slice(0, 5);
-          for (const detail of keyDetails) {
-            // Extract label and value
-            const colonIndex = detail.label.indexOf(':');
-            let fieldLabel = detail.label;
-            let value = '';
-            
-            if (colonIndex > 0) {
-              fieldLabel = detail.label.substring(0, colonIndex).trim();
-              value = detail.label.substring(colonIndex + 1).trim();
-            } else {
-              value = detail.formattedValue || String(detail.value || '');
-            }
-            
-            // Remove emoji if present
-            fieldLabel = fieldLabel.replace(/^[^\s]+\s+/, '');
-            
-            markdown += `| ${fieldLabel} | ${value} |\n`;
-          }
-          markdown += `\n`;
-        }
-
-        // Use command URI format: command:commandId?[arg1,arg2]
-        // For a single number argument, we need to encode the brackets
-        const commandUri = `command:carbonara.openEntryDocument?${encodeURIComponent(JSON.stringify([entry.id]))}`;
-        markdown += `[View Full Entry](${commandUri})\n\n`;
-        markdown += `---\n\n`;
       }
+      
+      // Build table header - use all fields from schema
+      const headerRow = columnFields.map(f => f.label).join(' | ');
+      const separatorRow = columnFields.map(() => '---').join(' | ');
+      
+      markdown += `| ${headerRow} |\n`;
+      markdown += `| ${separatorRow} |\n`;
+      
+      // Build table rows
+      for (const entry of sortedEntries) {
+        const rowValues: string[] = [];
+        
+        // Get values for all columns using schema field paths
+        for (const colField of columnFields) {
+          const value = this.coreServices!.schemaService.extractValue(entry, colField.field.path);
+          if (value !== null && value !== undefined) {
+            const formattedValue = this.coreServices!.schemaService.formatValue(value, colField.field.type, colField.field.format);
+            rowValues.push(formattedValue);
+          } else {
+            rowValues.push('—');
+          }
+        }
+        
+        // Get badge color for this entry
+        const badgeColor = this.coreServices.vscodeProvider.calculateBadgeColor(entry, toolName, entries);
+        const badgeMarkup = badgeColor && badgeColor !== 'none' 
+          ? `<span class="badge badge-${badgeColor}">●</span>` 
+          : '';
+        
+        // Add badge to first column if available
+        if (badgeMarkup) {
+          rowValues[0] = `${badgeMarkup} ${rowValues[0]}`;
+        }
+        
+        markdown += `| ${rowValues.join(' | ')} |\n`;
+      }
+      
+      markdown += `\n`;
 
       return markdown;
     } catch (error: any) {

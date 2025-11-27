@@ -229,6 +229,7 @@ export class VSCodeDataProvider {
   /**
    * Calculate badge color for an entry based on metrics and thresholds
    * Uses dual system: fixed thresholds + relative comparison within project
+   * Uses schema-based field discovery to find CO2 emissions field across all tools
    */
   calculateBadgeColor(
     entry: AssessmentDataEntry,
@@ -239,26 +240,36 @@ export class VSCodeDataProvider {
     let metricType: keyof import('./threshold-service.js').MetricThresholds = 'co2Emissions';
     let value: number | null = null;
 
-    if (toolName === 'carbonara-swd') {
-      // Use CO2 emissions as primary metric
-      const co2 = this.schemaService.extractValue(entry, 'data.carbonEmissions.total');
-      if (co2 !== null && co2 !== undefined) {
-        metricType = 'co2Emissions';
-        value = Number(co2);
+      // Special case: deployment-scan uses carbon intensity, not CO2 emissions
+      if (toolName === 'deployment-scan') {
+        const intensity = this.schemaService.extractValue(entry, 'data.deployments[*].carbon_intensity');
+        if (intensity !== null && intensity !== undefined) {
+          metricType = 'carbonIntensity';
+          value = Number(intensity);
+        }
+      } else {
+      // Use schema-based discovery to find CO2 emissions field
+      const toolSchema = this.schemaService.getToolSchema(toolName);
+      
+      if (toolSchema?.display?.fields) {
+        // Find first field with type 'carbon' in the schema
+        const carbonField = toolSchema.display.fields.find(f => f.type === 'carbon');
+        if (carbonField) {
+          const co2 = this.schemaService.extractValue(entry, carbonField.path);
+          if (co2 !== null && co2 !== undefined) {
+            metricType = 'co2Emissions';
+            value = Number(co2);
+          }
+        }
       }
-    } else if (toolName === 'deployment-scan') {
-      // Use carbon intensity as primary metric
-      const intensity = this.schemaService.extractValue(entry, 'data.deployments[*].carbon_intensity');
-      if (intensity !== null && intensity !== undefined) {
-        metricType = 'carbonIntensity';
-        value = Number(intensity);
-      }
-    } else {
-      // Try to find any metric we can use
-      const co2 = this.schemaService.extractValue(entry, 'data.carbonEmissions.total,data.results.carbonEstimate');
-      if (co2 !== null && co2 !== undefined) {
-        metricType = 'co2Emissions';
-        value = Number(co2);
+      
+      // Fallback to hardcoded paths for backwards compatibility if schema doesn't have carbon field
+      if (value === null || isNaN(value)) {
+        const co2 = this.schemaService.extractValue(entry, 'data.carbonEmissions.total,data.results.carbonEstimate');
+        if (co2 !== null && co2 !== undefined) {
+          metricType = 'co2Emissions';
+          value = Number(co2);
+        }
       }
     }
 
@@ -267,15 +278,28 @@ export class VSCodeDataProvider {
     }
 
     // Calculate project average for relative comparison
+    // Use schema-based discovery for all entries to ensure consistency
     const projectAverage = this.thresholdService.calculateProjectAverage(
       allEntriesForTool,
       metricType,
       (e) => {
-        if (toolName === 'carbonara-swd') {
-          return this.schemaService.extractValue(e, 'data.carbonEmissions.total');
-        } else if (toolName === 'deployment-scan') {
+        if (toolName === 'deployment-scan') {
           return this.schemaService.extractValue(e, 'data.deployments[*].carbon_intensity');
         }
+        
+        // Use schema-based discovery (same logic as above)
+        const toolSchema = this.schemaService.getToolSchema(toolName);
+        if (toolSchema?.display?.fields) {
+          const carbonField = toolSchema.display.fields.find(f => f.type === 'carbon');
+          if (carbonField) {
+            const co2 = this.schemaService.extractValue(e, carbonField.path);
+            if (co2 !== null && co2 !== undefined) {
+              return Number(co2);
+            }
+          }
+        }
+        
+        // Fallback to hardcoded paths
         return this.schemaService.extractValue(e, 'data.carbonEmissions.total,data.results.carbonEstimate');
       }
     );

@@ -198,9 +198,11 @@ suite("AssessmentDataContentProvider", () => {
     ok(content.includes("🧪"), "Should include emoji from entryTemplate");
     ok(content.includes("https://example.com"), "Should include URL from template");
     
-    // Should include details
-    ok(content.includes("🌐 URL"), "Should include field labels");
-    ok(content.includes("✅ Result"), "Should include result field");
+    // Should include details (emoji removed from labels in table)
+    ok(content.includes("URL"), "Should include URL field label");
+    ok(content.includes("Result"), "Should include result field label");
+    ok(content.includes("https://example.com"), "Should include URL value");
+    ok(content.includes("success"), "Should include result value");
     
     // Should include raw data section
     ok(content.includes("Raw Data"), "Should include raw data section");
@@ -219,9 +221,14 @@ suite("AssessmentDataContentProvider", () => {
     ok(content.includes("Total Entries"), "Should show total entries count");
     ok(content.includes("2"), "Should show correct count");
     
-    // Should list entries with templates
-    ok(content.includes("🧪"), "Should use entryTemplate for entries");
-    ok(content.includes("View Full Entry"), "Should include link to full entry");
+    // Should display entries in table format
+    ok(content.includes("|"), "Should include table structure");
+    ok(content.includes("---"), "Should include table separator");
+    // Should include table headers (normalized field names)
+    ok(content.includes("URL") || content.includes("url"), "Should include URL column header");
+    ok(content.includes("Result") || content.includes("result"), "Should include Result column header");
+    // Should include data values
+    ok(content.includes("https://example.com") || content.includes("https://example2.com"), "Should include URL values in table");
   });
 
   test("should handle entries without schema gracefully", async () => {

@@ -28,8 +28,9 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "colors": {
-      "carbonara.treeItemValueForeground": {
+    "colors": [
+      {
+        "id": "carbonara.treeItemValueForeground",
         "description": "Foreground color for values in Data & Results tree view",
         "defaults": {
           "dark": "#FFD700",
@@ -37,7 +38,7 @@
           "highContrast": "#FFD700"
         }
       }
-    },
+    ],
     "commands": [
       {
         "command": "carbonara.showMenu",
