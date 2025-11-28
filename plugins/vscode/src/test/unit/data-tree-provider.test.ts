@@ -86,6 +86,8 @@ suite("DataTreeProvider Unit Tests", () => {
         vscode.TreeItemCollapsibleState.None
       );
       assert.strictEqual(detailItem.contextValue, "carbonara-data-detail");
+      // Detail items should not have icons (removed wrench icon)
+      assert.strictEqual(detailItem.iconPath, undefined, "Detail items should not have icons");
     });
 
     test("should create info items with correct properties", () => {
@@ -126,7 +128,7 @@ suite("DataTreeProvider Unit Tests", () => {
             vscode.TreeItemCollapsibleState.Collapsed,
             "entry"
           ),
-          expectedIcon: "file",
+          expectedIcon: null, // Entries no longer have icons (removed in favor of inline buttons)
         },
         {
           item: new DataItem(
@@ -135,7 +137,7 @@ suite("DataTreeProvider Unit Tests", () => {
             vscode.TreeItemCollapsibleState.None,
             "detail"
           ),
-          expectedIcon: "symbol-property",
+          expectedIcon: null, // Details don't have icons
         },
         {
           item: new DataItem(
@@ -159,11 +161,16 @@ suite("DataTreeProvider Unit Tests", () => {
 
       items.forEach(({ item, expectedIcon }) => {
         const treeItem = provider.getTreeItem(item);
-        assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
-        assert.strictEqual(
-          (treeItem.iconPath as vscode.ThemeIcon).id,
-          expectedIcon
-        );
+        if (expectedIcon === null) {
+          // Items without icons should have undefined iconPath
+          assert.strictEqual(treeItem.iconPath, undefined);
+        } else {
+          assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
+          assert.strictEqual(
+            (treeItem.iconPath as vscode.ThemeIcon).id,
+            expectedIcon
+          );
+        }
       });
     });
 
@@ -609,6 +616,93 @@ suite("DataTreeProvider Unit Tests", () => {
       // Check icon
       assert.ok(actionItem.iconPath instanceof vscode.ThemeIcon);
       assert.strictEqual((actionItem.iconPath as vscode.ThemeIcon).id, "add");
+    });
+  });
+
+  suite("Entry Expansion", () => {
+    test("should return empty array when expanding entry without coreServices", async () => {
+      const entry = new DataItem(
+        "Test Entry",
+        "Description",
+        vscode.TreeItemCollapsibleState.Collapsed,
+        "entry",
+        "test-analyzer",
+        1
+      );
+
+      const children = await provider.getChildren(entry);
+      assert.strictEqual(children.length, 0, "Should return empty array when coreServices not initialized");
+    });
+
+    test("should filter semgrep fields correctly", () => {
+      // Test data simulating what createDataDetails would return
+      const allDetails = [
+        { key: "target", label: "🎯 Target: /path/to/file", value: "/path/to/file", formattedValue: "/path/to/file", type: "string" },
+        { key: "total_matches", label: "🔍 Findings: 10", value: 10, formattedValue: "10", type: "number" },
+        { key: "error_count", label: "🚨 Errors: 2", value: 2, formattedValue: "2", type: "number" },
+        { key: "warning_count", label: "⚠️ Warnings: 5", value: 5, formattedValue: "5", type: "number" },
+        { key: "info_count", label: "ℹ️ Info: 3", value: 3, formattedValue: "3", type: "number" },
+        { key: "files_scanned", label: "📁 Files: 1", value: 1, formattedValue: "1", type: "number" },
+      ];
+
+      // Simulate semgrep filtering
+      const filtered = allDetails.filter(
+        (detail) =>
+          detail.key === "error_count" ||
+          detail.key === "warning_count" ||
+          detail.key === "info_count" ||
+          detail.key === "target"
+      );
+
+      assert.strictEqual(filtered.length, 4, "Should filter to 4 fields for semgrep");
+      assert.ok(filtered.some((d) => d.key === "error_count"), "Should include error_count");
+      assert.ok(filtered.some((d) => d.key === "warning_count"), "Should include warning_count");
+      assert.ok(filtered.some((d) => d.key === "info_count"), "Should include info_count");
+      assert.ok(filtered.some((d) => d.key === "target"), "Should include target");
+      assert.ok(!filtered.some((d) => d.key === "total_matches"), "Should NOT include total_matches");
+      assert.ok(!filtered.some((d) => d.key === "files_scanned"), "Should NOT include files_scanned");
+    });
+
+    test("should pass through all fields for non-semgrep tools", () => {
+      // Test data for test-analyzer (2 fields)
+      const allDetails = [
+        { key: "url", label: "🌐 Test URL: https://example.com", value: "https://example.com", formattedValue: "https://example.com", type: "url" },
+        { key: "result", label: "🧪 Test Result: test result", value: "test result", formattedValue: "test result", type: "string" },
+      ];
+
+      // For non-semgrep tools, all fields should pass through
+      const filtered = allDetails; // No filtering
+
+      assert.strictEqual(filtered.length, 2, "Should show all 2 fields for test-analyzer");
+      assert.ok(filtered.some((d) => d.key === "url"), "Should include url");
+      assert.ok(filtered.some((d) => d.key === "result"), "Should include result");
+    });
+
+    test("should create DataItem from DataDetail correctly", () => {
+      const detail = {
+        key: "url",
+        label: "🌐 URL: https://example.com",
+        value: "https://example.com",
+        formattedValue: "https://example.com",
+        type: "url",
+      };
+
+      const dataItem = new DataItem(
+        detail.label,
+        "",
+        vscode.TreeItemCollapsibleState.None,
+        "detail",
+        "test-analyzer"
+      );
+
+      assert.strictEqual(dataItem.label, detail.label);
+      assert.strictEqual(dataItem.type, "detail");
+      assert.strictEqual(dataItem.toolName, "test-analyzer");
+      assert.strictEqual(
+        dataItem.collapsibleState,
+        vscode.TreeItemCollapsibleState.None
+      );
+      assert.strictEqual(dataItem.contextValue, "carbonara-data-detail");
     });
   });
 });

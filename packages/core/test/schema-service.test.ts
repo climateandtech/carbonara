@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SchemaService } from '../src/schema-service.js';
+import { SchemaService, normalizeFieldLabel } from '../src/schema-service.js';
 
 describe('SchemaService', () => {
   let schemaService: SchemaService;
@@ -97,6 +97,77 @@ describe('SchemaService', () => {
       expect(schemaService.extractValue(data, 'data.undefinedValue')).toBeNull();
       expect(schemaService.extractValue(data, 'data.emptyString')).toBe('');
     });
+
+    it('should handle bracket notation for array indices', () => {
+      const data = {
+        data: {
+          tree: {
+            children: {
+              child: {
+                outputs: [
+                  {
+                    'estimated-carbon': 0.05,
+                    'network-bytes': 353499
+                  }
+                ]
+              }
+            }
+          }
+        }
+      };
+
+      expect(schemaService.extractValue(data, 'data.tree.children.child.outputs[0].estimated-carbon')).toBe(0.05);
+      expect(schemaService.extractValue(data, "data.tree.children.child.outputs[0]['estimated-carbon']")).toBe(0.05);
+      expect(schemaService.extractValue(data, 'data.tree.children.child.outputs[0].network-bytes')).toBe(353499);
+      expect(schemaService.extractValue(data, "data.tree.children.child.outputs[0]['network-bytes']")).toBe(353499);
+    });
+
+    it('should handle bracket notation with fallback paths', () => {
+      const data = {
+        data: {
+          tree: {
+            children: {
+              child: {
+                outputs: [
+                  {
+                    'estimated-carbon': 0.05
+                  }
+                ]
+              }
+            }
+          }
+        }
+      };
+
+      // Try operational-carbon first (doesn't exist), then estimated-carbon (exists)
+      const result = schemaService.extractValue(
+        data,
+        "data.tree.children.child.outputs[0].operational-carbon,data.tree.children.child.outputs[0].estimated-carbon"
+      );
+      expect(result).toBe(0.05);
+    });
+
+    it('should handle keys with slashes in bracket notation', () => {
+      const data = {
+        data: {
+          tree: {
+            children: {
+              child: {
+                outputs: [
+                  {
+                    'network/data/bytes': 353499,
+                    'estimated-carbon': 0.05
+                  }
+                ]
+              }
+            }
+          }
+        }
+      };
+
+      expect(schemaService.extractValue(data, "data.tree.children.child.outputs[0]['network/data/bytes']")).toBe(353499);
+      expect(schemaService.extractValue(data, "data.tree.children.child.outputs[0]['estimated-carbon']")).toBe(0.05);
+    });
   });
 
   describe('Data Formatting', () => {
@@ -112,13 +183,17 @@ describe('SchemaService', () => {
     });
 
     it('should format carbon values correctly', () => {
+      // Values are rounded to 3 decimal places for display
       expect(schemaService.formatValue(0.245, 'carbon')).toBe('0.245g');
       expect(schemaService.formatValue(1.5, 'carbon')).toBe('1.5g');
+      expect(schemaService.formatValue(0.03288727026638046, 'carbon')).toBe('0.033g');
     });
 
     it('should format energy values correctly', () => {
-      expect(schemaService.formatValue(0.0012, 'energy')).toBe('0.0012 kWh');
+      // Values are rounded to 3 decimal places for display
+      expect(schemaService.formatValue(0.0012, 'energy')).toBe('0.001 kWh');
       expect(schemaService.formatValue(2.5, 'energy')).toBe('2.5 kWh');
+      expect(schemaService.formatValue(0.000075, 'energy')).toBe('0 kWh');
     });
 
     it('should use custom format templates', () => {
@@ -153,6 +228,40 @@ describe('SchemaService', () => {
         expect(field.path).toBeTruthy();
         expect(field.type).toBeTruthy();
       });
+    });
+  });
+
+  describe('Field Name Normalization', () => {
+    it('should normalize CO2 field names to "CO2 Emissions"', () => {
+      expect(normalizeFieldLabel('CO2 Estimate')).toBe('CO2 Emissions');
+      expect(normalizeFieldLabel('CO2 Emissions')).toBe('CO2 Emissions');
+      expect(normalizeFieldLabel('Carbon Estimate')).toBe('CO2 Emissions');
+      expect(normalizeFieldLabel('carbonEstimate')).toBe('CO2 Emissions');
+      expect(normalizeFieldLabel('estimated-carbon')).toBe('CO2 Emissions');
+    });
+
+    it('should normalize energy field names to "Energy"', () => {
+      expect(normalizeFieldLabel('Energy')).toBe('Energy');
+      expect(normalizeFieldLabel('Energy Usage')).toBe('Energy');
+      expect(normalizeFieldLabel('energyEstimate')).toBe('Energy');
+    });
+
+    it('should normalize data transfer field names to "Data Transfer"', () => {
+      expect(normalizeFieldLabel('Data Transfer')).toBe('Data Transfer');
+      expect(normalizeFieldLabel('networkBytes')).toBe('Data Transfer');
+      expect(normalizeFieldLabel('network-bytes')).toBe('Data Transfer');
+      expect(normalizeFieldLabel('totalBytes')).toBe('Data Transfer');
+    });
+
+    it('should normalize time field names to "Load Time"', () => {
+      expect(normalizeFieldLabel('Load Time')).toBe('Load Time');
+      expect(normalizeFieldLabel('loadTime')).toBe('Load Time');
+      expect(normalizeFieldLabel('Duration')).toBe('Load Time');
+    });
+
+    it('should return original label if no mapping exists', () => {
+      expect(normalizeFieldLabel('Custom Field')).toBe('Custom Field');
+      expect(normalizeFieldLabel('Unknown Field Name')).toBe('Unknown Field Name');
     });
   });
 });

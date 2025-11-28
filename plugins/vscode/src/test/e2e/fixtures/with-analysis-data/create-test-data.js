@@ -136,6 +136,72 @@ fs.mkdirSync(carbonaraDir, { recursive: true });
     }
   })]);
 
+  // Insert if-webpage-scan data (real structure from Impact Framework)
+  db.run(`
+    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
+    VALUES (1, 'if-webpage-scan', 'web-analysis', ?, 'test', '2025-01-15T12:00:00.000Z')
+  `, [JSON.stringify({
+    url: 'https://climateandtech.com',
+    raw_results: JSON.stringify({
+      name: 'webpage-carbon-scan',
+      description: 'Webpage carbon impact analysis',
+      execution: { status: 'success' },
+      tree: {
+        children: {
+          child: {
+            outputs: [{
+              'estimated-carbon': 0.05,
+              'network/data/bytes': 353499,
+              url: 'https://climateandtech.com',
+              timestamp: '2025-01-15T12:00:00.000Z'
+            }]
+          }
+        }
+      }
+    }),
+    timestamp: '2025-01-15T12:00:00.000Z',
+    tool: 'if-webpage-scan',
+    data: {
+      url: 'https://climateandtech.com',
+      name: 'webpage-carbon-scan',
+      description: 'Webpage carbon impact analysis',
+      tree: {
+        children: {
+          child: {
+            outputs: [{
+              'estimated-carbon': 0.05,
+              'network/data/bytes': 353499,
+              url: 'https://climateandtech.com',
+              timestamp: '2025-01-15T12:00:00.000Z'
+            }]
+          }
+        }
+      }
+    }
+  })]);
+
+  // Insert carbonara-swd data (real structure)
+  db.run(`
+    INSERT INTO assessment_data (project_id, tool_name, data_type, data, source, timestamp)
+    VALUES (1, 'carbonara-swd', 'web-analysis', ?, 'test', '2025-01-15T12:30:00.000Z')
+  `, [JSON.stringify({
+    url: 'https://example.com',
+    totalBytes: 524288,
+    carbonEmissions: {
+      total: 0.028,
+      networkTransfer: 0.015,
+      deviceUsage: 0.010,
+      datacenterUsage: 0.003
+    },
+    energyUsage: {
+      total: 0.000075
+    },
+    metadata: {
+      loadTime: 42436,
+      resourceCount: 23
+    }
+  })]);
+
   console.log('✅ Test database created with sample analysis data');
 
   // Save database to file
