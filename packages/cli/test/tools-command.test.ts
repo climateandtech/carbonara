@@ -9,6 +9,53 @@ vi.mock('execa', () => ({
   execa: vi.fn()
 }));
 
+// Mock @carbonara/core's checkPrerequisites to use our mocked execaCommand
+vi.mock('@carbonara/core', async () => {
+  const actual = await vi.importActual<typeof import('@carbonara/core')>('@carbonara/core');
+  const { execaCommand } = await import('execa');
+  
+  return {
+    ...actual,
+    // Override checkPrerequisites to use mocked execaCommand
+    checkPrerequisites: async (prerequisites: any[]) => {
+      const results = await Promise.all(
+        prerequisites.map(async (prereq) => {
+          const result = await execaCommand(prereq.checkCommand, {
+            stdio: 'pipe',
+            timeout: 5000,
+            reject: false,
+            shell: true
+          } as any);
+          
+          const available = result.exitCode !== 127 && 
+            (!prereq.expectedOutput || (result.stdout && result.stdout.includes(prereq.expectedOutput))) &&
+            result.exitCode === 0;
+          
+          return {
+            prerequisite: prereq,
+            result: {
+              available,
+              error: available ? undefined : prereq.errorMessage
+            }
+          };
+        })
+      );
+      
+      const missing = results
+        .filter(({ result }) => !result.available)
+        .map(({ prerequisite, result }) => ({
+          prerequisite,
+          error: result.error || 'Prerequisite not available'
+        }));
+      
+      return {
+        allAvailable: missing.length === 0,
+        missing
+      };
+    }
+  };
+});
+
 describe('Tools Command - Prerequisites Checking', () => {
   let mockExecaCommand: ReturnType<typeof vi.fn>;
   

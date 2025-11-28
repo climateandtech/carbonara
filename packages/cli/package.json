@@ -12,6 +12,7 @@
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",
+    "test:no-e2e": "vitest run --exclude '**/e2e/**' --exclude '**/*e2e*.test.ts' --exclude '**/*e2e*.test.js'",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
   },
