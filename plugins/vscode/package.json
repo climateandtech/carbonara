@@ -1,9 +1,9 @@
 {
   "name": "carbonara-vscode",
   "displayName": "Carbonara",
-  "description": "Multi-Editor Plugin Architecture client for VS Code",
+  "description": "Helps you understand and reduce the carbon footprint of your software projects.",
   "version": "0.1.0",
-  "publisher": "carbonara",
+  "publisher": "climateandtech",
   "icon": "icon.png",
   "repository": {
     "type": "git",
@@ -14,14 +14,16 @@
     "vscode": "^1.76.0"
   },
   "categories": [
-    "Other",
-    "Programming Languages",
-    "Linters"
+    "Carbon Tracking",
+    "Green Software"
   ],
   "keywords": [
-    "rpc",
-    "plugin",
-    "multi-editor"
+    "Sustainability",
+    "Carbon Reduction",
+    "Climate Tech",
+    "Carbon Footprint",
+    "Green Software"
+
   ],
   "activationEvents": [
     "onStartupFinished"
