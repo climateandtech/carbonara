@@ -34,5 +34,9 @@
     "node": ">=24.9.0",
     "npm": ">=11.6.0"
   },
-  "license": "AGPL-3.0-or-later"
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "@grnsft/if": "^1.1.0",
+    "@tngtech/if-webpage-plugins": "^1.0.5"
+  }
 }

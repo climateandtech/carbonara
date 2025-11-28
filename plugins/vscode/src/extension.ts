@@ -23,6 +23,7 @@ import {
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import { DeploymentsTreeProvider } from "./deployments-tree-provider";
 import { WelcomeTreeProvider } from "./welcome-tree-provider";
+import { ToolInstallationProvider } from "./tool-installation-provider";
 import {
   initializeSemgrep,
   ensureDatabaseInitialized,
@@ -103,6 +104,33 @@ export async function activate(context: vscode.ExtensionContext) {
     deploymentsTreeProvider
   );
   console.log("✅ All tree providers registered");
+
+  // Register virtual document provider for tool installation instructions
+  const toolInstallationProvider = new ToolInstallationProvider();
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      ToolInstallationProvider.SCHEME,
+      toolInstallationProvider
+    )
+  );
+  console.log("✅ Tool installation provider registered");
+
+  // Check Playwright browsers in background (non-blocking)
+  // Browsers will be auto-installed on-demand when needed
+  (async () => {
+    try {
+      const { arePlaywrightBrowsersInstalled } = await import("./utils/browser-setup.js");
+      const installed = await arePlaywrightBrowsersInstalled();
+      if (!installed) {
+        console.log("ℹ️  Playwright browsers not installed. Will install on-demand when needed.");
+      } else {
+        console.log("✅ Playwright browsers are installed.");
+      }
+    } catch (error) {
+      // Silently fail - browsers will be installed on-demand
+      console.log("ℹ️  Playwright setup check skipped:", error);
+    }
+  })();
 
   // Register decoration provider for Semgrep findings
   const semgrepDecorationProvider = new SemgrepFindingDecorationProvider();
@@ -191,15 +219,107 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("carbonara.installCli", installCli),
     vscode.commands.registerCommand("carbonara.viewTools", viewTools),
-    vscode.commands.registerCommand("carbonara.refreshTools", () =>
-      toolsTreeProvider.refresh()
-    ),
-    vscode.commands.registerCommand("carbonara.installTool", (toolId) =>
-      toolsTreeProvider.installTool(toolId)
-    ),
-    vscode.commands.registerCommand("carbonara.analyzeTool", (toolId) =>
-      toolsTreeProvider.analyzeTool(toolId)
-    ),
+    vscode.commands.registerCommand("carbonara.refreshTools", async () => {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Refreshing analysis tools...",
+          cancellable: false,
+        },
+        async () => {
+          try {
+            await toolsTreeProvider.refreshAsync();
+            vscode.window.showInformationMessage("Analysis tools refreshed successfully");
+          } catch (error: any) {
+            vscode.window.showErrorMessage(
+              `Failed to refresh tools: ${error.message || error}`
+            );
+          }
+        }
+      );
+    }),
+    vscode.commands.registerCommand("carbonara.installTool", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.installTool(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.showToolInstallation", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.showToolInstallation(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.analyzeTool", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.analyzeTool(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.setCustomExecutionCommand", async (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      
+      const tool = toolsTreeProvider.getTool(toolId);
+      if (!tool) {
+        vscode.window.showErrorMessage("Tool not found");
+        return;
+      }
+      
+      // Get workspace folder
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        vscode.window.showErrorMessage("Please open a workspace folder first");
+        return;
+      }
+      
+      // Show input box for custom command
+      const customCommand = await vscode.window.showInputBox({
+        prompt: `Enter custom execution command for ${tool.name}`,
+        placeHolder: "e.g., npx greenframe analyze",
+        value: tool.command || "",
+        validateInput: (value) => {
+          if (!value || value.trim().length === 0) {
+            return "Command cannot be empty";
+          }
+          return undefined;
+        },
+      });
+      
+      if (!customCommand) {
+        return;
+      }
+      
+      try {
+        // Import and use the config utility
+        const { setCustomExecutionCommand } = await import("@carbonara/cli/dist/utils/config.js");
+        await setCustomExecutionCommand(toolId, customCommand.trim(), workspaceFolder.uri.fsPath);
+        
+        vscode.window.showInformationMessage(
+          `✅ Custom execution command set for ${tool.name}. The tool will now use this command when running.`
+        );
+        
+        // Refresh tools tree to update status
+        await toolsTreeProvider.refreshAsync();
+      } catch (error: any) {
+        vscode.window.showErrorMessage(
+          `Failed to set custom execution command: ${error.message}`
+        );
+      }
+    }),
     vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
     vscode.commands.registerCommand("carbonara.scanAllFiles", scanAllFiles),
     vscode.commands.registerCommand(

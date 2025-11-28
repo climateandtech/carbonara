@@ -17,6 +17,24 @@ interface AnalyzeOptions {
 }
 
 export async function analyzeCommand(toolId: string | undefined, url: string | undefined, options: AnalyzeOptions, command: Command) {
+  // Commander.js passes options as a parameter, but command.opts() is the reliable source
+  // However, for boolean flags, we need to check both sources
+  // The options parameter might have boolean flags that command.opts() doesn't show when false
+  const optsFromCommand = command.opts() as any;
+  const optsFromParam = options || {};
+  
+  // Commander.js v14: boolean flags only appear in opts() when they're true
+  // If the flag is not provided, it won't appear at all (not even as false)
+  // So we need to check if the flag exists in either source
+  const opts: AnalyzeOptions = {
+    output: optsFromCommand.output || optsFromParam.output || 'table',
+    timeout: optsFromCommand.timeout || optsFromParam.timeout || '30000',
+    // For boolean flags: check if 'save' property exists (truthy) in either source
+    // In Commander.js, if --save is passed, it will be true in opts()
+    // If not passed, the property won't exist at all
+    save: !!(optsFromCommand.save || optsFromParam.save)
+  };
+  
   if (!toolId) {
     command.help();
     return;
@@ -93,29 +111,29 @@ export async function analyzeCommand(toolId: string | undefined, url: string | u
     let results: any;
 
     if (toolId === 'deployment-scan') {
-      results = await runDeploymentScan(url || '.', options, tool);
+      results = await runDeploymentScan(url || '.', opts, tool);
     } else if (toolId === 'test-analyzer') {
-      results = await runTestAnalyzer(url!, options, tool);
+      results = await runTestAnalyzer(url!, opts, tool);
     } else if (toolId === 'carbonara-swd') {
-      results = await runCarbonaraSWD(url!, options, tool);
+      results = await runCarbonaraSWD(url!, opts, tool);
     } else if (toolId.startsWith('if-')) {
-      results = await runImpactFramework(url!, options, tool);
+      results = await runImpactFramework(url!, opts, tool);
     } else {
-      results = await runGenericTool(url!, options, tool);
+      results = await runGenericTool(url!, opts, tool);
     }
 
     spinner.succeed(`${tool.name} analysis completed!`);
 
     // Display results
-    displayResults(results, tool, options.output);
+    displayResults(results, tool, opts.output || 'table');
 
     // Save to database if requested (skip for deployment-scan as it saves directly)
-    console.log(chalk.blue(`\n💾 Save option: ${options.save}, toolId: ${toolId}`));
-    if (options.save && toolId !== 'deployment-scan') {
+    console.log(chalk.blue(`\n💾 Save option: ${opts.save}, toolId: ${toolId}`));
+    if (opts.save && toolId !== 'deployment-scan') {
       console.log(chalk.blue(`\n💾 Calling saveToDatabase for ${toolId}...`));
       await saveToDatabase(toolId, url!, results);
     } else {
-      if (!options.save) {
+      if (!opts.save) {
         console.log(chalk.yellow(`\n⚠️  --save flag not set, skipping database save`));
       } else if (toolId === 'deployment-scan') {
         console.log(chalk.blue(`\n💾 Deployment scan saves directly, skipping saveToDatabase`));
@@ -306,21 +324,120 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   // Create manifest from template with placeholder replacement
   const manifest = JSON.parse(JSON.stringify(tool.manifestTemplate)); // Deep clone
   
-  // Replace placeholders in manifest with intelligent defaults from assessment data
+  // Build parameter values from tools.json configuration
+  const parameterValues: Record<string, any> = {};
+  
+  // 1. Get values from options (user-provided)
+  if (tool.parameters) {
+    for (const param of tool.parameters) {
+      // Ensure placeholder has braces
+      let placeholder = param.placeholder || `{${param.name}}`;
+      if (!placeholder.startsWith('{') || !placeholder.endsWith('}')) {
+        placeholder = `{${placeholder}}`;
+      }
+      
+      const optionValue = options[param.name];
+      const defaultValue = param.default ?? tool.parameterDefaults?.[param.name];
+      
+      // Get value from options, co2Variables, or default
+      let value: any;
+      if (optionValue !== undefined) {
+        value = optionValue;
+      } else if (co2Variables.monitoringConfig?.[param.name] !== undefined) {
+        value = co2Variables.monitoringConfig[param.name];
+      } else {
+        value = defaultValue;
+      }
+      
+      // Convert type if needed
+      if (param.type === 'boolean' && typeof value === 'string') {
+        value = value === 'true';
+      } else if (param.type === 'number' && typeof value === 'string') {
+        value = parseFloat(value);
+      }
+      
+      parameterValues[placeholder] = value;
+    }
+  }
+  
+  // 2. Handle parameter mappings (derived values)
+  if (tool.parameterMappings) {
+    for (const [mappedName, mapping] of Object.entries(tool.parameterMappings)) {
+      // Type guard for mapping
+      const mappingObj = mapping as { source?: string; transform?: string; type?: 'string' | 'number' | 'boolean' };
+      
+      // Ensure placeholder has braces
+      let placeholder = `{${mappedName}}`;
+      
+      if (mappingObj.transform && mappingObj.source) {
+        // Get source value - find the source parameter's placeholder
+        const sourceParam = tool.parameters?.find(p => p.name === mappingObj.source);
+        let sourcePlaceholder = sourceParam?.placeholder || `{${mappingObj.source}}`;
+        // Ensure source placeholder has braces
+        if (!sourcePlaceholder.startsWith('{') || !sourcePlaceholder.endsWith('}')) {
+          sourcePlaceholder = `{${sourcePlaceholder}}`;
+        }
+        const sourceValue = parameterValues[sourcePlaceholder];
+        
+        if (sourceValue !== undefined) {
+          // Apply transform (e.g., "1 - {source}")
+          // Replace {source} placeholder in transform expression with actual value
+          let transformExpr = mappingObj.transform;
+          // Replace {source} with the actual value
+          transformExpr = transformExpr.replace(/{source}/g, String(sourceValue));
+          // Also replace the parameter name placeholder if present
+          transformExpr = transformExpr.replace(new RegExp(`{${mappingObj.source}}`, 'g'), String(sourceValue));
+          
+          try {
+            // Simple evaluation for basic math expressions
+            const value = Function(`"use strict"; return (${transformExpr})`)();
+            // Ensure correct type based on mapping type
+            if (mappingObj.type === 'number') {
+              parameterValues[placeholder] = Number(value);
+            } else if (mappingObj.type === 'boolean') {
+              parameterValues[placeholder] = Boolean(value);
+            } else {
+              parameterValues[placeholder] = value;
+            }
+          } catch (error) {
+            // Fallback to string replacement if eval fails
+            console.log(chalk.yellow(`⚠️  Transform evaluation failed for ${mappedName}: ${error}`));
+            parameterValues[placeholder] = transformExpr;
+          }
+        }
+      }
+    }
+  }
+  
+  // 3. Add common placeholders
+  parameterValues['{url}'] = url;
+  parameterValues['{testCommand}'] = options.testCommand ?? co2Variables.monitoringConfig?.e2eTestCommand ?? 'npm test';
+  
+  // Replace placeholders in manifest
   const replacePlaceholders = (obj: any): any => {
     if (typeof obj === 'string') {
-      return obj
-        .replace('{url}', url)
-        .replace('{scrollToBottom}', (options.scrollToBottom ?? co2Variables.monitoringConfig?.scrollToBottom ?? false).toString())
-        .replace('{firstVisitPercentage}', (options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9).toString())
-        .replace('{returnVisitPercentage}', (1 - (options.firstVisitPercentage ?? co2Variables.monitoringConfig?.firstVisitPercentage ?? 0.9)).toString())
-        .replace('{testCommand}', (options.testCommand ?? co2Variables.monitoringConfig?.e2eTestCommand ?? 'npm test').toString());
+      // Check if it's an exact placeholder match (preserve type)
+      if (parameterValues.hasOwnProperty(obj)) {
+        return parameterValues[obj];
+      }
+      // Otherwise do string replacement for placeholders within strings
+      let result = obj;
+      for (const [placeholder, value] of Object.entries(parameterValues)) {
+        result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), String(value));
+      }
+      return result;
     } else if (Array.isArray(obj)) {
       return obj.map(replacePlaceholders);
     } else if (obj && typeof obj === 'object') {
       const result: any = {};
       for (const [key, value] of Object.entries(obj)) {
-        result[key] = replacePlaceholders(value);
+        // Handle exact placeholder matches first (for type preservation)
+        // Check if value is a string that exactly matches a placeholder
+        if (typeof value === 'string' && parameterValues.hasOwnProperty(value)) {
+          result[key] = parameterValues[value];
+        } else {
+          result[key] = replacePlaceholders(value);
+        }
       }
       return result;
     }
@@ -328,6 +445,7 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
   };
 
   const processedManifest = replacePlaceholders(manifest);
+
 
   // Update hardware defaults with assessment data if available
   if (processedManifest.tree?.children?.child?.defaults) {
@@ -351,60 +469,115 @@ async function runImpactFramework(url: string, options: AnalyzeOptions, tool: An
     }
   }
 
-  const manifestPath = path.join(tempDir, 'manifest.yml');
-  const outputPath = path.join(tempDir, 'output.yml');
+  // Determine file extensions based on output format
+  const outputFormat = tool.command.outputFormat || 'yaml';
+  const manifestExt = outputFormat === 'yaml' ? 'yml' : outputFormat;
+  const outputExt = outputFormat === 'yaml' ? 'yaml' : outputFormat; // Some tools use .yaml, some .yml
   
-  fs.writeFileSync(manifestPath, yaml.dump(processedManifest));
+  const manifestPath = path.join(tempDir, `manifest.${manifestExt}`);
+  const outputPath = path.join(tempDir, `output.${outputExt}`);
+  
+  // Write manifest file
+  if (outputFormat === 'yaml') {
+    fs.writeFileSync(manifestPath, yaml.dump(processedManifest));
+  } else if (outputFormat === 'json') {
+    fs.writeFileSync(manifestPath, JSON.stringify(processedManifest, null, 2));
+  } else {
+    throw new Error(`Unsupported output format: ${outputFormat}`);
+  }
 
-  // Run Impact Framework analysis
-  let ifRunResult;
+  // Replace placeholders in command args using tool's command configuration
+  const args = tool.command.args.map(arg => {
+    return arg
+      .replace('{manifest}', manifestPath)
+      .replace('{output}', outputPath)
+      .replace('{url}', url);
+  });
+
+  // Execute command using tool's configuration
+  let commandResult;
   try {
-    ifRunResult = await execa('if-run', [
-      '--manifest', manifestPath,
-      '--output', outputPath
-    ], {
+    commandResult = await execa(tool.command.executable, args, {
       stdio: 'pipe',
       reject: false // Don't throw on non-zero exit, we'll check the output file
     });
   } catch (error: any) {
-    // If execa throws, capture what we can
     const errorMessage = error.message || String(error);
     const stdout = error.stdout?.toString() || '';
     const stderr = error.stderr?.toString() || '';
     throw new Error(
-      `Failed to run if-run: ${errorMessage}\n` +
-      (stdout ? `if-run stdout: ${stdout}\n` : '') +
-      (stderr ? `if-run stderr: ${stderr}` : '')
+      `Failed to run ${tool.command.executable}: ${errorMessage}\n` +
+      (stdout ? `stdout: ${stdout}\n` : '') +
+      (stderr ? `stderr: ${stderr}` : '')
     );
   }
 
-  // Check if output file exists
-  if (!fs.existsSync(outputPath)) {
-    const exitCode = ifRunResult.exitCode || 0;
-    const stdout = ifRunResult.stdout?.toString() || '';
-    const stderr = ifRunResult.stderr?.toString() || '';
-    throw new Error(
-      `Output file not created at ${outputPath}\n` +
-      `if-run exit code: ${exitCode}\n` +
-      (stdout ? `if-run stdout: ${stdout}\n` : '') +
-      (stderr ? `if-run stderr: ${stderr}` : '')
-    );
-  }
-
-  // Parse results and convert to JSON
-  const outputContent = fs.readFileSync(outputPath, 'utf8');
-  const yamlResults = yaml.load(outputContent) as any;
+  // Log command output for debugging
+  const exitCode = commandResult.exitCode || 0;
+  const stdout = commandResult.stdout?.toString() || '';
+  const stderr = commandResult.stderr?.toString() || '';
   
-  // Add URL to results for database storage
+  if (stdout) {
+    console.log(chalk.gray(`\n${tool.command.executable} stdout:\n${stdout}`));
+  }
+  if (stderr) {
+    console.log(chalk.yellow(`\n${tool.command.executable} stderr:\n${stderr}`));
+  }
+
+  // Check if output file exists (try both .yaml and .yml for yaml format)
+  let finalOutputPath = outputPath;
+  if (!fs.existsSync(finalOutputPath) && outputFormat === 'yaml') {
+    // Try alternative extension
+    const altPath = outputPath.replace('.yaml', '.yml');
+    if (fs.existsSync(altPath)) {
+      finalOutputPath = altPath;
+      console.log(chalk.blue(`\n✅ Found output at alternative path: ${altPath}`));
+    }
+  }
+
+  if (!fs.existsSync(finalOutputPath)) {
+    console.log(chalk.yellow(`\n⚠️  Output file not found at ${finalOutputPath}`));
+    console.log(chalk.gray(`${tool.command.executable} exit code: ${exitCode}`));
+    throw new Error(
+      `Output file not created at ${finalOutputPath}\n` +
+      `${tool.command.executable} exit code: ${exitCode}\n` +
+      (stdout ? `stdout: ${stdout}\n` : '') +
+      (stderr ? `stderr: ${stderr}` : '')
+    );
+  }
+
+  // Read raw output content
+  const outputContent = fs.readFileSync(finalOutputPath, 'utf8');
+  
+  // Parse results for display and processing
+  let parsedResults: any;
+  if (outputFormat === 'json') {
+    parsedResults = JSON.parse(outputContent);
+  } else if (outputFormat === 'yaml') {
+    parsedResults = yaml.load(outputContent);
+  } else {
+    parsedResults = { output: outputContent };
+  }
+  
+  // Structure results for display and database
+  // Wrap in 'data' key to match tools.json path structure (data.tree.children...)
   const results = {
     url: url,
     timestamp: new Date().toISOString(),
     tool: tool.id,
-    ...yamlResults
+    // Store raw output as JSON string for database (convert YAML to JSON)
+    raw_results: outputFormat === 'yaml' ? JSON.stringify(parsedResults, null, 2) : outputContent,
+    // Parsed data for display and querying
+    data: {
+      url: url,
+      ...parsedResults
+    },
+    // Also keep parsed at top level for backward compatibility
+    ...parsedResults
   };
   
-  // Cleanup
-  fs.rmSync(tempDir, { recursive: true, force: true });
+  // Don't cleanup immediately - keep files for debugging if needed
+  // fs.rmSync(tempDir, { recursive: true, force: true });
   
   return results;
 }
@@ -534,26 +707,63 @@ function displayImpactFrameworkResults(results: any, tool: AnalysisTool) {
 }
 
 // Helper function to extract values from nested object paths
+// Handles paths like "data.tree.children.child.outputs[0]['estimated-carbon']" or "data.tree.children.child.outputs[0]['network/data/bytes']"
 function extractValueFromPath(obj: any, path: string): any {
-  const parts = path.split('.');
-  let current = obj;
+  // Split by dots, but preserve bracket expressions
+  const parts: string[] = [];
+  let current = '';
+  let inBrackets = false;
   
-  for (const part of parts) {
-    if (part.includes('[') && part.includes(']')) {
-      // Handle array access like "outputs[0]"
-      const [key, indexStr] = part.split('[');
-      const index = parseInt(indexStr.replace(']', ''));
-      current = current?.[key]?.[index];
+  for (let i = 0; i < path.length; i++) {
+    const char = path[i];
+    if (char === '[') {
+      if (current) {
+        parts.push(current);
+        current = '';
+      }
+      inBrackets = true;
+      current += char;
+    } else if (char === ']') {
+      current += char;
+      parts.push(current);
+      current = '';
+      inBrackets = false;
+    } else if (char === '.' && !inBrackets) {
+      if (current) {
+        parts.push(current);
+        current = '';
+      }
     } else {
-      current = current?.[part];
+      current += char;
+    }
+  }
+  if (current) {
+    parts.push(current);
+  }
+  
+  let result = obj;
+  for (const part of parts) {
+    if (part.startsWith('[') && part.endsWith(']')) {
+      // Handle bracket notation: [0] or ['key'] or ["key"] or ['network/data/bytes']
+      const content = part.slice(1, -1);
+      if (/^\d+$/.test(content)) {
+        // Numeric index
+        result = result?.[parseInt(content)];
+      } else {
+        // String key - remove quotes (handles keys with slashes like 'network/data/bytes')
+        const key = content.replace(/^['"]|['"]$/g, '');
+        result = result?.[key];
+      }
+    } else {
+      result = result?.[part];
     }
     
-    if (current === null || current === undefined) {
+    if (result === null || result === undefined) {
       return null;
     }
   }
   
-  return current;
+  return result;
 }
 
 // Helper function to format field values
@@ -689,12 +899,21 @@ async function saveToDatabase(toolId: string, url: string, results: any) {
       console.log(chalk.green(`✅ Created project with ID: ${projectId}`));
     }
 
+    // Store assessment data
+    // Structure: raw_results (original output as JSON) + processed data (spread)
+    // For IF tools: raw_results contains the original YAML converted to JSON
+    // For other tools: raw_results contains JSON.stringify(results)
+    const rawResults = results.raw_results || JSON.stringify(results, null, 2);
+    
+    // Remove raw_results from spread to avoid duplication
+    const { raw_results: _, ...processedData } = results;
+    
     const assessmentData = {
       url: url,
-      raw_results: JSON.stringify(results),
+      raw_results: rawResults, // Store raw output as JSON string
       timestamp: new Date().toISOString(),
-      // Extract commonly needed fields for schema templates
-      ...results  // Spread the results to make fields directly accessible
+      // Spread processed data for easy access (without raw_results to avoid duplication)
+      ...processedData
     };
 
     await dataLake.storeAssessmentData(projectId, toolId, 'web-analysis', assessmentData, url);

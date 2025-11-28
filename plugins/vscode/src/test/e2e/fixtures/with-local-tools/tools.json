@@ -1,0 +1,75 @@
+{
+  "tools": [
+    {
+      "id": "test-analyzer",
+      "name": "Test Analyzer",
+      "description": "Test-only analyzer for E2E testing",
+      "command": {
+        "executable": "built-in",
+        "args": [],
+        "outputFormat": "json"
+      },
+      "installation": {
+        "type": "built-in",
+        "package": "built-in",
+        "global": false,
+        "instructions": "Built-in test analyzer, no installation required"
+      },
+      "detection": {
+        "method": "built-in",
+        "target": "always-available"
+      },
+      "display": {
+        "category": "Test Tools",
+        "icon": "🧪",
+        "groupName": "Test Analysis",
+        "entryTemplate": "🧪 {url} - {date}",
+        "descriptionTemplate": "Test result: {result}",
+        "fields": [
+          {
+            "key": "url",
+            "label": "🌐 Test URL",
+            "path": "url",
+            "type": "url",
+            "format": "{value}"
+          }
+        ]
+      },
+      "options": []
+    },
+    {
+      "id": "test-local-tool",
+      "name": "Test Local Tool",
+      "description": "Tool that should be detected when installed locally",
+      "command": {
+        "executable": "npx",
+        "args": ["--package=chalk", "chalk", "--version"],
+        "outputFormat": "text"
+      },
+      "installation": {
+        "type": "npm",
+        "package": "chalk",
+        "global": false,
+        "command": "npm install chalk",
+        "instructions": "npm install chalk"
+      },
+      "detection": {
+        "method": "command",
+        "target": "npx --package=chalk chalk --version"
+      },
+      "display": {
+        "category": "Test Tools",
+        "icon": "🧪",
+        "groupName": "Test Tools",
+        "entryTemplate": "🧪 {url} - {date}",
+        "descriptionTemplate": "Test tool",
+        "fields": []
+      },
+      "options": []
+    }
+  ]
+}
+
+
+
+

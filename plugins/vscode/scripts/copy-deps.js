@@ -77,6 +77,15 @@ function getAllDependencies(pkgName, root = NODE_MODULES, seen = new Set()) {
  * Find where a package is located (root node_modules, bundled, or nested)
  */
 function findPackagePath(pkgName) {
+  // For execa, prioritize @carbonara/core's version (8.x) over root (5.x)
+  // since @carbonara/core uses execa 8.x with named exports
+  if (pkgName === 'execa') {
+    const coreExecaPath = path.join(ROOT, 'packages', 'core', 'node_modules', 'execa');
+    if (fs.existsSync(coreExecaPath)) {
+      return coreExecaPath;
+    }
+  }
+  
   // Try main node_modules first
   const mainPath = path.join(NODE_MODULES, pkgName);
   if (fs.existsSync(mainPath)) {

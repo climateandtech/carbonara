@@ -34,6 +34,13 @@ export {
   type ConfigParser
 } from './services/deploymentService.js';
 
+// Prerequisites utilities
+export {
+  checkPrerequisite,
+  checkPrerequisites,
+  type Prerequisite
+} from './utils/prerequisites.js';
+
 // Factory functions for easy setup
 export const createDataService = (config?: { dbPath?: string }) => new DataService(config);
 export const createSchemaService = () => new SchemaService();

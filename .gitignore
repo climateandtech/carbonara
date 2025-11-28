@@ -212,9 +212,14 @@ carbonara-assessment.json
 carbonara-export-*.json
 .carbonara-temp/
 .carbonara/
+.carbonara/logs/
 
 # Carbonara - Keep test fixtures (legacy paths for backwards compatibility)
 !plugins/vscode/e2e/fixtures/**/.carbonara/
 !test/fixtures/**/.carbonara/
+
+# Test fixtures - ignore node_modules in test fixtures
+plugins/vscode/src/test/e2e/fixtures/**/node_modules/
+plugins/vscode/src/test/e2e/fixtures/**/package-lock.json
 
 test/*.cursor/

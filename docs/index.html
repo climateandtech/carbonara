@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbonara - CO2 Assessment & Sustainability Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #3b3b3b;
+            background: #fffdf0;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 346px;
+            background: #f4efd7;
+            border-right: 1px solid #eaf2e7;
+            padding: 30px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            background: #3b3b3b;
+            padding: 20px;
+            margin: -30px -30px 30px -30px;
+            color: #333;
+        }
+        
+        .sidebar-header h2 {
+            color: #333;
+            font-size: 10px;
+            font-weight: 300;
+            margin-bottom: 5px;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            color: #3b3b3b;
+            text-decoration: none;
+            font-size: 19px;
+            transition: color 0.2s;
+        }
+        
+        .nav-item:hover {
+            color: #4baf79;
+        }
+        
+        .nav-item.active {
+            color: #3b3b3b;
+            font-weight: 500;
+        }
+        
+        .nav-item.active::before {
+            content: '';
+            width: 15px;
+            height: 15px;
+            background: #3b3b3b;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+        
+        .nav-item:not(.active)::before {
+            content: '';
+            width: 15px;
+            height: 15px;
+            border: 1px solid #eaf2e7;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 346px;
+            flex: 1;
+            padding: 60px 80px;
+            max-width: 1200px;
+        }
+        
+        h1 {
+            color: #4baf79;
+            font-size: 60px;
+            font-weight: 500;
+            margin-bottom: 30px;
+            font-family: 'Roboto Mono', monospace;
+        }
+        
+        h2 {
+            color: #4baf79;
+            font-size: 60px;
+            font-weight: 500;
+            margin-top: 60px;
+            margin-bottom: 30px;
+            font-family: 'Roboto Mono', monospace;
+        }
+        
+        .intro-text {
+            font-size: 26px;
+            line-height: 1.5;
+            color: #3b3b3b;
+            margin-bottom: 40px;
+            font-family: 'Roboto Slab', serif;
+        }
+        
+        .feature-box {
+            background: #333;
+            padding: 30px;
+            border-radius: 0;
+            margin: 30px 0;
+            color: #ad8df7;
+        }
+        
+        .feature-box h3 {
+            color: #ad8df7;
+            font-size: 20px;
+            margin-bottom: 10px;
+            font-family: 'Roboto Mono', monospace;
+        }
+        
+        .feature-box code {
+            background: transparent;
+            color: #ad8df7;
+            padding: 0;
+            font-size: 20px;
+        }
+        
+        .install-button {
+            display: inline-block;
+            background: #4baf79;
+            color: #fffdf0;
+            padding: 20px 40px;
+            border-radius: 33px;
+            text-decoration: none;
+            font-size: 20px;
+            font-weight: 500;
+            margin: 40px 0;
+            font-family: 'Roboto Mono', monospace;
+            letter-spacing: 0.034em;
+            transition: background 0.2s;
+        }
+        
+        .install-button:hover {
+            background: #439a64;
+        }
+        
+        .section-divider {
+            height: 1px;
+            background: #4baf79;
+            margin: 60px 0;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-left: 346px;
+            padding: 30px 80px;
+            border-top: 1px solid #4baf79;
+            background: #fffdf0;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 30px;
+        }
+        
+        .footer-links a {
+            color: #3b3b3b;
+            text-decoration: underline;
+            font-size: 12px;
+        }
+        
+        .footer-text {
+            color: #333;
+            font-size: 12px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 40px 20px;
+            }
+            
+            .footer {
+                margin-left: 0;
+                padding: 20px;
+            }
+            
+            h1, h2 {
+                font-size: 40px;
+            }
+            
+            .intro-text {
+                font-size: 20px;
+            }
+        }
+        
+        /* Dark mode toggle area */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #333;
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>content</h2>
+        </div>
+        <nav>
+            <a href="#what-is-carbonara" class="nav-item active">what is carbonara</a>
+            <a href="#why-it-matters" class="nav-item">why it matters</a>
+            <a href="#how-it-works" class="nav-item">how does it work</a>
+            <a href="#install" class="nav-item">install</a>
+            <a href="#research" class="nav-item">research & data</a>
+            <a href="#contribute" class="nav-item">contribute</a>
+            <a href="#license" class="nav-item">license</a>
+            <a href="#disclaimer" class="nav-item">disclaimer</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <section id="what-is-carbonara">
+            <h1>what is carbonara</h1>
+            <p class="intro-text">
+                Carbonara is a lightweight, open-source code editor plugin that helps developers measure and reduce the environmental impact of their software. By monitoring the energy consumption and carbon emissions of both your code and cloud infrastructure, Carbonara empowers you to make climate-conscious decisions during development.
+            </p>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="why-it-matters">
+            <h2>why it matters</h2>
+            <p class="intro-text">
+                Carbonara is a lightweight, open-source code editor plugin that helps developers measure and reduce the environmental impact of their software. By monitoring the energy consumption and carbon emissions of both your code and cloud infrastructure, Carbonara empowers you to make climate-conscious decisions during development.
+            </p>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="how-it-works">
+            <h2>how does it work</h2>
+            
+            <div class="feature-box">
+                <h3>🔍 Intelligent Tool Detection</h3>
+                <p>Carbonara uses explicit detection commands to accurately determine if analysis tools are installed and ready to use. Multiple detection commands ensure reliable tool status detection, even for complex tools with dependencies.</p>
+            </div>
+
+            <div class="feature-box">
+                <h3>⚠️ Execution Error Tracking</h3>
+                <p>When a tool is detected but fails during execution, Carbonara shows a yellow warning status with detailed error information. This helps you quickly identify and resolve issues with tool execution.</p>
+            </div>
+
+            <div class="feature-box">
+                <h3>⚙️ Custom Execution Commands</h3>
+                <p>For manually installed tools or custom setups, you can override the default execution command. This allows you to use tools installed in non-standard locations or with custom configurations while still benefiting from error tracking and status monitoring.</p>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="install">
+            <h2>install</h2>
+            <p class="intro-text">Get started with Carbonara in just a few steps:</p>
+            
+            <div class="feature-box">
+                <code>npm install</code>
+            </div>
+            <div class="feature-box">
+                <code>npm run bla</code>
+            </div>
+            
+            <a href="https://github.com/your-org/carbonara" class="install-button">install carbonara</a>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="research">
+            <h2>research & data</h2>
+            <p class="intro-text">Carbonara is built on scientific research and real-world data to provide accurate environmental impact measurements.</p>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="contribute">
+            <h2>contribute</h2>
+            <p class="intro-text">Help us make Carbonara better. Contribute code, report issues, or suggest improvements on GitHub.</p>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="license">
+            <h2>license</h2>
+            <p class="intro-text">Carbonara is licensed under the GNU Affero General Public License version 3.0 or later (AGPL-3.0-or-later).</p>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="disclaimer">
+            <h2>disclaimer</h2>
+            <p class="intro-text">Carbonara provides estimates based on current research. Actual environmental impact may vary based on specific infrastructure and usage patterns.</p>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-text">2025 C Carbonara</div>
+            <div class="footer-links">
+                <a href="#imprint">Imprint</a>
+                <a href="https://github.com/your-org/carbonara">GitHub repo</a>
+                <a href="#donate">Donate</a>
+            </div>
+            <div class="footer-text">Chris, Daniela, Pessi</div>
+        </div>
+    </footer>
+
+    <div class="theme-toggle">Dark Mode</div>
+</body>
+</html>
