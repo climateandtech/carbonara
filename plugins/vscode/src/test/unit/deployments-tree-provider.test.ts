@@ -171,38 +171,37 @@ suite("DeploymentsTreeProvider Unit Tests", () => {
   });
 
   suite("Carbon Badge Logic", () => {
-    test("getCarbonBadge should return correct badges for intensity levels", () => {
+    test("getCarbonBadge should return correct badge colors for intensity levels", () => {
       // Access private method through any casting
       const getCarbonBadge = (provider as any).getCarbonBadge.bind(provider);
 
-      // Test low carbon (< 100, excluding 0 which is treated as falsy)
-      assert.strictEqual(getCarbonBadge(1), "🟢");
-      assert.strictEqual(getCarbonBadge(50), "🟢");
-      assert.strictEqual(getCarbonBadge(99), "🟢");
+      // Test low carbon (< 100)
+      assert.strictEqual(getCarbonBadge(1), "green");
+      assert.strictEqual(getCarbonBadge(50), "green");
+      assert.strictEqual(getCarbonBadge(99), "green");
 
       // Test medium carbon (100-299)
-      assert.strictEqual(getCarbonBadge(100), "🟡");
-      assert.strictEqual(getCarbonBadge(200), "🟡");
-      assert.strictEqual(getCarbonBadge(299), "🟡");
+      assert.strictEqual(getCarbonBadge(100), "yellow");
+      assert.strictEqual(getCarbonBadge(200), "yellow");
+      assert.strictEqual(getCarbonBadge(299), "yellow");
 
       // Test high carbon (300-499)
-      assert.strictEqual(getCarbonBadge(300), "🟠");
-      assert.strictEqual(getCarbonBadge(400), "🟠");
-      assert.strictEqual(getCarbonBadge(499), "🟠");
+      assert.strictEqual(getCarbonBadge(300), "orange");
+      assert.strictEqual(getCarbonBadge(400), "orange");
+      assert.strictEqual(getCarbonBadge(499), "orange");
 
       // Test very high carbon (>= 500)
-      assert.strictEqual(getCarbonBadge(500), "🔴");
-      assert.strictEqual(getCarbonBadge(600), "🔴");
-      assert.strictEqual(getCarbonBadge(1000), "🔴");
+      assert.strictEqual(getCarbonBadge(500), "red");
+      assert.strictEqual(getCarbonBadge(600), "red");
+      assert.strictEqual(getCarbonBadge(1000), "red");
     });
 
     test("getCarbonBadge should handle null, undefined, and zero", () => {
       const getCarbonBadge = (provider as any).getCarbonBadge.bind(provider);
 
-      // Note: The implementation treats 0 as falsy, returning unknown badge
-      assert.strictEqual(getCarbonBadge(null), "⚪");
-      assert.strictEqual(getCarbonBadge(undefined), "⚪");
-      assert.strictEqual(getCarbonBadge(0), "⚪");
+      assert.strictEqual(getCarbonBadge(null), "none");
+      assert.strictEqual(getCarbonBadge(undefined), "none");
+      assert.strictEqual(getCarbonBadge(0), "none");
     });
   });
 

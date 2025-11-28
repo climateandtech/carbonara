@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import execa from 'execa';
+import { execa, execaCommand } from 'execa';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -107,7 +107,7 @@ export class AnalysisToolRegistry {
         case 'command':
           // For commands, we just need to check if they exist, not necessarily succeed
           try {
-            await execa.command(tool.detection.target, { stdio: 'pipe', timeout: 5000 });
+            await execa(tool.detection.target, { stdio: 'pipe', timeout: 5000 });
             return true;
           } catch (error: any) {
             // If the command exists but fails (like help commands), that's still installed

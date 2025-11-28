@@ -24,7 +24,7 @@
         "icon": "🧪",
         "groupName": "Test Analysis",
         "entryTemplate": "🧪 {url} - {date}",
-        "descriptionTemplate": "Test result: {result}",
+        "descriptionTemplate": "{date}",
         "fields": [
           {
             "key": "url",

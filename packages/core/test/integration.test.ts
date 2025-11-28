@@ -52,7 +52,7 @@ describe('Carbonara Core Integration', () => {
       // Check CO2 assessment group
       const co2Group = groups.find((g: any) => g.toolName === 'co2-assessment');
       expect(co2Group).toBeDefined();
-      expect(co2Group?.displayName).toBe('🌍 CO2 Assessments');
+      expect(co2Group?.displayName).toBe('CO2 Assessments');
       expect(co2Group?.entries).toHaveLength(1);
 
       // 4. Test detailed data extraction
@@ -143,7 +143,7 @@ describe('Carbonara Core Integration', () => {
       const unknownGroup = groups[0];
       expect(unknownGroup.toolName).toBe('unknown-tool');
       expect(unknownGroup.displayName).toBe('Analysis results from unknown-tool');
-      expect(unknownGroup.icon).toBe('📊');
+      expect(unknownGroup.icon).toBe('');
       expect(unknownGroup.entries).toHaveLength(1);
 
       // Test generic details

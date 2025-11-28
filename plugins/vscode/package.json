@@ -28,6 +28,17 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "colors": [
+      {
+        "id": "carbonara.treeItemValueForeground",
+        "description": "Foreground color for values in Data & Results tree view",
+        "defaults": {
+          "dark": "#FFD700",
+          "light": "#B8860B",
+          "highContrast": "#FFD700"
+        }
+      }
+    ],
     "commands": [
       {
         "command": "carbonara.showMenu",
@@ -152,6 +163,16 @@
       {
         "command": "carbonara.openDeploymentConfig",
         "title": "Open Deployment Configuration File"
+      },
+      {
+        "command": "carbonara.openEntryDocument",
+        "title": "View Entry",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "carbonara.openGroupDocument",
+        "title": "View Summary",
+        "icon": "$(open-preview)"
       }
     ],
     "viewsContainers": {
@@ -265,6 +286,16 @@
           "command": "carbonara.deleteSemgrepResultsForFile",
           "when": "view == carbonara.dataTree && viewItem == carbonara-semgrep-file",
           "group": "inline"
+        },
+        {
+          "command": "carbonara.openEntryDocument",
+          "when": "view == carbonara.dataTree && viewItem == carbonara-data-entry",
+          "group": "inline"
+        },
+        {
+          "command": "carbonara.openGroupDocument",
+          "when": "view == carbonara.dataTree && viewItem == carbonara-data-group",
+          "group": "inline"
         }
       ],
       "editor/context": [
@@ -313,6 +344,11 @@
           ],
           "default": "websocket",
           "description": "Transport method for server communication"
+        },
+        "carbonara.showBadges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show colored badges (pills) for entries in Data & Results and Deployment Insights views"
         }
       }
     },
@@ -338,7 +374,7 @@
     "build": "npm run clean && tsc -p ./ && npm run copy-deps",
     "copy-deps": "node scripts/copy-deps.js",
     "watch": "tsc -watch -p ./",
-    "package": "npm run build && vsce package --no-dependencies && vsce ls",
+    "package": "npm run build && vsce package --no-dependencies",
     "publish": "vsce publish",
     "install-extension": "code --install-extension ./carbonara-vscode-0.1.0.vsix",
     "test": "npm run test:ci-check",

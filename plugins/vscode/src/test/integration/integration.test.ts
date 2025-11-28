@@ -64,6 +64,8 @@ suite("Carbonara Extension Integration Tests", () => {
       "carbonara.refreshDeployments",
       "carbonara.showDeploymentDetails",
       "carbonara.openDeploymentConfig",
+      "carbonara.openEntryDocument",
+      "carbonara.openGroupDocument",
     ];
 
     // Check that all expected commands are registered

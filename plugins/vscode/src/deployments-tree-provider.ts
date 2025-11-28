@@ -16,6 +16,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
   private dataService: DataService | null = null;
   private deploymentService: DeploymentService | null = null;
   private projectId: number | undefined = undefined;
+  public badgeProvider?: import("./badge-decoration-provider").BadgeDecorationProvider;
 
   constructor() {}
 
@@ -53,6 +54,11 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
   }
 
   getTreeItem(element: DeploymentTreeItem): vscode.TreeItem {
+    // Set badge color if deployment has badgeColor and resourceUri, and feature flag is enabled
+    const showBadges = vscode.workspace.getConfiguration("carbonara").get<boolean>("showBadges", true);
+    if (showBadges && element.type === "deployment" && element.badgeColor && element.resourceUri && this.badgeProvider) {
+      this.badgeProvider.setBadge(element.resourceUri, element.badgeColor);
+    }
     return element;
   }
 
@@ -162,10 +168,11 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 
     if (element.type === "environment" && element.deployments) {
       // Show deployments in this environment
-      return element.deployments.map(deployment => {
+      return element.deployments.map((deployment, index) => {
         const label = deployment.name;
+        const badgeColor = this.getCarbonBadge(deployment.carbon_intensity);
 
-        return new DeploymentTreeItem(
+        const item = new DeploymentTreeItem(
           label,
           vscode.TreeItemCollapsibleState.Collapsed,
           "deployment",
@@ -175,6 +182,14 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
           deployment,
           undefined
         );
+        
+        // Set resourceUri for badge decoration
+        if (deployment.carbon_intensity !== null && deployment.carbon_intensity !== undefined) {
+          item.resourceUri = vscode.Uri.parse(`carbonara-badge://deployment/${deployment.provider}/${deployment.region}/${index}`);
+          item.badgeColor = badgeColor;
+        }
+        
+        return item;
       });
     }
 
@@ -203,6 +218,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
       if (deployment.carbon_intensity !== null && deployment.carbon_intensity !== undefined) {
         const intensity = deployment.carbon_intensity;
         const carbonBadge = this.getCarbonBadge(intensity);
+        // Show intensity value without emoji (badge shown via decoration)
         children.push(
           new DeploymentTreeItem(
             "Current carbon intensity",
@@ -212,7 +228,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
             undefined,
             undefined,
             undefined,
-            `${carbonBadge} ${intensity} gCO2/kWh`
+            `${intensity} gCO2/kWh`
           )
         );
 
@@ -247,12 +263,12 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
     return [];
   }
 
-  private getCarbonBadge(intensity: number | null): string {
-    if (!intensity) return "⚪";
-    if (intensity < 100) return "🟢"; // Low carbon
-    if (intensity < 300) return "🟡"; // Medium carbon
-    if (intensity < 500) return "🟠"; // High carbon
-    return "🔴"; // Very high carbon
+  private getCarbonBadge(intensity: number | null): import("@carbonara/core").BadgeColor {
+    if (!intensity) return "none";
+    if (intensity < 100) return "green"; // Low carbon
+    if (intensity < 300) return "yellow"; // Medium carbon
+    if (intensity < 500) return "orange"; // High carbon
+    return "red"; // Very high carbon
   }
 
   async scanForDeployments() {
@@ -366,9 +382,15 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
               margin-left: 10px;
             }
             .badge {
-              font-size: 24px;
-              margin-right: 10px;
+              font-size: 0.8em;
+              margin-right: 8px;
+              display: inline-block;
             }
+            .badge-green { color: #4CAF50; }
+            .badge-yellow { color: #FFC107; }
+            .badge-orange { color: #FF9800; }
+            .badge-red { color: #F44336; }
+            .badge-none { color: #9E9E9E; }
             .carbon-intensity {
               font-size: 18px;
               font-weight: bold;
@@ -377,7 +399,7 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
         </head>
         <body>
           <div class="header">
-            <h1><span class="badge">${carbonBadge}</span>${deployment.name}</h1>
+            <h1><span class="badge badge-${carbonBadge}">●</span>${deployment.name}</h1>
           </div>
 
           <div class="section">
@@ -434,6 +456,8 @@ export class DeploymentsTreeProvider implements vscode.TreeDataProvider<Deployme
 }
 
 class DeploymentTreeItem extends vscode.TreeItem {
+  public badgeColor?: import("@carbonara/core").BadgeColor;
+
   constructor(
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,

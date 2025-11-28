@@ -22,37 +22,19 @@ suite("DataTreeProvider Integration Tests", () => {
     // Create .carbonara directory and config file to simulate initialized state
     const carbonaraDir = path.join(tempDir, ".carbonara");
     fs.mkdirSync(carbonaraDir, { recursive: true });
+    
+    // Create initial database and project to get a project ID
+    testDbPath = path.join(carbonaraDir, "carbonara.db");
+    const initDataService = createDataService({ dbPath: testDbPath });
+    await initDataService.initialize();
+    const initProjectId = await initDataService.createProject("Test Project", tempDir, {});
+    await initDataService.close();
+    
     fs.writeFileSync(
       path.join(carbonaraDir, "carbonara.config.json"),
-      JSON.stringify({ name: "test-project", initialized: true }, null, 2)
+      JSON.stringify({ name: "test-project", projectId: initProjectId, initialized: true }, null, 2)
     );
 
-    testDbPath = path.join(carbonaraDir, "carbonara.db");
-    
-    // Create an empty database file so the test can verify "No data available" message
-    // (instead of "Database not found")
-    const initSqlJs = require('sql.js');
-    const SQL = await initSqlJs();
-    const db = new SQL.Database();
-    
-    // Create minimal schema (just projects table to make it a valid database)
-    db.run(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        path TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        metadata JSON,
-        co2_variables JSON
-      )
-    `);
-    
-    // Save empty database to file
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(testDbPath, buffer);
-    db.close();
 
     testWorkspaceFolder = {
       uri: vscode.Uri.file(tempDir),
@@ -221,6 +203,7 @@ suite("DataTreeProvider Integration Tests", () => {
 
       if (entries.length > 0) {
         const entryDetails = await provider.getChildren(entries[0]);
+        assert.ok(Array.isArray(entryDetails), "Entry details should be an array");
         entryDetails.forEach((detail) => {
           assert.strictEqual(detail.type, "detail");
           assert.strictEqual(
@@ -228,8 +211,343 @@ suite("DataTreeProvider Integration Tests", () => {
             vscode.TreeItemCollapsibleState.None
           );
           assert.strictEqual(detail.contextValue, "carbonara-data-detail");
+          assert.ok(typeof detail.label === "string", "Detail label should be a string");
         });
       }
+    });
+  });
+
+  suite("Entry Expansion with Test Data", () => {
+    let dataService: any;
+    let projectId: number;
+
+    setup(async () => {
+      // Create data service for test data setup
+      dataService = createDataService({ dbPath: testDbPath });
+      await dataService.initialize();
+
+      // Create a test project
+      projectId = await dataService.createProject(
+        "Test Project",
+        testWorkspaceFolder.uri.fsPath,
+        {}
+      );
+    });
+
+    teardown(async () => {
+      if (dataService) {
+        try {
+          await dataService.close();
+        } catch (error) {
+          // Ignore errors if already closed
+        }
+        dataService = null as any;
+      }
+    });
+
+    test("should expand test-analyzer entry and show all fields", async function () {
+      this.timeout(10000); // Increase timeout to 10 seconds for async data loading
+      
+      // Insert test-analyzer data
+      const entryId = await dataService.storeAssessmentData(
+        projectId,
+        "test-analyzer",
+        "web-analysis",
+        {
+          url: "https://test.example.com",
+          result: "test result",
+        }
+      );
+
+      // storeAssessmentData already saves to disk, but ensure it's flushed
+      // Don't close dataService - keep it open for the test
+      // Give the file system time to flush the database to disk
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      
+      // Wait for provider to refresh and data to load
+      await provider.refresh();
+      
+      // Wait for refresh event to fire
+      await new Promise<void>((resolve) => {
+        const disposable = provider.onDidChangeTreeData(() => {
+          disposable.dispose();
+          resolve();
+        });
+        setTimeout(() => resolve(), 1000); // Timeout after 1 second
+      });
+      
+      // Wait for async data loading to complete
+      // Entries are nested under groups, so we need to find the group first
+      let attempts = 0;
+      let entries: DataItem[] = [];
+      while (attempts < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const rootChildren = await provider.getChildren();
+        // Find the group for test-analyzer
+        const group = rootChildren.find(
+          (child) => child.type === "group" && child.toolName === "test-analyzer"
+        );
+        if (group) {
+          // Get entries from the group
+          const groupChildren = await provider.getChildren(group);
+          entries = groupChildren.filter(
+            (child) => child.type === "entry" && child.toolName === "test-analyzer"
+          );
+          if (entries.length > 0) {
+            break;
+          }
+        }
+        attempts++;
+      }
+
+      assert.ok(entries.length > 0, "Should have test-analyzer entries");
+
+      // Expand the first entry
+      const entryDetails = await provider.getChildren(entries[0]);
+      
+      // test-analyzer has 2 fields: url and result
+      assert.ok(entryDetails.length >= 2, "Should show at least 2 detail fields");
+      
+      const fieldKeys = entryDetails.map((d) => d.label);
+      assert.ok(
+        fieldKeys.some((k) => k.includes("Test URL") || k.includes("url")),
+        "Should show URL field"
+      );
+      assert.ok(
+        fieldKeys.some((k) => k.includes("Test Result") || k.includes("result")),
+        "Should show result field"
+      );
+    });
+
+    test("should expand carbonara-swd entry and show carbon emissions and energy", async function () {
+      this.timeout(10000); // Increase timeout to 10 seconds for async data loading
+      
+      // Insert carbonara-swd data with correct structure (carbonEmissions.total, energyUsage.total)
+      await dataService.storeAssessmentData(
+        projectId,
+        "carbonara-swd",
+        "web-analysis",
+        {
+          url: "https://example.com",
+          totalBytes: 524288,
+          carbonEmissions: {
+            networkTransfer: 0.05,
+            deviceUsage: 0.10,
+            datacenterUsage: 0.03,
+            embodiedCarbon: 0.0001,
+            total: 0.18
+          },
+          energyUsage: {
+            networkTransfer: 0.0001,
+            total: 0.0003
+          },
+          metadata: {
+            loadTime: 1250,
+            resourceCount: 42,
+            analysisTimestamp: new Date().toISOString(),
+            carbonIntensity: 473,
+            model: "SWD v4"
+          }
+        }
+      );
+
+      // storeAssessmentData already saves to disk, but ensure it's flushed
+      // Don't close dataService - keep it open for the test
+      // Give the file system time to flush the database to disk
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      
+      await provider.refresh();
+      
+      // Wait for refresh event to fire
+      await new Promise<void>((resolve) => {
+        const disposable = provider.onDidChangeTreeData(() => {
+          disposable.dispose();
+          resolve();
+        });
+        setTimeout(() => resolve(), 1000); // Timeout after 1 second
+      });
+      
+      // Wait for async data loading to complete
+      // Entries are nested under groups, so we need to find the group first
+      let attempts = 0;
+      let entries: DataItem[] = [];
+      while (attempts < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const rootChildren = await provider.getChildren();
+        // Find the group for carbonara-swd
+        const group = rootChildren.find(
+          (child) => child.type === "group" && child.toolName === "carbonara-swd"
+        );
+        if (group) {
+          // Get entries from the group
+          const groupChildren = await provider.getChildren(group);
+          entries = groupChildren.filter(
+            (child) => child.type === "entry" && child.toolName === "carbonara-swd"
+          );
+          if (entries.length > 0) {
+            break;
+          }
+        }
+        attempts++;
+      }
+
+      assert.ok(entries.length > 0, "Should have carbonara-swd entries");
+
+      const entryDetails = await provider.getChildren(entries[0]);
+      
+      // carbonara-swd has 6 fields: url, totalBytes, requestCount, loadTime, carbonEstimate, energyEstimate
+      assert.ok(entryDetails.length >= 6, "Should show at least 6 detail fields");
+      
+      const fieldLabels = entryDetails.map((d) => d.label);
+      assert.ok(
+        fieldLabels.some((l) => l.includes("URL")),
+        "Should show URL field"
+      );
+      assert.ok(
+        fieldLabels.some((l) => l.includes("Data Transfer")),
+        "Should show Data Transfer field"
+      );
+      assert.ok(
+        fieldLabels.some((l) => l.includes("CO2 Estimate")),
+        "Should show CO2 Estimate field (most important)"
+      );
+      assert.ok(
+        fieldLabels.some((l) => l.includes("Energy")),
+        "Should show Energy field (most important)"
+      );
+    });
+
+    test("should expand semgrep entry and show only filtered fields", async function () {
+      this.timeout(10000); // Increase timeout to 10 seconds for async data loading
+      
+      // Insert semgrep data
+      await dataService.storeAssessmentData(
+        projectId,
+        "semgrep",
+        "code-analysis",
+        {
+          target: "/path/to/file",
+          stats: {
+            total_matches: 10,
+            error_count: 2,
+            warning_count: 5,
+            info_count: 3,
+            files_scanned: 1,
+          },
+        }
+      );
+
+      // storeAssessmentData already saves to disk, but ensure it's flushed
+      // Don't close dataService - keep it open for the test
+      // Give the file system time to flush the database to disk
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      
+      await provider.refresh();
+      
+      // Wait for refresh event to fire
+      await new Promise<void>((resolve) => {
+        const disposable = provider.onDidChangeTreeData(() => {
+          disposable.dispose();
+          resolve();
+        });
+        setTimeout(() => resolve(), 1000); // Timeout after 1 second
+      });
+      
+      // Wait for async data loading to complete
+      // Entries are nested under groups, so we need to find the group first
+      let attempts = 0;
+      let entries: DataItem[] = [];
+      while (attempts < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const rootChildren = await provider.getChildren();
+        // Find the group for semgrep
+        const group = rootChildren.find(
+          (child) => child.type === "group" && child.toolName === "semgrep"
+        );
+        if (group) {
+          // Get entries from the group
+          const groupChildren = await provider.getChildren(group);
+          entries = groupChildren.filter(
+            (child) => child.type === "entry" && child.toolName === "semgrep"
+          );
+          if (entries.length > 0) {
+            break;
+          }
+        }
+        attempts++;
+      }
+
+      assert.ok(entries.length > 0, "Should have semgrep entries");
+
+      const entryDetails = await provider.getChildren(entries[0]);
+      
+      // Semgrep should only show: error_count, warning_count, info_count, target
+      assert.strictEqual(entryDetails.length, 4, "Should show exactly 4 filtered fields");
+      
+      const fieldKeys = entryDetails.map((d) => {
+        // Extract key from label (e.g., "🚨 Errors: 2" -> "error_count")
+        const label = d.label.toLowerCase();
+        if (label.includes("error")) return "error_count";
+        if (label.includes("warning")) return "warning_count";
+        if (label.includes("info")) return "info_count";
+        if (label.includes("target")) return "target";
+        return "";
+      });
+
+      assert.ok(fieldKeys.includes("error_count"), "Should show error_count");
+      assert.ok(fieldKeys.includes("warning_count"), "Should show warning_count");
+      assert.ok(fieldKeys.includes("info_count"), "Should show info_count");
+      assert.ok(fieldKeys.includes("target"), "Should show target");
+      
+      // Verify total_matches and files_scanned are NOT shown
+      const allLabels = entryDetails.map((d) => d.label.toLowerCase());
+      assert.ok(
+        !allLabels.some((l) => l.includes("total_matches") || l.includes("findings")),
+        "Should NOT show total_matches"
+      );
+      assert.ok(
+        !allLabels.some((l) => l.includes("files_scanned") || l.includes("files")),
+        "Should NOT show files_scanned"
+      );
+    });
+
+    test("should handle entry with missing data gracefully", async () => {
+      // Insert entry with minimal data
+      await dataService.storeAssessmentData(
+        projectId,
+        "test-analyzer",
+        "web-analysis",
+        {}
+      );
+
+      await provider.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const children = await provider.getChildren();
+      const entries = children.filter(
+        (child) => child.type === "entry" && child.toolName === "test-analyzer"
+      );
+
+      if (entries.length > 0) {
+        const entryDetails = await provider.getChildren(entries[0]);
+        // Should return empty array or handle gracefully
+        assert.ok(Array.isArray(entryDetails), "Should return array even with missing data");
+      }
+    });
+
+    test("should return empty array for non-existent entryId", async () => {
+      // Create a fake entry item with non-existent ID
+      const fakeEntry = new DataItem(
+        "Fake Entry",
+        "Test",
+        vscode.TreeItemCollapsibleState.Collapsed,
+        "entry",
+        "test-analyzer",
+        99999 // Non-existent ID
+      );
+
+      const entryDetails = await provider.getChildren(fakeEntry);
+      assert.strictEqual(entryDetails.length, 0, "Should return empty array for non-existent entry");
     });
   });
 
@@ -405,14 +723,19 @@ suite("DataTreeProvider Integration Tests", () => {
         // Basic properties
         assert.strictEqual(treeItem.label, item.label);
         assert.strictEqual(treeItem.description, item.description);
-        assert.strictEqual(treeItem.tooltip, item.description);
+        // Entries and groups have "Click to view" tooltip, others use description
+        if (item.type === "entry" || item.type === "group") {
+          assert.strictEqual(treeItem.tooltip, "Click to view");
+        } else {
+          assert.strictEqual(treeItem.tooltip, item.description);
+        }
         assert.strictEqual(treeItem.collapsibleState, item.collapsibleState);
 
         // Context value
         assert.ok(treeItem.contextValue?.startsWith("carbonara-data-"));
 
-        // Icon (skip for group and folder types as they don't have icons)
-        if (item.type !== "group" && item.type !== "folder") {
+        // Icon (skip for group, entry, folder, and detail types as they don't have icons)
+        if (item.type !== "group" && item.type !== "entry" && item.type !== "folder" && item.type !== "detail") {
           assert.ok(treeItem.iconPath instanceof vscode.ThemeIcon);
         }
       });
