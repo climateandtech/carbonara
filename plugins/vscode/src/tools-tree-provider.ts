@@ -12,7 +12,7 @@ export interface AnalysisTool {
   command: string;
   vscodeCommand?: string;
   installation?: {
-    type: "npm" | "pip" | "binary";
+    type: "npm" | "pip" | "binary" | "built-in";
     package: string;
     instructions?: string;
   };
@@ -65,10 +65,10 @@ export class ToolItem extends vscode.TreeItem {
 
     // Set context value for different actions
     if (tool.type === "built-in") {
-      // Special context for semgrep to show custom buttons
-      this.contextValue = tool.id === "semgrep" ? "builtin-tool-semgrep" : "builtin-tool";
+      this.contextValue = "builtin-tool";
     } else if (tool.isInstalled) {
-      this.contextValue = "installed-tool";
+      // Special context for semgrep to show custom buttons even when installed as external tool
+      this.contextValue = tool.id === "semgrep" ? "builtin-tool-semgrep" : "installed-tool";
     } else {
       this.contextValue = "uninstalled-tool";
     }
@@ -417,6 +417,30 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         await this.runCommand("npm", [
           "install",
           "-g",
+          tool.installation.package,
+        ]);
+        vscode.window.showInformationMessage(
+          `${tool.name} installed successfully!`
+        );
+      } else if (tool.installation.type === "pip") {
+        // Check Python first
+        try {
+          await this.runCommand("python3", ["--version"]);
+        } catch {
+          try {
+            await this.runCommand("python", ["--version"]);
+          } catch {
+            vscode.window.showErrorMessage(
+              `Python is required to install ${tool.name}. Please install Python 3.7+ first.`
+            );
+            return;
+          }
+        }
+        
+        // Install with pip
+        const pipCommand = process.platform === "win32" ? "pip" : "pip3";
+        await this.runCommand(pipCommand, [
+          "install",
           tool.installation.package,
         ]);
         vscode.window.showInformationMessage(

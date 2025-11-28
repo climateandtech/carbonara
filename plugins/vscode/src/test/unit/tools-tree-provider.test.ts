@@ -175,9 +175,121 @@ suite('ToolsTreeProvider Unit Tests', () => {
                 assert.ok(child.tool.description, 'Tool should have a description');
                 assert.ok(child.tool.type === 'built-in' || child.tool.type === 'external', 'Tool should have valid type');
                 assert.ok(child.tool.command, 'Tool should have a command');
-            });
         });
     });
+
+    suite('Tool Installation', () => {
+        test('should handle pip installation for semgrep', async () => {
+            // Mock a tool with pip installation
+            const pipTool = {
+                id: 'semgrep',
+                name: 'Code Scan',
+                type: 'external' as const,
+                command: 'semgrep',
+                installation: {
+                    type: 'pip' as const,
+                    package: 'semgrep',
+                    instructions: 'Requires Python 3.7+. Install with: pip install semgrep'
+                },
+                isInstalled: false
+            };
+
+            // Mock runCommand to simulate Python check and pip install
+            let commandCalls: Array<{ command: string; args: string[] }> = [];
+            const originalRunCommand = (provider as any).runCommand;
+            (provider as any).runCommand = async (command: string, args: string[]) => {
+                commandCalls.push({ command, args });
+                if (command === 'python3' && args[0] === '--version') {
+                    return 'Python 3.9.0\n';
+                }
+                if (command === 'pip3' && args[0] === 'install') {
+                    return 'Successfully installed semgrep';
+                }
+                return '';
+            };
+
+            // Mock showInformationMessage to capture messages
+            const messages: string[] = [];
+            const originalShowInfo = vscode.window.showInformationMessage;
+            vscode.window.showInformationMessage = async (message: string) => {
+                messages.push(message);
+                return Promise.resolve(undefined);
+            };
+
+            try {
+                // Add the tool to provider's tools array
+                (provider as any).tools = [pipTool];
+
+                // Call installTool
+                await provider.installTool('semgrep');
+
+                // Verify Python was checked
+                const pythonCheck = commandCalls.find(c => c.command === 'python3' && c.args[0] === '--version');
+                assert.ok(pythonCheck, 'Should check Python version before installing');
+
+                // Verify pip install was called
+                const pipInstall = commandCalls.find(c => c.command === 'pip3' && c.args[0] === 'install');
+                assert.ok(pipInstall, 'Should call pip install');
+                assert.strictEqual(pipInstall.args[1], 'semgrep', 'Should install semgrep package');
+
+                // Verify success message was shown
+                const successMessage = messages.find(m => m.includes('installed successfully'));
+                assert.ok(successMessage, 'Should show success message');
+            } finally {
+                (provider as any).runCommand = originalRunCommand;
+                vscode.window.showInformationMessage = originalShowInfo;
+            }
+        });
+
+        test('should show error when Python is missing for pip installation', async () => {
+            const pipTool = {
+                id: 'semgrep',
+                name: 'Code Scan',
+                type: 'external' as const,
+                command: 'semgrep',
+                installation: {
+                    type: 'pip' as const,
+                    package: 'semgrep',
+                    instructions: 'Requires Python 3.7+. Install with: pip install semgrep'
+                },
+                isInstalled: false
+            };
+
+            // Mock runCommand to simulate Python not found
+            const originalRunCommand = (provider as any).runCommand;
+            (provider as any).runCommand = async (command: string, args: string[]) => {
+                if (command === 'python3' && args[0] === '--version') {
+                    throw new Error('Command not found');
+                }
+                if (command === 'python' && args[0] === '--version') {
+                    throw new Error('Command not found');
+                }
+                return '';
+            };
+
+            // Mock showErrorMessage to capture error
+            const errorMessages: string[] = [];
+            const originalShowError = vscode.window.showErrorMessage;
+            vscode.window.showErrorMessage = async (message: string) => {
+                errorMessages.push(message);
+                return Promise.resolve(undefined);
+            };
+
+            try {
+                (provider as any).tools = [pipTool];
+                await provider.installTool('semgrep');
+
+                // Verify error message was shown
+                const errorMessage = errorMessages.find(m => m.includes('Python'));
+                assert.ok(errorMessage, 'Should show error when Python is missing');
+                assert.ok(errorMessage.includes('required'), 'Error should mention Python is required');
+            } finally {
+                (provider as any).runCommand = originalRunCommand;
+                vscode.window.showErrorMessage = originalShowError;
+            }
+        });
+    });
+});
 
     suite('Tool Item Creation', () => {
         test('should create built-in tool items with correct properties', () => {

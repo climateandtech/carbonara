@@ -382,15 +382,28 @@ async function initProject() {
   }
 
   // Ensure UI reflects the new project
+  // Update context first to trigger view visibility changes
+  vscode.commands.executeCommand(
+    "setContext",
+    "carbonara.notInitialized",
+    false
+  );
+
+  // Refresh all tree providers
   welcomeTreeProvider.refresh();
   assessmentTreeProvider.refresh();
   dataTreeProvider.refresh();
   toolsTreeProvider.refresh();
+  
+  // Check project status (this also updates context, but we already did it above)
   checkProjectStatus();
 
-  vscode.window.showInformationMessage(
-    "Carbonara project initialized successfully!"
-  );
+  // Use a small delay to ensure context updates propagate before showing success message
+  setTimeout(() => {
+    vscode.window.showInformationMessage(
+      "Carbonara project initialized successfully!"
+    );
+  }, 100);
 }
 
 async function runAssessment() {

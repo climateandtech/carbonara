@@ -704,14 +704,14 @@
         "outputFormat": "json"
       },
       "installation": {
-        "type": "built-in",
-        "package": "built-in",
+        "type": "pip",
+        "package": "semgrep",
         "global": false,
-        "instructions": "Built-in static analysis tool. Requires Python 3.7+ for full functionality. Run 'carbonara semgrep --setup' to configure bundled environment."
+        "instructions": "Requires Python 3.7+. Install with: pip install semgrep"
       },
       "detection": {
-        "method": "built-in",
-        "target": "always-available"
+        "method": "command",
+        "target": "python3 -m semgrep --version"
       },
       "display": {
         "category": "Code Analysis",

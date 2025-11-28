@@ -178,6 +178,75 @@ let cliAvailable: boolean | null = null;
 let lastValidEditor: vscode.TextEditor | undefined;
 
 /**
+ * Check if Python 3.7+ is installed
+ */
+async function checkPythonInstalled(): Promise<{ installed: boolean; version?: string; error?: string }> {
+  try {
+    // Try python3 first (Unix-like systems)
+    const { stdout } = await execAsync("python3 --version", { timeout: 5000 });
+    const versionMatch = stdout.match(/Python (\d+)\.(\d+)/);
+    if (versionMatch) {
+      const major = parseInt(versionMatch[1], 10);
+      const minor = parseInt(versionMatch[2], 10);
+      if (major > 3 || (major === 3 && minor >= 7)) {
+        return { installed: true, version: stdout.trim() };
+      }
+      return { installed: false, error: `Python ${major}.${minor} found, but Python 3.7+ is required` };
+    }
+  } catch (error) {
+    // Try python (Windows or some systems)
+    try {
+      const { stdout } = await execAsync("python --version", { timeout: 5000 });
+      const versionMatch = stdout.match(/Python (\d+)\.(\d+)/);
+      if (versionMatch) {
+        const major = parseInt(versionMatch[1], 10);
+        const minor = parseInt(versionMatch[2], 10);
+        if (major > 3 || (major === 3 && minor >= 7)) {
+          return { installed: true, version: stdout.trim() };
+        }
+        return { installed: false, error: `Python ${major}.${minor} found, but Python 3.7+ is required` };
+      }
+    } catch {
+      // Python not found
+    }
+  }
+  return { installed: false, error: "Python 3.7+ is not installed" };
+}
+
+/**
+ * Check if semgrep is installed (using the same detection method as tools registry)
+ */
+async function checkSemgrepInstalled(): Promise<boolean> {
+  try {
+    await execAsync("python3 -m semgrep --version", { timeout: 5000 });
+    return true;
+  } catch {
+    // Try with python (Windows)
+    try {
+      await execAsync("python -m semgrep --version", { timeout: 5000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Show error message with installation instructions (consistent with other tools)
+ */
+function showSemgrepInstallationError(): void {
+  const instructions = "Requires Python 3.7+. Install with: pip install semgrep";
+  vscode.window.showErrorMessage(
+    `Code Scan (semgrep) is not installed. ${instructions}`,
+    "View Installation Instructions"
+  ).then((selection) => {
+    if (selection === "View Installation Instructions") {
+      vscode.window.showInformationMessage(instructions);
+    }
+  });
+}
+
+/**
  * Check if the carbonara CLI is available
  */
 async function checkCarbonaraCLI(): Promise<boolean> {
@@ -449,6 +518,55 @@ async function runSemgrepAnalysis(
         outputChannel.appendLine("Using core library for analysis...");
       }
 
+      // Check prerequisites: Python first, then semgrep
+      if (outputChannel) {
+        outputChannel.appendLine("Checking prerequisites...");
+      }
+      
+      const pythonCheck = await checkPythonInstalled();
+      if (!pythonCheck.installed) {
+        if (showUI) {
+          if (outputChannel) {
+            outputChannel.appendLine(`Python check failed: ${pythonCheck.error}`);
+            outputChannel.show();
+          }
+          vscode.window.showErrorMessage(
+            `Code Scan requires Python 3.7+. ${pythonCheck.error || "Python is not installed."}`,
+            "View Installation Instructions"
+          ).then((selection) => {
+            if (selection === "View Installation Instructions") {
+              vscode.window.showInformationMessage("Requires Python 3.7+. Install with: pip install semgrep");
+            }
+          });
+        } else {
+          console.log(`Python check failed: ${pythonCheck.error}`);
+        }
+        return null;
+      }
+
+      if (outputChannel) {
+        outputChannel.appendLine(`Python found: ${pythonCheck.version}`);
+      }
+
+      // Check if semgrep is installed
+      const semgrepInstalled = await checkSemgrepInstalled();
+      if (!semgrepInstalled) {
+        if (showUI) {
+          if (outputChannel) {
+            outputChannel.appendLine("Semgrep is not installed");
+            outputChannel.show();
+          }
+          showSemgrepInstallationError();
+        } else {
+          console.log("Semgrep is not installed");
+        }
+        return null;
+      }
+
+      if (outputChannel) {
+        outputChannel.appendLine("Semgrep is installed");
+      }
+
       // Create Semgrep service instance
       const semgrep = createSemgrepService({
         useBundledPython: false,
@@ -468,16 +586,7 @@ async function runSemgrepAnalysis(
             outputChannel.appendLine(`  • ${error}`);
           });
           outputChannel.show();
-          vscode.window
-            .showErrorMessage(
-              "Semgrep is not properly configured. Check Output for details.",
-              "View Output"
-            )
-            .then((selection) => {
-              if (selection === "View Output") {
-                outputChannel.show();
-              }
-            });
+          showSemgrepInstallationError();
         } else {
           console.log("Semgrep setup is not valid, skipping analysis");
         }
@@ -732,6 +841,37 @@ export async function scanAllFiles() {
             output.appendLine("Using core library for analysis...");
           }
 
+          // Check prerequisites: Python first, then semgrep
+          output.appendLine("Checking prerequisites...");
+          
+          const pythonCheck = await checkPythonInstalled();
+          if (!pythonCheck.installed) {
+            output.appendLine(`Python check failed: ${pythonCheck.error}`);
+            output.show();
+            vscode.window.showErrorMessage(
+              `Code Scan requires Python 3.7+. ${pythonCheck.error || "Python is not installed."}`,
+              "View Installation Instructions"
+            ).then((selection) => {
+              if (selection === "View Installation Instructions") {
+                vscode.window.showInformationMessage("Requires Python 3.7+. Install with: pip install semgrep");
+              }
+            });
+            return;
+          }
+
+          output.appendLine(`Python found: ${pythonCheck.version}`);
+
+          // Check if semgrep is installed
+          const semgrepInstalled = await checkSemgrepInstalled();
+          if (!semgrepInstalled) {
+            output.appendLine("Semgrep is not installed");
+            output.show();
+            showSemgrepInstallationError();
+            return;
+          }
+
+          output.appendLine("Semgrep is installed");
+
           // Create Semgrep service instance
           const semgrep = createSemgrepService({
             useBundledPython: false,
@@ -748,16 +888,7 @@ export async function scanAllFiles() {
               output.appendLine(`  • ${error}`);
             });
             output.show();
-            vscode.window
-              .showErrorMessage(
-                "Semgrep is not properly configured. Check Output for details.",
-                "View Output"
-              )
-              .then((selection) => {
-                if (selection === "View Output") {
-                  output.show();
-                }
-              });
+            showSemgrepInstallationError();
             return;
           }
 

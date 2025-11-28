@@ -295,4 +295,93 @@ test.describe("Carbonara Initialization Flow", () => {
       await VSCodeLauncher.close(vscode);
     }
   });
+
+  test("UI should update immediately after initialization without window reload", async () => {
+    const vscode = await setupTest("empty-workspace");
+
+    try {
+      // Open Carbonara sidebar
+      const carbonaraActivityBar = vscode.window.locator(
+        '[aria-label*="Carbonara"]'
+      ).first();
+
+      if (await carbonaraActivityBar.isVisible({ timeout: 5000 })) {
+        await carbonaraActivityBar.click();
+        await vscode.window.waitForTimeout(2000);
+      }
+
+      // Verify welcome section is visible before initialization
+      const welcomeMessageBefore = vscode.window.locator(
+        "text=/Carbonara has not yet been initialised/i"
+      );
+      await expect(welcomeMessageBefore).toBeVisible({ timeout: 10000 });
+
+      // Initialize Carbonara
+      const initButton = vscode.window.locator(
+        'a[role="button"]:has-text("Initialise Carbonara")'
+      );
+
+      await expect(initButton).toBeVisible({ timeout: 10000 });
+      await initButton.click();
+      await vscode.window.waitForTimeout(2000);
+
+      // Fill in project details
+      const projectNameInput = vscode.window.locator("input").first();
+      await projectNameInput.fill("Test Project");
+      await vscode.window.keyboard.press("Enter");
+      await vscode.window.waitForTimeout(1000);
+
+      const webAppOption = vscode.window.locator(
+        '[role="option"]:has-text("Web Application")'
+      );
+      await webAppOption.click();
+      
+      // Wait for initialization to complete (success message appears)
+      const successMessage = vscode.window.locator(
+        "text=/initialized successfully/i"
+      );
+      await expect(successMessage).toBeVisible({ timeout: 10000 });
+
+      // CRITICAL TEST: Verify UI updates immediately without window reload
+      // Wait a short time for context updates to propagate (we added 100ms delay)
+      await vscode.window.waitForTimeout(500);
+
+      // 1. Welcome section should disappear immediately
+      const welcomeMessageAfter = vscode.window.locator(
+        "text=/Carbonara has not yet been initialised/i"
+      );
+      await expect(welcomeMessageAfter).not.toBeVisible({ timeout: 5000 });
+
+      // 2. Assessment tree should show content immediately
+      const assessmentContent = vscode.window.locator(
+        "text=/Project Information/i"
+      );
+      await expect(assessmentContent).toBeVisible({ timeout: 5000 });
+
+      // 3. Data & Results should not show welcome message
+      const dataWelcomeMessage = vscode.window.locator(
+        "text=/Initialise Carbonara to access analysis results/i"
+      );
+      await expect(dataWelcomeMessage).not.toBeVisible({ timeout: 5000 });
+
+      // 4. Analysis Tools should show tools list (not welcome message)
+      const toolsWelcomeMessage = vscode.window.locator(
+        "text=/Initialise Carbonara to access analysis tools/i"
+      );
+      await expect(toolsWelcomeMessage).not.toBeVisible({ timeout: 5000 });
+
+      // 5. Verify status bar updates (check mark should appear)
+      const statusBar = vscode.window.locator(
+        '[aria-label*="Carbonara"]'
+      );
+      await expect(statusBar).toBeVisible({ timeout: 5000 });
+
+      // Take screenshot to verify UI state
+      await vscode.window.screenshot({
+        path: getScreenshotPath("initialization-no-reload-needed.png"),
+      });
+    } finally {
+      await VSCodeLauncher.close(vscode);
+    }
+  });
 });
