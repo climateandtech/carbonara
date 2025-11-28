@@ -3,7 +3,7 @@
   "displayName": "Carbonara",
   "description": "Helps you understand and reduce the carbon footprint of your software projects.",
   "version": "0.1.0",
-  "publisher": "climate+tech",
+  "publisher": "climateandtech",
   "icon": "icon.png",
   "repository": {
     "type": "git",
