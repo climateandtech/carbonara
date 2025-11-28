@@ -429,7 +429,7 @@
     "@types/vscode": "^1.76.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.0",
-    "glob": "^11.0.3",
+    "glob": "^11.1.0",
     "mocha": "^10.2.0",
     "playwright": "^1.55.1",
     "typescript": "^5.9.2"
