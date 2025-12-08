@@ -12,10 +12,18 @@ import { AssessmentTreeProvider } from "./assessment-tree-provider";
 import {
   DataTreeProvider,
   SemgrepFindingDecorationProvider,
+  ViewIconDecorationProvider,
 } from "./data-tree-provider";
+import { BadgeDecorationProvider } from "./badge-decoration-provider";
+import {
+  AssessmentDataContentProvider,
+  openEntryDocument,
+  openGroupDocument,
+} from "./assessment-data-content-provider";
 import { ToolsTreeProvider } from "./tools-tree-provider";
 import { DeploymentsTreeProvider } from "./deployments-tree-provider";
 import { WelcomeTreeProvider } from "./welcome-tree-provider";
+import { ToolInstallationProvider } from "./tool-installation-provider";
 import {
   initializeSemgrep,
   ensureDatabaseInitialized,
@@ -32,6 +40,7 @@ let assessmentTreeProvider: AssessmentTreeProvider;
 let dataTreeProvider: DataTreeProvider;
 let toolsTreeProvider: ToolsTreeProvider;
 let deploymentsTreeProvider: DeploymentsTreeProvider;
+let assessmentDataContentProvider: AssessmentDataContentProvider;
 
 let currentProjectPath: string | null = null;
 
@@ -96,12 +105,78 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   console.log("✅ All tree providers registered");
 
+  // Register virtual document provider for tool installation instructions
+  const toolInstallationProvider = new ToolInstallationProvider();
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      ToolInstallationProvider.SCHEME,
+      toolInstallationProvider
+    )
+  );
+  console.log("✅ Tool installation provider registered");
+
+  // Check Playwright browsers in background (non-blocking)
+  // Browsers will be auto-installed on-demand when needed
+  (async () => {
+    try {
+      const { arePlaywrightBrowsersInstalled } = await import("./utils/browser-setup.js");
+      const installed = await arePlaywrightBrowsersInstalled();
+      if (!installed) {
+        console.log("ℹ️  Playwright browsers not installed. Will install on-demand when needed.");
+      } else {
+        console.log("✅ Playwright browsers are installed.");
+      }
+    } catch (error) {
+      // Silently fail - browsers will be installed on-demand
+      console.log("ℹ️  Playwright setup check skipped:", error);
+    }
+  })();
+
   // Register decoration provider for Semgrep findings
   const semgrepDecorationProvider = new SemgrepFindingDecorationProvider();
   context.subscriptions.push(
     vscode.window.registerFileDecorationProvider(semgrepDecorationProvider)
   );
   console.log("✅ Semgrep decoration provider registered");
+
+  // Register decoration provider for view icons (eye icon)
+  const viewIconDecorationProvider = new ViewIconDecorationProvider();
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(viewIconDecorationProvider)
+  );
+  console.log("✅ View icon decoration provider registered");
+
+  // Register decoration provider for badges (colored circles)
+  const badgeDecorationProvider = new BadgeDecorationProvider();
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(badgeDecorationProvider)
+  );
+  console.log("✅ Badge decoration provider registered");
+  
+  // Store badge provider reference for tree providers
+  (dataTreeProvider as any).badgeProvider = badgeDecorationProvider;
+  (deploymentsTreeProvider as any).badgeProvider = badgeDecorationProvider;
+
+  // Register virtual document content provider for assessment data
+  assessmentDataContentProvider = new AssessmentDataContentProvider();
+  const contentProviderDisposable = vscode.workspace.registerTextDocumentContentProvider(
+    "carbonara-data",
+    assessmentDataContentProvider
+  );
+  context.subscriptions.push(contentProviderDisposable);
+
+  // Set core services on content provider when data tree provider initializes
+  // Poll for core services to be ready (they initialize asynchronously)
+  const checkAndSetCoreServices = () => {
+    const coreServices = dataTreeProvider.getCoreServices();
+    if (coreServices) {
+      assessmentDataContentProvider.setCoreServices(coreServices);
+    } else {
+      // Check again after a short delay
+      setTimeout(checkAndSetCoreServices, 500);
+    }
+  };
+  checkAndSetCoreServices();
 
   // Set up Semgrep to refresh Data & Results when database updates
   setOnDatabaseUpdateCallback(() => {
@@ -144,15 +219,107 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("carbonara.installCli", installCli),
     vscode.commands.registerCommand("carbonara.viewTools", viewTools),
-    vscode.commands.registerCommand("carbonara.refreshTools", () =>
-      toolsTreeProvider.refresh()
-    ),
-    vscode.commands.registerCommand("carbonara.installTool", (toolId) =>
-      toolsTreeProvider.installTool(toolId)
-    ),
-    vscode.commands.registerCommand("carbonara.analyzeTool", (toolId) =>
-      toolsTreeProvider.analyzeTool(toolId)
-    ),
+    vscode.commands.registerCommand("carbonara.refreshTools", async () => {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Refreshing analysis tools...",
+          cancellable: false,
+        },
+        async () => {
+          try {
+            await toolsTreeProvider.refreshAsync();
+            vscode.window.showInformationMessage("Analysis tools refreshed successfully");
+          } catch (error: any) {
+            vscode.window.showErrorMessage(
+              `Failed to refresh tools: ${error.message || error}`
+            );
+          }
+        }
+      );
+    }),
+    vscode.commands.registerCommand("carbonara.installTool", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.installTool(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.showToolInstallation", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.showToolInstallation(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.analyzeTool", (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      toolsTreeProvider.analyzeTool(toolId);
+    }),
+    vscode.commands.registerCommand("carbonara.setCustomExecutionCommand", async (item) => {
+      // Extract toolId from TreeItem or use directly if it's a string
+      const toolId = typeof item === "string" ? item : (item as any)?.tool?.id || (item as any)?.id;
+      if (!toolId) {
+        vscode.window.showErrorMessage("Could not determine tool ID");
+        return;
+      }
+      
+      const tool = toolsTreeProvider.getTool(toolId);
+      if (!tool) {
+        vscode.window.showErrorMessage("Tool not found");
+        return;
+      }
+      
+      // Get workspace folder
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        vscode.window.showErrorMessage("Please open a workspace folder first");
+        return;
+      }
+      
+      // Show input box for custom command
+      const customCommand = await vscode.window.showInputBox({
+        prompt: `Enter custom execution command for ${tool.name}`,
+        placeHolder: "e.g., npx greenframe analyze",
+        value: tool.command || "",
+        validateInput: (value) => {
+          if (!value || value.trim().length === 0) {
+            return "Command cannot be empty";
+          }
+          return undefined;
+        },
+      });
+      
+      if (!customCommand) {
+        return;
+      }
+      
+      try {
+        // Import and use the config utility
+        const { setCustomExecutionCommand } = await import("@carbonara/cli/dist/utils/config.js");
+        await setCustomExecutionCommand(toolId, customCommand.trim(), workspaceFolder.uri.fsPath);
+        
+        vscode.window.showInformationMessage(
+          `✅ Custom execution command set for ${tool.name}. The tool will now use this command when running.`
+        );
+        
+        // Refresh tools tree to update status
+        await toolsTreeProvider.refreshAsync();
+      } catch (error: any) {
+        vscode.window.showErrorMessage(
+          `Failed to set custom execution command: ${error.message}`
+        );
+      }
+    }),
     vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
     vscode.commands.registerCommand("carbonara.scanAllFiles", scanAllFiles),
     vscode.commands.registerCommand(
@@ -189,6 +356,26 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "carbonara.openDeploymentConfig",
       (deployment) => deploymentsTreeProvider.openDeploymentConfig(deployment)
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.openEntryDocument",
+      (item: any) => {
+        // Handle both tree item (from inline button) and direct entryId (from command)
+        const entryId = item?.entryId ?? item;
+        if (typeof entryId === "number") {
+          openEntryDocument(entryId, assessmentDataContentProvider);
+        }
+      }
+    ),
+    vscode.commands.registerCommand(
+      "carbonara.openGroupDocument",
+      (item: any) => {
+        // Handle both tree item (from inline button) and direct toolName (from command)
+        const toolName = item?.toolName ?? item;
+        if (typeof toolName === "string") {
+          openGroupDocument(toolName, assessmentDataContentProvider);
+        }
+      }
     ),
   ];
 

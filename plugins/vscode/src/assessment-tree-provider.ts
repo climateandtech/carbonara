@@ -119,7 +119,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
         this.assessmentData = [
             {
                 id: 'project-info',
-                label: '📊 Project Information',
+                label: 'Project Information',
                 description: 'Basic project details',
                 status: 'pending',
                 fields: [
@@ -144,7 +144,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             },
             {
                 id: 'infrastructure',
-                label: '🏗️ Infrastructure',
+                label: 'Infrastructure',
                 description: 'Hosting and infrastructure details',
                 status: 'pending',
                 fields: [
@@ -185,7 +185,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             },
             {
                 id: 'development',
-                label: '👥 Development',
+                label: 'Development',
                 description: 'Development practices and team',
                 status: 'pending',
                 fields: [
@@ -210,7 +210,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             },
             {
                 id: 'features',
-                label: '⚡ Features',
+                label: 'Features',
                 description: 'Application features and capabilities',
                 status: 'pending',
                 fields: [
@@ -223,7 +223,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             },
             {
                 id: 'sustainability',
-                label: '🌍 Sustainability Goals',
+                label: 'Sustainability Goals',
                 description: 'Environmental and sustainability targets',
                 status: 'pending',
                 fields: [
@@ -248,7 +248,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             },
             {
                 id: 'hardware-config',
-                label: '💻 Hardware Configuration',
+                label: 'Hardware Configuration',
                 description: 'Hardware settings for CPU monitoring and Impact Framework tools',
                 status: 'pending',
                 fields: [
@@ -260,7 +260,7 @@ export class AssessmentTreeProvider implements vscode.TreeDataProvider<Assessmen
             },
             {
                 id: 'monitoring-config',
-                label: '📊 Monitoring Configuration',
+                label: 'Monitoring Configuration',
                 description: 'Monitoring preferences for Impact Framework analysis',
                 status: 'pending',
                 fields: [
@@ -531,7 +531,7 @@ export class AssessmentItem extends vscode.TreeItem {
                 };
             }
         } else if (contextValue === 'field') {
-            this.iconPath = new vscode.ThemeIcon('symbol-property');
+            // No icon for field items
         } else if (contextValue === 'init-action') {
             this.iconPath = new vscode.ThemeIcon('add');
         } else if (contextValue === 'open-action') {

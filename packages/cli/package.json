@@ -12,6 +12,7 @@
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",
+    "test:no-e2e": "vitest run --exclude '**/e2e/**' --exclude '**/*e2e*.test.ts' --exclude '**/*e2e*.test.js'",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
   },
@@ -21,7 +22,7 @@
     "chalk": "^4.1.2",
     "commander": "^14.0.1",
     "cypress": "^13.17.0",
-    "execa": "^5.1.1",
+    "execa": "^8.0.1",
     "js-yaml": "^4.1.0",
     "ora": "^6.3.1",
     "playwright": "^1.55.1",

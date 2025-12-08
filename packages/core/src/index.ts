@@ -11,8 +11,9 @@ export {
   type AssessmentDataEntry,
   type Project
 } from './data-service.js';
-export { SchemaService, type ToolDisplayField, type ToolDisplaySchema, type AnalysisToolSchema } from './schema-service.js';
+export { SchemaService, normalizeFieldLabel, type ToolDisplayField, type ToolDisplaySchema, type AnalysisToolSchema } from './schema-service.js';
 export { VSCodeDataProvider, type DataGroup, type DataEntry, type DataDetail } from './vscode-data-provider.js';
+export { ThresholdService, type BadgeColor, type ThresholdConfig, type MetricThresholds } from './threshold-service.js';
 
 // Semgrep service exports
 export {
@@ -32,6 +33,13 @@ export {
   type DeploymentDetectionResult,
   type ConfigParser
 } from './services/deploymentService.js';
+
+// Prerequisites utilities
+export {
+  checkPrerequisite,
+  checkPrerequisites,
+  type Prerequisite
+} from './utils/prerequisites.js';
 
 // Factory functions for easy setup
 export const createDataService = (config?: { dbPath?: string }) => new DataService(config);

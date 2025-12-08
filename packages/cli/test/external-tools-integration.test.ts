@@ -4,6 +4,7 @@ import path from 'path';
 import os, { tmpdir } from 'os';
 import { describe, test, beforeEach, afterEach, expect, vi } from 'vitest';
 import { getToolRegistry, AnalysisTool } from '../src/registry/index.js';
+import { checkPrerequisites } from '@carbonara/core';
 
 describe('External Tools - Integration Tests', () => {
   let testDir: string;
@@ -476,5 +477,50 @@ describe('External Tools - Integration Tests', () => {
         expect(stderr).toMatch(/not installed|analysis failed|Unknown analysis tool/i);
       }
     });
+  });
+
+  test('external tools with prerequisites should check prerequisites before execution', async () => {
+    vi.setConfig({ testTimeout: 30000 });
+    
+    createTestProject();
+    
+    const externalTools = getExternalTools();
+    // Find a tool with prerequisites (e.g., GreenFrame requires Docker)
+    const toolWithPrerequisites = externalTools.find(tool => tool.prerequisites && tool.prerequisites.length > 0);
+    
+    if (!toolWithPrerequisites) {
+      // Skip if no tool with prerequisites exists
+      test.skip();
+      return;
+    }
+    
+    // Test prerequisites checking directly
+    const prerequisites = toolWithPrerequisites.prerequisites!.map((p: any) => ({
+      type: p.type,
+      name: p.name,
+      checkCommand: p.checkCommand,
+      expectedOutput: p.expectedOutput,
+      errorMessage: p.errorMessage,
+      installCommand: p.installCommand,
+      setupInstructions: p.setupInstructions
+    }));
+    
+    const prereqCheck = await checkPrerequisites(prerequisites);
+    
+    // Prerequisites check should complete (whether available or not)
+    expect(prereqCheck).toBeDefined();
+    expect(typeof prereqCheck.allAvailable).toBe('boolean');
+    expect(Array.isArray(prereqCheck.missing)).toBe(true);
+    
+    // If prerequisites are missing, verify error messages are helpful
+    if (!prereqCheck.allAvailable) {
+      expect(prereqCheck.missing.length).toBeGreaterThan(0);
+      prereqCheck.missing.forEach(({ prerequisite, error }) => {
+        expect(prerequisite.name).toBeTruthy();
+        expect(error).toBeTruthy();
+        // Error should mention the prerequisite name
+        expect(error).toContain(prerequisite.name);
+      });
+    }
   });
 });

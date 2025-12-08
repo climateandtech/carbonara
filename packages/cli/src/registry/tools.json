@@ -21,39 +21,39 @@
       },
       "display": {
         "category": "Sustainability Assessment",
-        "icon": "🌍",
+        "icon": "",
         "groupName": "CO2 Assessments",
-        "entryTemplate": "📊 Assessment - {date}",
+        "entryTemplate": "Assessment - {date}",
         "descriptionTemplate": "Score: {impactScore}/100",
         "fields": [
           {
             "key": "impactScore",
-            "label": "📊 Overall Score",
+            "label": "Overall Score",
             "path": "data.impactScore",
             "type": "number",
             "format": "{value}/100"
           },
           {
             "key": "estimatedUsers",
-            "label": "👥 Users",
+            "label": "Users",
             "path": "data.projectScope.estimatedUsers",
             "type": "number"
           },
           {
             "key": "expectedTraffic",
-            "label": "📈 Traffic",
+            "label": "Traffic",
             "path": "data.projectScope.expectedTraffic",
             "type": "string"
           },
           {
             "key": "hostingProvider",
-            "label": "🏗️ Hosting",
+            "label": "Hosting",
             "path": "data.infrastructure.hostingProvider",
             "type": "string"
           },
           {
             "key": "carbonNeutralTarget",
-            "label": "🎯 Carbon Neutral",
+            "label": "Carbon Neutral",
             "path": "data.sustainabilityGoals.carbonNeutralityTarget",
             "type": "string"
           }
@@ -82,21 +82,21 @@
       },
       "display": {
         "category": "Test Tools",
-        "icon": "🧪",
+        "icon": "",
         "groupName": "Test Analysis",
-        "entryTemplate": "🧪 {url} - {date}",
-        "descriptionTemplate": "Test result: {result}",
+        "entryTemplate": "{url} - {date}",
+        "descriptionTemplate": "{date}",
         "fields": [
           {
             "key": "url",
-            "label": "🌐 Test URL",
+            "label": "Test URL",
             "path": "data.url",
             "type": "url",
             "format": "domain-only"
           },
           {
             "key": "result",
-            "label": "🧪 Test Result",
+            "label": "Test Result",
             "path": "data.result",
             "type": "string",
             "format": "{value}"
@@ -126,48 +126,48 @@
       },
       "display": {
         "category": "Website Analysis",
-        "icon": "📊",
+        "icon": "",
         "groupName": "SWD Analysis",
-        "entryTemplate": "🔍 {url} - {date}",
-        "descriptionTemplate": "{totalKB} KB transferred",
+        "entryTemplate": "{url}",
+        "descriptionTemplate": "{date}: {totalKB} KB",
         "fields": [
           {
             "key": "url",
-            "label": "🌐 URL",
+            "label": "URL",
             "path": "data.url",
             "type": "url"
           },
           {
             "key": "totalBytes",
-            "label": "📊 Data Transfer",
-            "path": "data.results.totalBytes",
+            "label": "Data Transfer",
+            "path": "data.totalBytes",
             "type": "bytes",
             "format": "{value} KB ({valueMB} MB)"
           },
           {
             "key": "requestCount",
-            "label": "🔗 HTTP Requests",
-            "path": "data.results.requestCount",
+            "label": "HTTP Requests",
+            "path": "data.metadata.resourceCount",
             "type": "number"
           },
           {
             "key": "loadTime",
-            "label": "⚡ Load Time",
-            "path": "data.results.loadTime,data.results.performance.loadTime",
+            "label": "Load Time",
+            "path": "data.metadata.loadTime",
             "type": "time",
             "format": "{value}ms"
           },
           {
             "key": "carbonEstimate",
-            "label": "🌱 CO2 Estimate",
-            "path": "data.results.carbonEstimate,data.results.co2Estimate",
+            "label": "CO2 Estimate",
+            "path": "data.carbonEmissions.total",
             "type": "carbon",
             "format": "{value}g"
           },
           {
             "key": "energyEstimate",
-            "label": "⚡ Energy",
-            "path": "data.results.energyEstimate",
+            "label": "Energy",
+            "path": "data.energyUsage.total",
             "type": "energy",
             "format": "{value} kWh"
           }
@@ -204,63 +204,77 @@
         }
       ]
     },
-
     {
       "id": "greenframe",
       "name": "GreenFrame",
       "description": "Measure the carbon footprint of web applications",
       "command": {
         "executable": "npx",
-        "args": ["greenframe", "analyze", "{url}", "--format=json"],
+        "args": [
+          "greenframe",
+          "analyze",
+          "{url}",
+          "--format=json"
+        ],
         "outputFormat": "json"
       },
       "installation": {
         "type": "npm",
         "package": "@marmelab/greenframe-cli",
         "global": true,
+        "command": "npm install -g @marmelab/greenframe-cli",
         "instructions": "npm install -g @marmelab/greenframe-cli"
       },
       "detection": {
         "method": "command",
-        "target": "npx greenframe --help"
+        "commands": ["greenframe --version"]
       },
+      "prerequisites": [
+        {
+          "type": "docker",
+          "name": "Docker",
+          "checkCommand": "docker --version",
+          "errorMessage": "Docker is required but not available",
+          "setupInstructions": "Install Docker Desktop from https://www.docker.com/products/docker-desktop and ensure it's running"
+        }
+      ],
       "display": {
         "category": "Carbon Analysis",
-        "icon": "🌱",
+        "icon": "",
         "groupName": "GreenFrame Analysis",
-        "entryTemplate": "🔬 {url} - {date}",
+        "entryTemplate": "{url} - {date}",
         "descriptionTemplate": "{carbonTotal}g CO2",
         "fields": [
           {
             "key": "url",
-            "label": "🌐 URL",
+            "label": "URL",
             "path": "data.url",
             "type": "url"
           },
           {
             "key": "carbonTotal",
-            "label": "🌱 Carbon",
+            "label": "Carbon",
             "path": "data.results.carbon.total",
             "type": "carbon",
             "format": "{value}g CO2"
           },
           {
             "key": "score",
-            "label": "📊 Score",
+            "label": "Score",
             "path": "data.results.score",
             "type": "number",
             "format": "{value}/100"
           },
           {
             "key": "loadTime",
-            "label": "⚡ Load Time",
+            "label": "Load Time",
             "path": "data.results.performance.loadTime",
             "type": "time",
             "format": "{value}ms"
           },
           {
             "key": "pageSize",
-            "label": "📊 Page Size",
+            "label": "Page Size",
             "path": "data.results.performance.pageSize",
             "type": "number",
             "format": "{value}KB"
@@ -284,54 +298,88 @@
     {
       "id": "if-webpage-scan",
       "name": "IF Webpage Scan",
+      "displayName": "Impact Framework",
       "description": "Impact Framework webpage analysis with carbon estimation using WebpageImpact and Co2js plugins",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins && npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome"
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
+        ]
       },
+      "prerequisites": [
+        {
+          "type": "puppeteer",
+          "name": "Puppeteer Browsers",
+          "checkCommand": "npx --package=@tngtech/if-webpage-plugins puppeteer browsers install --dry-run chrome",
+          "errorMessage": "Puppeteer browsers (Chrome) are required but not installed",
+          "installCommand": "npm install @grnsft/if @tngtech/if-webpage-plugins && npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome",
+          "setupInstructions": "Run: npm install @grnsft/if @tngtech/if-webpage-plugins && npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome"
+        }
+      ],
       "parameters": [
         {
           "name": "url",
           "required": true,
           "type": "string",
-          "description": "URL of the webpage to analyze"
+          "description": "URL of the webpage to analyze",
+          "placeholder": "url"
         },
         {
           "name": "scrollToBottom",
           "required": false,
           "type": "boolean",
-          "description": "Whether to scroll to bottom of page during analysis"
+          "description": "Whether to scroll to bottom of page during analysis",
+          "placeholder": "scrollToBottom",
+          "default": false
         },
         {
           "name": "firstVisitPercentage",
           "required": false,
           "type": "number",
-          "description": "Percentage of first-time visits (0-1)"
+          "description": "Percentage of first-time visits (0-1)",
+          "placeholder": "firstVisitPercentage",
+          "default": 0.9
         }
       ],
+      "parameterDefaults": {
+        "scrollToBottom": false,
+        "firstVisitPercentage": 0.9
+      },
+      "parameterMappings": {
+        "returnVisitPercentage": {
+          "source": "firstVisitPercentage",
+          "transform": "1 - {source}",
+          "type": "number"
+        }
+      },
       "manifestTemplate": {
         "name": "webpage-carbon-scan",
         "description": "Webpage carbon impact analysis",
         "initialize": {
-          "outputs": ["yaml"],
+          "outputs": [
+            "yaml"
+          ],
           "plugins": {
             "webpage-impact": {
               "method": "WebpageImpact",
               "path": "@tngtech/if-webpage-plugins",
               "config": {
                 "scrollToBottom": "{scrollToBottom}",
-                "url": "{url}"
+                "url": "{url}",
+                "dataReloadRatio": 0.5
               }
             },
             "co2js": {
@@ -339,7 +387,8 @@
               "path": "@tngtech/if-webpage-plugins",
               "config": {
                 "type": "swd",
-                "version": 4
+                "version": 4,
+                "green-web-host": false
               }
             }
           }
@@ -348,14 +397,20 @@
           "children": {
             "child": {
               "pipeline": {
-                "observe": ["webpage-impact"],
-                "compute": ["co2js"]
+                "observe": [
+                  "webpage-impact"
+                ],
+                "compute": [
+                  "co2js"
+                ]
               },
               "inputs": [
                 {
                   "options": {
                     "firstVisitPercentage": "{firstVisitPercentage}",
-                    "returnVisitPercentage": "{returnVisitPercentage}"
+                    "returnVisitPercentage": "{returnVisitPercentage}",
+                    "green-web-host": false,
+                    "dataReloadRatio": 0.5
                   }
                 }
               ]
@@ -365,35 +420,28 @@
       },
       "display": {
         "category": "Impact Analysis",
-        "icon": "🌐",
+        "icon": "",
         "groupName": "IF Webpage Analysis",
-        "entryTemplate": "🌐 {url} - {date}",
+        "entryTemplate": "{url} - {date}",
         "descriptionTemplate": "{carbon}g CO2, {energy} kWh",
         "fields": [
           {
             "key": "url",
-            "label": "🌐 URL",
+            "label": "URL",
             "path": "data.url",
             "type": "url"
           },
           {
             "key": "carbon",
-            "label": "🌱 CO2 Emissions",
-            "path": "data.tree.children.child.outputs[0]['operational-carbon']",
+            "label": "CO2 Emissions",
+            "path": "data.tree.children.child.outputs[0]['estimated-carbon'],data.tree.children.child.outputs[0].estimated-carbon",
             "type": "carbon",
             "format": "{value}g"
           },
           {
-            "key": "energy",
-            "label": "⚡ Energy",
-            "path": "data.tree.children.child.outputs[0]['energy']",
-            "type": "energy",
-            "format": "{value} kWh"
-          },
-          {
             "key": "networkBytes",
-            "label": "📊 Data Transfer",
-            "path": "data.tree.children.child.outputs[0]['network-bytes']",
+            "label": "Data Transfer",
+            "path": "data.tree.children.child.outputs[0]['network/data/bytes'],data.tree.children.child.outputs[0]['network-bytes']",
             "type": "bytes",
             "format": "{value} KB"
           }
@@ -430,19 +478,23 @@
       "name": "IF Green Hosting",
       "description": "Check if a website is hosted on green energy using Impact Framework GreenHosting plugin",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins"
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
+        ]
       },
       "parameters": [
         {
@@ -456,7 +508,9 @@
         "name": "green-hosting-check",
         "description": "Check if website is hosted on green energy",
         "initialize": {
-          "outputs": ["yaml"],
+          "outputs": [
+            "yaml"
+          ],
           "plugins": {
             "green-hosting": {
               "method": "GreenHosting",
@@ -471,29 +525,33 @@
           "children": {
             "child": {
               "pipeline": {
-                "observe": ["green-hosting"]
+                "observe": [
+                  "green-hosting"
+                ]
               },
-              "inputs": [{}]
+              "inputs": [
+                {}
+              ]
             }
           }
         }
       },
       "display": {
         "category": "Impact Analysis",
-        "icon": "🌱",
+        "icon": "",
         "groupName": "IF Green Hosting",
-        "entryTemplate": "🌱 {url} - {date}",
+        "entryTemplate": "{url} - {date}",
         "descriptionTemplate": "Green hosting: {isGreen}",
         "fields": [
           {
             "key": "url",
-            "label": "🌐 URL",
+            "label": "URL",
             "path": "data.url",
             "type": "url"
           },
           {
             "key": "isGreen",
-            "label": "🌱 Green Hosting",
+            "label": "Green Hosting",
             "path": "data.tree.children.child.outputs[0]['green-web-host']",
             "type": "boolean",
             "format": "{value}"
@@ -519,19 +577,23 @@
       "name": "IF CPU Metrics",
       "description": "Monitor local CPU utilization and energy consumption while analyzing web applications",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins"
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
+        ]
       },
       "parameters": [
         {
@@ -551,7 +613,9 @@
         "name": "cpu-metrics-monitoring",
         "description": "Monitor local CPU utilization during web application analysis",
         "initialize": {
-          "outputs": ["yaml"],
+          "outputs": [
+            "yaml"
+          ],
           "plugins": {
             "cpu-metrics": {
               "method": "MeasureCpu",
@@ -563,8 +627,18 @@
               "method": "Interpolation",
               "config": {
                 "method": "linear",
-                "x": [0, 10, 50, 100],
-                "y": [0.12, 0.32, 0.75, 1.02],
+                "x": [
+                  0,
+                  10,
+                  50,
+                  100
+                ],
+                "y": [
+                  0.12,
+                  0.32,
+                  0.75,
+                  1.02
+                ],
                 "input-parameter": "cpu/utilization",
                 "output-parameter": "cpu-factor"
               }
@@ -573,7 +647,10 @@
               "path": "builtin",
               "method": "Multiply",
               "config": {
-                "input-parameters": ["cpu-factor", "thermal-design-power"],
+                "input-parameters": [
+                  "cpu-factor",
+                  "thermal-design-power"
+                ],
                 "output-parameter": "cpu-wattage"
               }
             },
@@ -581,7 +658,10 @@
               "path": "builtin",
               "method": "Multiply",
               "config": {
-                "input-parameters": ["cpu-wattage", "duration"],
+                "input-parameters": [
+                  "cpu-wattage",
+                  "duration"
+                ],
                 "output-parameter": "cpu-wattage-times-duration"
               }
             },
@@ -616,7 +696,10 @@
               "path": "builtin",
               "method": "Multiply",
               "config": {
-                "input-parameters": ["grid-carbon-intensity", "cpu/energy"],
+                "input-parameters": [
+                  "grid-carbon-intensity",
+                  "cpu/energy"
+                ],
                 "output-parameter": "carbon"
               }
             }
@@ -626,7 +709,9 @@
           "children": {
             "child": {
               "pipeline": {
-                "observe": ["cpu-metrics"],
+                "observe": [
+                  "cpu-metrics"
+                ],
                 "regroup": [],
                 "compute": [
                   "interpolate",
@@ -644,35 +729,37 @@
                 "vcpus-allocated": 2,
                 "grid-carbon-intensity": 750
               },
-              "inputs": [{}]
+              "inputs": [
+                {}
+              ]
             }
           }
         }
       },
       "display": {
         "category": "Impact Analysis",
-        "icon": "💻",
+        "icon": "",
         "groupName": "IF CPU Analysis",
-        "entryTemplate": "💻 Local CPU Analysis - {date}",
+        "entryTemplate": "Local CPU Analysis - {date}",
         "descriptionTemplate": "CPU: {cpuUtilization}%, Energy: {energy} kWh",
         "fields": [
           {
             "key": "cpuUtilization",
-            "label": "💻 CPU Utilization",
+            "label": "CPU Utilization",
             "path": "data.tree.children.child.outputs[0]['cpu/utilization']",
             "type": "number",
             "format": "{value}%"
           },
           {
             "key": "energy",
-            "label": "⚡ Energy",
+            "label": "Energy",
             "path": "data.tree.children.child.outputs[0]['cpu/energy']",
             "type": "energy",
             "format": "{value} kWh"
           },
           {
             "key": "carbon",
-            "label": "🌱 CO2 Emissions",
+            "label": "CO2 Emissions",
             "path": "data.tree.children.child.outputs[0]['carbon']",
             "type": "carbon",
             "format": "{value}g"
@@ -715,48 +802,48 @@
       },
       "display": {
         "category": "Code Analysis",
-        "icon": "🔍",
+        "icon": "",
         "groupName": "Semgrep Analysis",
-        "entryTemplate": "🔍 {target} - {date}",
+        "entryTemplate": "{target} - {date}",
         "descriptionTemplate": "{total_matches} findings ({error_count} errors, {warning_count} warnings)",
         "fields": [
           {
             "key": "target",
-            "label": "🎯 Target",
+            "label": "Target",
             "path": "data.target",
             "type": "string"
           },
           {
             "key": "total_matches",
-            "label": "🔍 Findings",
+            "label": "Findings",
             "path": "data.stats.total_matches",
             "type": "number",
             "format": "{value}"
           },
           {
             "key": "error_count",
-            "label": "🚨 Errors",
+            "label": "Errors",
             "path": "data.stats.error_count",
             "type": "number",
             "format": "{value}"
           },
           {
             "key": "warning_count",
-            "label": "⚠️ Warnings",
+            "label": "Warnings",
             "path": "data.stats.warning_count",
             "type": "number",
             "format": "{value}"
           },
           {
             "key": "info_count",
-            "label": "ℹ️ Info",
+            "label": "Info",
             "path": "data.stats.info_count",
             "type": "number",
             "format": "{value}"
           },
           {
             "key": "files_scanned",
-            "label": "📁 Files",
+            "label": "Files",
             "path": "data.stats.files_scanned",
             "type": "number",
             "format": "{value}"
@@ -802,25 +889,28 @@
         }
       ]
     },
-
     {
       "id": "if-e2e-cpu-metrics",
       "name": "IF E2E Test CPU Metrics",
       "description": "Monitor CPU utilization and energy consumption while running E2E tests (Cypress, Playwright, etc.)",
       "command": {
-        "executable": "if-run",
-        "args": ["--manifest", "{manifest}", "--output", "{output}"],
+        "executable": "npx",
+        "args": ["--package=@grnsft/if", "if-run", "--manifest", "{manifest}", "--output", "{output}"],
         "outputFormat": "yaml"
       },
       "installation": {
         "type": "npm",
         "package": "@grnsft/if @tngtech/if-webpage-plugins",
-        "global": true,
-        "instructions": "npm install -g @grnsft/if && npm install -g @tngtech/if-webpage-plugins"
+        "global": false,
+        "command": "npm install @grnsft/if @tngtech/if-webpage-plugins",
+        "instructions": "npm install @grnsft/if @tngtech/if-webpage-plugins"
       },
       "detection": {
         "method": "command",
-        "target": "npm list -g @tngtech/if-webpage-plugins && if-run --help"
+        "commands": [
+          "npx --package=@grnsft/if if-run --help",
+          "npm list @tngtech/if-webpage-plugins --workspace-root || npm list @tngtech/if-webpage-plugins"
+        ]
       },
       "parameters": [
         {
@@ -834,7 +924,9 @@
         "name": "e2e-test-cpu-monitoring",
         "description": "Monitor CPU utilization during E2E test execution",
         "initialize": {
-          "outputs": ["yaml"],
+          "outputs": [
+            "yaml"
+          ],
           "plugins": {
             "cpu-metrics": {
               "method": "MeasureCpu",
@@ -848,8 +940,18 @@
               "method": "Interpolation",
               "config": {
                 "method": "linear",
-                "x": [0, 10, 50, 100],
-                "y": [0.12, 0.32, 0.75, 1.02],
+                "x": [
+                  0,
+                  10,
+                  50,
+                  100
+                ],
+                "y": [
+                  0.12,
+                  0.32,
+                  0.75,
+                  1.02
+                ],
                 "input-parameter": "cpu/utilization",
                 "output-parameter": "cpu-factor"
               }
@@ -858,7 +960,10 @@
               "path": "builtin",
               "method": "Multiply",
               "config": {
-                "input-parameters": ["cpu-factor", "thermal-design-power"],
+                "input-parameters": [
+                  "cpu-factor",
+                  "thermal-design-power"
+                ],
                 "output-parameter": "cpu-wattage"
               }
             },
@@ -866,7 +971,10 @@
               "path": "builtin",
               "method": "Multiply",
               "config": {
-                "input-parameters": ["cpu-wattage", "duration"],
+                "input-parameters": [
+                  "cpu-wattage",
+                  "duration"
+                ],
                 "output-parameter": "cpu-wattage-times-duration"
               }
             },
@@ -901,7 +1009,10 @@
               "path": "builtin",
               "method": "Multiply",
               "config": {
-                "input-parameters": ["grid-carbon-intensity", "cpu-energy-kwh"],
+                "input-parameters": [
+                  "grid-carbon-intensity",
+                  "cpu-energy-kwh"
+                ],
                 "output-parameter": "carbon"
               }
             }
@@ -911,7 +1022,9 @@
           "children": {
             "child": {
               "pipeline": {
-                "observe": ["cpu-metrics"],
+                "observe": [
+                  "cpu-metrics"
+                ],
                 "compute": [
                   "interpolate",
                   "cpu-factor-to-wattage",
@@ -928,41 +1041,43 @@
                 "vcpus-allocated": 2,
                 "grid-carbon-intensity": 750
               },
-              "inputs": [{}]
+              "inputs": [
+                {}
+              ]
             }
           }
         }
       },
       "display": {
         "category": "Impact Analysis",
-        "icon": "🧪",
+        "icon": "",
         "groupName": "IF E2E Analysis",
-        "entryTemplate": "🧪 E2E Test Analysis - {date}",
+        "entryTemplate": "E2E Test Analysis - {date}",
         "descriptionTemplate": "CPU: {cpuUtilization}%, Energy: {energy} kWh",
         "fields": [
           {
             "key": "testCommand",
-            "label": "🧪 Test Command",
+            "label": "Test Command",
             "path": "data.testCommand",
             "type": "string"
           },
           {
             "key": "cpuUtilization",
-            "label": "💻 CPU Utilization",
+            "label": "CPU Utilization",
             "path": "data.tree.children.child.outputs[0]['cpu/utilization']",
             "type": "number",
             "format": "{value}%"
           },
           {
             "key": "energy",
-            "label": "⚡ Energy",
+            "label": "Energy",
             "path": "data.tree.children.child.outputs[0]['cpu-energy-kwh']",
             "type": "energy",
             "format": "{value} kWh"
           },
           {
             "key": "carbon",
-            "label": "🌱 CO2 Emissions",
+            "label": "CO2 Emissions",
             "path": "data.tree.children.child.outputs[0]['carbon']",
             "type": "carbon",
             "format": "{value}g"
@@ -1017,34 +1132,41 @@
       ],
       "display": {
         "category": "Infrastructure",
-        "icon": "🚀",
+        "icon": "",
         "groupName": "Deployment Analysis",
-        "entryTemplate": "🚀 Deployment Scan - {date}",
-        "descriptionTemplate": "{count} deployment(s) detected",
+        "entryTemplate": "Deployment Scan",
+        "descriptionTemplate": "{date}: {count} deployments",
         "fields": [
           {
             "key": "provider",
-            "label": "☁️ Provider",
+            "label": "Provider",
             "path": "data.deployments[*].provider",
             "type": "string"
           },
           {
             "key": "environment",
-            "label": "🏗️ Environment",
+            "label": "Environment",
             "path": "data.deployments[*].environment",
             "type": "string"
           },
           {
             "key": "region",
-            "label": "🌍 Region",
+            "label": "Region",
             "path": "data.deployments[*].region",
             "type": "string"
           },
           {
             "key": "country",
-            "label": "🗺️ Country",
+            "label": "Country",
             "path": "data.deployments[*].country",
             "type": "string"
+          },
+          {
+            "key": "carbon_intensity",
+            "label": "Carbon Intensity",
+            "path": "data.deployments[*].carbon_intensity",
+            "type": "number",
+            "format": "{value} gCO2/kWh"
           }
         ]
       },

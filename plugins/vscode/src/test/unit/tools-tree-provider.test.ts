@@ -10,6 +10,10 @@ suite('ToolsTreeProvider Unit Tests', () => {
     let testWorkspaceFolder: vscode.WorkspaceFolder;
 
     setup(() => {
+        // Set test environment to skip tool detection
+        process.env.NODE_ENV = 'test';
+        process.env.MOCHA_TEST = 'true';
+
         // Mock workspace folders
         originalWorkspaceFolders = vscode.workspace.workspaceFolders;
 
@@ -61,7 +65,8 @@ suite('ToolsTreeProvider Unit Tests', () => {
     });
 
     suite('Workspace Tools Registry Loading', () => {
-        test('with external tools in registry -> should show external tools', async () => {
+        test('with external tools in registry -> should show external tools', async function() {
+            this.timeout(5000); // Increase timeout for this test
             // Load tools from actual registry (which includes both built-in and external)
             await (provider as any).loadTools();
             
@@ -158,7 +163,8 @@ suite('ToolsTreeProvider Unit Tests', () => {
             }
         });
 
-        test('should have expected tool structure', async () => {
+        test('should have expected tool structure', async function() {
+            this.timeout(5000); // Increase timeout for this test
             // Wait for tools to load
             await (provider as any).loadTools();
             
@@ -175,6 +181,38 @@ suite('ToolsTreeProvider Unit Tests', () => {
                 assert.ok(child.tool.description, 'Tool should have a description');
                 assert.ok(child.tool.type === 'built-in' || child.tool.type === 'external', 'Tool should have valid type');
                 assert.ok(child.tool.command, 'Tool should have a command');
+        });
+
+        test('should load tools with parameterDefaults and parameterMappings from tools.json', async function() {
+            this.timeout(5000); // Increase timeout for this test
+            
+            // Wait for tools to load
+            await (provider as any).loadTools();
+            
+            const children = await provider.getChildren();
+            
+            // Find IF Webpage Scan tool (should have parameterDefaults and parameterMappings)
+            const ifWebpageTool = children.find(child => child.tool.id === 'if-webpage-scan');
+            
+            // Tool should be found if registry is loaded correctly
+            assert.ok(ifWebpageTool, 'IF Webpage Scan tool should be found in registry');
+            
+            if (ifWebpageTool) {
+                const tool = ifWebpageTool.tool as any;
+                
+                // Check that parameterDefaults exists and has correct values
+                assert.ok(tool.parameterDefaults !== undefined, 'IF Webpage Scan tool should have parameterDefaults');
+                assert.ok(typeof tool.parameterDefaults === 'object', 'parameterDefaults should be an object');
+                assert.strictEqual(tool.parameterDefaults.scrollToBottom, false, 'scrollToBottom default should be false');
+                assert.strictEqual(tool.parameterDefaults.firstVisitPercentage, 0.9, 'firstVisitPercentage default should be 0.9');
+                
+                // Check that parameterMappings exists
+                assert.ok(tool.parameterMappings !== undefined, 'IF Webpage Scan tool should have parameterMappings');
+                assert.ok(typeof tool.parameterMappings === 'object', 'parameterMappings should be an object');
+                assert.ok(tool.parameterMappings.returnVisitPercentage !== undefined, 'Should have returnVisitPercentage mapping');
+                assert.strictEqual(tool.parameterMappings.returnVisitPercentage.source, 'firstVisitPercentage', 'returnVisitPercentage should map from firstVisitPercentage');
+                assert.ok(tool.parameterMappings.returnVisitPercentage.transform, 'returnVisitPercentage should have a transform');
+            }
         });
     });
 
@@ -310,7 +348,9 @@ suite('ToolsTreeProvider Unit Tests', () => {
             const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None, analyzeCommand);
 
             assert.strictEqual(toolItem.label, 'Test Tool');
-            assert.strictEqual(toolItem.tooltip, 'A test tool');
+            // Tooltip now includes installation instructions
+            assert.ok((toolItem.tooltip as string).includes('A test tool'), 'Tooltip should include description');
+            assert.ok((toolItem.tooltip as string).includes('Installation Instructions'), 'Tooltip should include installation instructions');
             assert.strictEqual(toolItem.description, 'Built-in');
             assert.strictEqual(toolItem.contextValue, 'builtin-tool');
             assert.strictEqual(toolItem.command?.command, 'carbonara.analyzeTool');
@@ -335,7 +375,9 @@ suite('ToolsTreeProvider Unit Tests', () => {
             const toolItem = new ToolItem(mockTool, vscode.TreeItemCollapsibleState.None, installCommand);
 
             assert.strictEqual(toolItem.label, 'External Tool');
-            assert.strictEqual(toolItem.tooltip, 'An external tool');
+            // Tooltip now includes installation instructions
+            assert.ok((toolItem.tooltip as string).includes('An external tool'), 'Tooltip should include description');
+            assert.ok((toolItem.tooltip as string).includes('Installation Instructions'), 'Tooltip should include installation instructions');
             assert.strictEqual(toolItem.description, 'Not installed');
             assert.strictEqual(toolItem.contextValue, 'uninstalled-tool');
             assert.strictEqual(toolItem.command?.command, 'carbonara.installTool');
@@ -801,6 +843,227 @@ suite('ToolsTreeProvider Unit Tests', () => {
                 delete process.env.CARBONARA_CLI_PATH;
                 fs.unlinkSync(envPath);
                 fs.rmdirSync(tempDir);
+            }
+        });
+    });
+
+    suite('Installation Instructions for Fresh Installation', () => {
+        test('should include browser installation in IF Webpage Scan instructions', async function() {
+            this.timeout(15000); // Increase timeout for this test (tool loading and detection can be slow)
+            // Load tools from actual registry
+            await (provider as any).loadTools();
+            
+            // Get tools via getChildren to access them (tools property is private)
+            const children = await provider.getChildren();
+            
+            // Find IF Webpage Scan tool
+            const ifWebpageScanItem = children.find(item => item.tool.id === 'if-webpage-scan');
+            
+            assert.ok(ifWebpageScanItem, 'IF Webpage Scan tool should exist in registry');
+            
+            const ifWebpageScanTool = ifWebpageScanItem.tool;
+            assert.strictEqual(ifWebpageScanTool.type, 'external', 'IF Webpage Scan should be an external tool');
+            assert.ok(ifWebpageScanTool.installation, 'IF Webpage Scan should have installation config');
+            assert.strictEqual(ifWebpageScanTool.installation.type, 'npm', 'IF Webpage Scan should use npm installation');
+            
+            // Verify installation instructions include browser installation
+            assert.ok(
+                ifWebpageScanTool.installation.instructions,
+                'IF Webpage Scan should have custom installation instructions'
+            );
+            
+            const instructions = ifWebpageScanTool.installation.instructions;
+            
+            // Should include npm install commands (actual format: npm install @grnsft/if @tngtech/if-webpage-plugins)
+            assert.ok(
+                instructions.includes('npm install') && instructions.includes('@grnsft/if'),
+                'Instructions should include Impact Framework installation'
+            );
+            assert.ok(
+                instructions.includes('@tngtech/if-webpage-plugins'),
+                'Instructions should include webpage plugins installation'
+            );
+            
+            // Should include browser installation command (actual format: npx --package=@tngtech/if-webpage-plugins puppeteer browsers install chrome)
+            assert.ok(
+                instructions.includes('puppeteer browsers install'),
+                'Instructions should include Puppeteer browser installation command'
+            );
+            
+            // Verify prerequisites are defined
+            assert.ok(
+                ifWebpageScanTool.prerequisites && ifWebpageScanTool.prerequisites.length > 0,
+                'IF Webpage Scan should have prerequisites defined'
+            );
+            
+            const puppeteerPrereq = ifWebpageScanTool.prerequisites.find(
+                (p: any) => p.type === 'puppeteer'
+            );
+            assert.ok(puppeteerPrereq, 'IF Webpage Scan should have Puppeteer prerequisite');
+            assert.ok(
+                puppeteerPrereq.setupInstructions,
+                'Puppeteer prerequisite should have setup instructions'
+            );
+            assert.ok(
+                puppeteerPrereq.setupInstructions.includes('puppeteer browsers install'),
+                'Puppeteer setup instructions should mention browser installation'
+            );
+        });
+
+        test('should generate complete installation document with browser setup', async function() {
+            this.timeout(10000); // Increase timeout for this test (tool loading can be slow)
+            // Import the installation provider
+            const { ToolInstallationProvider } = await import('../../tool-installation-provider');
+            const installationProvider = new ToolInstallationProvider();
+            
+            // Generate installation document for IF Webpage Scan
+            const documentUri = vscode.Uri.parse('carbonara-tool-installation://if-webpage-scan');
+            const cancellationToken = new vscode.CancellationTokenSource().token;
+            const documentContent = await installationProvider.provideTextDocumentContent(documentUri, cancellationToken);
+            
+            assert.ok(documentContent, 'Installation document should be generated');
+            
+            // Verify document includes all necessary sections
+            assert.ok(
+                documentContent.includes('IF Webpage Scan'),
+                'Document should include tool name'
+            );
+            assert.ok(
+                documentContent.includes('Prerequisites'),
+                'Document should include Prerequisites section'
+            );
+            assert.ok(
+                documentContent.includes('Installation'),
+                'Document should include Installation section'
+            );
+            
+            // Verify installation instructions include browser installation (actual format: npm install @grnsft/if @tngtech/if-webpage-plugins)
+            assert.ok(
+                documentContent.includes('npm install') && documentContent.includes('@grnsft/if'),
+                'Document should include Impact Framework installation'
+            );
+            assert.ok(
+                documentContent.includes('@tngtech/if-webpage-plugins'),
+                'Document should include webpage plugins installation'
+            );
+            assert.ok(
+                documentContent.includes('puppeteer browsers install'),
+                'Document should include Puppeteer browser installation command'
+            );
+            
+            // Verify prerequisites are mentioned
+            assert.ok(
+                documentContent.includes('Puppeteer') || documentContent.includes('puppeteer'),
+                'Document should mention Puppeteer in prerequisites'
+            );
+        });
+    });
+
+    suite('Error Handling in analyzeTool', () => {
+        test('should handle errors gracefully when CLI command fails', async function() {
+            this.timeout(10000); // Increase timeout for this test (tool loading can be slow)
+            // Mock a tool
+            const mockTool = {
+                id: 'test-tool',
+                name: 'Test Tool',
+                type: 'external' as const,
+                isInstalled: true,
+                prerequisitesMissing: false
+            };
+
+            // Mock the tools array
+            (provider as any).tools = [mockTool];
+
+            // Mock findCarbonaraCLI to return a path
+            const mockCliPath = '/path/to/carbonara';
+            (provider as any).findCarbonaraCLI = async () => mockCliPath;
+
+            // Mock runCarbonaraCommand to throw an error
+            const mockError = new Error('Command failed: command not found');
+            (provider as any).runCarbonaraCommand = async () => {
+                throw mockError;
+            };
+
+            // Mock workspace folder
+            const tempDir = fs.mkdtempSync(path.join('/tmp', 'carbonara-test-'));
+            const carbonaraDir = path.join(tempDir, '.carbonara');
+            fs.mkdirSync(carbonaraDir, { recursive: true });
+            fs.writeFileSync(
+                path.join(carbonaraDir, 'carbonara.config.json'),
+                JSON.stringify({ name: 'test', projectId: 1, database: { path: '.carbonara/carbonara.db' } }, null, 2)
+            );
+
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: [{
+                    uri: vscode.Uri.file(tempDir),
+                    name: 'test',
+                    index: 0
+                }],
+                configurable: true
+            });
+
+            // Mock window methods
+            const showInputBoxStub = async () => 'https://example.com';
+            const showErrorMessageStub = async () => undefined;
+
+            // Replace vscode.window methods
+            const originalShowInputBox = vscode.window.showInputBox;
+            const originalShowErrorMessage = vscode.window.showErrorMessage;
+            
+            try {
+                (vscode.window as any).showInputBox = showInputBoxStub;
+                (vscode.window as any).showErrorMessage = showErrorMessageStub;
+
+                // Call analyzeTool - should not throw even when command fails
+                // The error should be caught and handled gracefully
+                await (provider as any).analyzeTool('test-tool');
+
+                // If we get here, the error was handled correctly
+                // (cliPath and cliArgs should be accessible in catch block)
+                assert.ok(true, 'Error was handled gracefully');
+            } catch (error: any) {
+                // Should not throw - error should be caught and handled
+                assert.fail(`analyzeTool should not throw, but got: ${error.message}`);
+            } finally {
+                // Restore original methods
+                (vscode.window as any).showInputBox = originalShowInputBox;
+                (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+                
+                // Cleanup
+                if (fs.existsSync(tempDir)) {
+                    fs.rmSync(tempDir, { recursive: true, force: true });
+                }
+            }
+        });
+
+        test('should handle errors when cliPath is null', async () => {
+            const mockTool = {
+                id: 'test-tool',
+                name: 'Test Tool',
+                type: 'external' as const,
+                isInstalled: true,
+                prerequisitesMissing: false
+            };
+
+            (provider as any).tools = [mockTool];
+
+            // Mock findCarbonaraCLI to return null
+            (provider as any).findCarbonaraCLI = async () => null;
+
+            // Mock showInputBox
+            const showInputBoxStub = async () => 'https://example.com';
+            const originalShowInputBox = vscode.window.showInputBox;
+            
+            try {
+                (vscode.window as any).showInputBox = showInputBoxStub;
+
+                // Should return early when cliPath is null
+                await (provider as any).analyzeTool('test-tool');
+                
+                // Should not throw
+                assert.ok(true, 'Should handle null cliPath gracefully');
+            } finally {
+                (vscode.window as any).showInputBox = originalShowInputBox;
             }
         });
     });

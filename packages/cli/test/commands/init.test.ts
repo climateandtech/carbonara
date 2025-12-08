@@ -37,12 +37,15 @@ describe('Carbonara CLI - init command', () => {
    */
   function runInitCommand(dir: string, input: string): { stdout: string; stderr: string; exitCode: number } {
     try {
+      // Use printf with %b to interpret escape sequences (like \n)
+      // This handles newlines more reliably than echo
       const stdout = execSync(
-        `echo "${input}" | node "${cliPath}" init`,
+        `printf '%b' "${input}" | node "${cliPath}" init`,
         {
           cwd: dir,
           encoding: 'utf8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          timeout: 10000 // 10 second timeout to prevent hanging
         }
       );
       return { stdout, stderr: '', exitCode: 0 };
@@ -74,32 +77,16 @@ describe('Carbonara CLI - init command', () => {
     test('should create database at git root', () => {
       initGitRepo(testDir);
 
-      // Run init with piped input (will fail at prompts, but that's OK)
-      try {
-        execSync(
-          `printf "Test Project\\nTest Description\\n" | node "${cliPath}" init`,
-          {
-            cwd: testDir,
-            stdio: 'pipe',
-            timeout: 5000
-          }
-        );
-      } catch (error) {
-        // Command may fail due to prompt issues, but we just want to check the output
-      }
+      // Use the helper function to run init with proper input piping
+      // Provide: name, description (accept default), project type (accept default/first choice)
+      const result = runInitCommand(testDir, 'Test Project\\n\\n\\n');
 
-      // The database won't be created because prompts fail, but check the output message
-      const checkOutput = execSync(
-        `node "${cliPath}" init 2>&1 || true`,
-        {
-          cwd: testDir,
-          encoding: 'utf8',
-          input: '\n\n\n',
-          timeout: 2000
-        }
-      ).toString();
-
-      expect(checkOutput).toContain('Git repository detected');
+      // Should detect git repository
+      expect(result.stdout).toContain('Git repository detected');
+      
+      // Check that database path is at git root (testDir)
+      expect(result.stdout).toContain(testDir);
+      expect(result.stdout).toContain('carbonara.db');
     });
 
     test('should use git root even when run from nested directory', () => {

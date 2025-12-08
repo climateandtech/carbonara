@@ -26,7 +26,7 @@ export async function toolsCommand(options: ToolsOptions) {
   }
 }
 
-async function listTools() {
+export async function listTools() {
   const registry = getToolRegistry();
   
   console.log(chalk.blue('🛠️  Analysis Tools Registry'));
@@ -37,11 +37,33 @@ async function listTools() {
   
   if (installedTools.length > 0) {
     console.log(chalk.green('\n✅ Installed Tools:'));
-    installedTools.forEach(tool => {
-      console.log(`  ${chalk.white(tool.id)} - ${chalk.cyan(tool.name)}`);
+    for (const tool of installedTools) {
+      // Check prerequisites
+      const prereqCheck = await registry.checkToolPrerequisites(tool.id);
+      const hasMissingPrereqs = !prereqCheck.allAvailable;
+      
+      if (hasMissingPrereqs) {
+        console.log(`  ${chalk.white(tool.id)} - ${chalk.cyan(tool.name)} ${chalk.yellow('⚠️  Prerequisites missing')}`);
+      } else {
+        console.log(`  ${chalk.white(tool.id)} - ${chalk.cyan(tool.name)}`);
+      }
+      
       if (tool.description) {
         console.log(`    ${chalk.gray(tool.description)}`);
       }
+      
+      // Show missing prerequisites
+      if (hasMissingPrereqs) {
+        prereqCheck.missing.forEach(({ prerequisite }) => {
+          console.log(`    ${chalk.yellow('⚠️  Missing:')} ${chalk.white(prerequisite.name)}`);
+          if (prerequisite.setupInstructions) {
+            console.log(`       ${chalk.dim(prerequisite.setupInstructions)}`);
+          } else if (prerequisite.installCommand) {
+            console.log(`       ${chalk.dim('Run:')} ${chalk.white(prerequisite.installCommand)}`);
+          }
+        });
+      }
+      
       // Use the first parameter name from the tool's parameters, or default to 'url'
       let paramDisplay = '<url>';
       if (tool.parameters && tool.parameters.length > 0) {
@@ -50,7 +72,7 @@ async function listTools() {
         paramDisplay = param.required ? `<${param.name}>` : `[${param.name}]`;
       }
       console.log(`    ${chalk.dim('Usage:')} carbonara analyze ${tool.id} ${paramDisplay}`);
-    });
+    }
   }
   
   const notInstalledTools = [];
@@ -105,15 +127,56 @@ async function installTool(toolId: string) {
   try {
     const success = await registry.installTool(toolId);
     
+    // Log installation attempt
+    try {
+      const { logToolAction } = await import('../utils/tool-logger.js');
+      const installCommand = tool.installation?.type === 'npm' 
+        ? `npm install ${tool.installation.global ? '-g' : ''} ${tool.installation.package}`
+        : tool.installation?.instructions || 'Unknown';
+      
+      await logToolAction({
+        timestamp: new Date().toISOString(),
+        toolId,
+        action: success ? 'install' : 'error',
+        command: installCommand,
+        exitCode: success ? 0 : 1,
+        error: success ? undefined : 'Installation failed',
+      });
+    } catch (logError) {
+      // Silently fail - logging is optional
+    }
+    
     if (success) {
       spinner.succeed(`${tool.name} installed successfully!`);
       console.log(chalk.green(`\n✅ You can now use: carbonara analyze ${toolId} <url>`));
+      
+      // Mark as installed in config (even if detection fails later)
+      try {
+        const { markToolInstalled } = await import('../utils/config.js');
+        await markToolInstalled(toolId);
+      } catch (configError) {
+        // Silently fail - config recording is optional
+        console.error('Failed to mark tool as installed in config:', configError);
+      }
     } else {
       spinner.fail(`Failed to install ${tool.name}`);
       console.log(chalk.yellow('\n💡 Try installing manually:'));
       console.log(chalk.white(tool.installation.instructions));
     }
   } catch (error: any) {
+    // Log installation error
+    try {
+      const { logToolAction } = await import('../utils/tool-logger.js');
+      await logToolAction({
+        timestamp: new Date().toISOString(),
+        toolId,
+        action: 'error',
+        error: error.message,
+      });
+    } catch (logError) {
+      // Silently fail - logging is optional
+    }
+    
     spinner.fail(`Installation failed: ${error.message}`);
     console.log(chalk.yellow('\n💡 Try installing manually:'));
     console.log(chalk.white(tool.installation.instructions));
