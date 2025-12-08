@@ -171,15 +171,18 @@ test.describe("Semgrep Integration E2E Tests", () => {
     const editorVisible = await editor.isVisible();
     console.log(`Editor visible: ${editorVisible}, Diagnostic markers in editor: ${diagnosticCount}, Problem entries: ${problemCount}`);
     
-    // Primary assertion: Either editor markers OR Problems panel entries should show diagnostics
-    // Problems panel is more reliable as it shows all diagnostics regardless of rendering
-    const hasDiagnostics = diagnosticCount > 0 || problemCount > 0;
-    expect(hasDiagnostics).toBe(true);
+    // CRITICAL: Problems panel must be visible and have entries
+    // This ensures diagnostics are actually appearing in Problems panel, not just Output
+    expect(problemsVisible).toBe(true);
+    expect(problemCount).toBeGreaterThan(0);
     
-    // Secondary assertion: If Problems panel is visible, it should have entries
-    if (problemsVisible) {
-      expect(problemCount).toBeGreaterThan(0);
-    }
+    // Verify that the entries are actually Semgrep diagnostics
+    const semgrepEntries = problemsPanel.locator('.monaco-list-row:has-text("Carbonara Code Scan"), .monaco-list-row:has-text("semgrep")');
+    const semgrepCount = await semgrepEntries.count();
+    expect(semgrepCount).toBeGreaterThan(0);
+    
+    // Also verify editor markers are visible (should be red for ERROR severity)
+    expect(diagnosticCount).toBeGreaterThan(0);
   });
 
   test("should trigger Semgrep analysis and show results with diagnostics when semgrep is installed", async () => {
@@ -330,15 +333,18 @@ test.describe("Semgrep Integration E2E Tests", () => {
       console.log(`Semgrep-specific entries in Problems panel: ${semgrepCount}`);
     }
     
-    // Primary assertion: Either editor markers OR Problems panel entries should show diagnostics
-    // Problems panel is more reliable as it shows all diagnostics regardless of rendering
-    const hasDiagnostics = diagnosticCount > 0 || problemCount > 0;
-    expect(hasDiagnostics).toBe(true);
+    // CRITICAL: Problems panel must be visible and have entries
+    // This ensures diagnostics are actually appearing in Problems panel, not just Output
+    expect(problemsVisible).toBe(true);
+    expect(problemCount).toBeGreaterThan(0);
     
-    // Secondary assertion: If Problems panel is visible, it should have entries
-    if (problemsVisible) {
-      expect(problemCount).toBeGreaterThan(0);
-    }
+    // Verify that the entries are actually Semgrep diagnostics
+    const semgrepEntries = problemsPanel.locator('.monaco-list-row:has-text("Carbonara Code Scan"), .monaco-list-row:has-text("semgrep")');
+    const semgrepCount = await semgrepEntries.count();
+    expect(semgrepCount).toBeGreaterThan(0);
+    
+    // Also verify editor markers are visible (should be red for ERROR severity)
+    expect(diagnosticCount).toBeGreaterThan(0);
   });
 
   test("should show proper error message when prerequisites are missing", async () => {

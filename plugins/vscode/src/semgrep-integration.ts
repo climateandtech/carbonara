@@ -439,16 +439,16 @@ function applySemgrepDiagnostics(
     );
 
     // Map Semgrep severity to VSCode diagnostic severity
-    // ERROR (Critical) -> Warning (orange in most themes)
-    // WARNING (Major) -> Information (blue/green in most themes)
-    // INFO (Minor) -> Hint (subtle green in most themes)
+    // ERROR (Critical) -> Error (red, shows in Problems, red markers/dots)
+    // WARNING (Major) -> Warning (orange/yellow, shows in Problems)
+    // INFO (Minor) -> Information (blue, shows in Problems)
     let severity: vscode.DiagnosticSeverity;
     if (match.severity === "ERROR") {
-      severity = vscode.DiagnosticSeverity.Warning;
+      severity = vscode.DiagnosticSeverity.Error;
     } else if (match.severity === "WARNING") {
-      severity = vscode.DiagnosticSeverity.Information;
+      severity = vscode.DiagnosticSeverity.Warning;
     } else {
-      severity = vscode.DiagnosticSeverity.Hint;
+      severity = vscode.DiagnosticSeverity.Information;
     }
 
     // Extract just the rule name from the full rule_id path
