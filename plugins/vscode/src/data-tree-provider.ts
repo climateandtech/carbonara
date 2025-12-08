@@ -106,15 +106,71 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
   private cachedItems: DataItem[] | null = null;
   public badgeProvider?: import("./badge-decoration-provider").BadgeDecorationProvider;
   private thresholdService: ThresholdService;
+  private initializationInProgress: boolean = false;
+  private configWatcher: vscode.FileSystemWatcher | null = null;
 
   constructor() {
     this.thresholdService = new ThresholdService();
     this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    
+    // Set up file watcher for config file creation
+    this.setupConfigWatcher();
+    
     // Initialize synchronously - don't wait
     this.initializeCoreServices();
   }
 
+  private setupConfigWatcher(): void {
+    // Watch for config file creation/change to trigger initialization
+    this.configWatcher = vscode.workspace.createFileSystemWatcher(
+      "**/.carbonara/carbonara.config.json"
+    );
+    
+    // When config is created, trigger initialization
+    this.configWatcher.onDidCreate(() => {
+      console.log("🔄 Config file created, triggering core services initialization...");
+      if (!this.coreServices && !this.initializationInProgress) {
+        this.initializeCoreServices().catch((err) => {
+          console.error("Failed to initialize core services after config creation:", err);
+        });
+      }
+    });
+    
+    // When config changes, refresh if services are already initialized
+    this.configWatcher.onDidChange(() => {
+      if (this.coreServices) {
+        console.log("🔄 Config file changed, refreshing data...");
+        this.refresh();
+      } else if (!this.initializationInProgress) {
+        // Config changed but services not initialized - try to initialize
+        this.initializeCoreServices().catch((err) => {
+          console.error("Failed to initialize core services after config change:", err);
+        });
+      }
+    });
+  }
+
+  dispose(): void {
+    if (this.configWatcher) {
+      this.configWatcher.dispose();
+    }
+  }
+
   private async initializeCoreServices(): Promise<void> {
+    // Prevent concurrent initialization
+    if (this.initializationInProgress) {
+      console.log("⏸️ Initialization already in progress, skipping...");
+      return;
+    }
+    
+    // If services are already initialized, don't re-initialize
+    if (this.coreServices) {
+      console.log("✅ Core services already initialized, skipping...");
+      return;
+    }
+    
+    this.initializationInProgress = true;
+    
     try {
       if (!this.workspaceFolder) {
         console.error("❌ No workspace folder available");
@@ -267,8 +323,8 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       });
       this.coreServices = null;
     } finally {
-      // Always trigger refresh to update UI (either with data or error state)
-
+      // Always reset initialization flag and trigger refresh to update UI
+      this.initializationInProgress = false;
       this._onDidChangeTreeData.fire();
     }
   }
@@ -301,7 +357,27 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
         console.error("Error refreshing data:", error);
       }
     } else {
-      // If services aren't ready, fall back to old behavior
+      // If services aren't ready, check if we should initialize them (fallback)
+      // The file watcher should catch this, but this is a safety net
+      if (this.workspaceFolder) {
+        const configPath = path.join(
+          this.workspaceFolder.uri.fsPath,
+          ".carbonara",
+          "carbonara.config.json"
+        );
+        
+        // If config exists but coreServices is null, trigger initialization
+        if (require("fs").existsSync(configPath) && !this.coreServices && !this.initializationInProgress) {
+          console.log("🔄 Config detected in refresh() but services not initialized, triggering initialization...");
+          // Trigger initialization (it will fire _onDidChangeTreeData when done)
+          this.initializeCoreServices().catch((err) => {
+            console.error("Failed to initialize core services in refresh():", err);
+          });
+          return;
+        }
+      }
+      
+      // If services aren't ready and we can't initialize, fall back to old behavior
       this.cachedItems = null;
       this._onDidChangeTreeData.fire();
     }
@@ -388,31 +464,31 @@ export class DataTreeProvider implements vscode.TreeDataProvider<DataItem> {
       }
       return [
         new DataItem(
-          "🔄 Loading data...",
+          "Loading data...",
           "Initializing services",
           vscode.TreeItemCollapsibleState.None,
           "info"
         ),
         new DataItem(
-          `📁 Workspace: ${this.workspaceFolder?.uri.fsPath || "None"}`,
+          `Workspace: ${this.workspaceFolder?.uri.fsPath || "None"}`,
           "",
           vscode.TreeItemCollapsibleState.None,
           "info"
         ),
         new DataItem(
-          `🗄️ Database: ${dbPath}`,
+          `Database: ${dbPath}`,
           "",
           vscode.TreeItemCollapsibleState.None,
           "info"
         ),
         new DataItem(
-          `📊 DB exists: ${dbExists}`,
+          `DB exists: ${dbExists}`,
           "",
           vscode.TreeItemCollapsibleState.None,
           "info"
         ),
         new DataItem(
-          "⏳ Waiting for initialization...",
+          "Waiting for initialization...",
           "Check VSCode Developer Console for errors",
           vscode.TreeItemCollapsibleState.None,
           "info"

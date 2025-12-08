@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc && npm run copy-assets",
-    "copy-assets": "mkdir -p dist/schemas dist/registry && cp -r schemas/* dist/schemas/ && cp -r src/registry/* dist/registry/",
+    "copy-assets": "mkdir -p dist/schemas dist/registry && cp -r schemas/* dist/schemas/ && find src/registry -name '*.json' -exec cp {} dist/registry/ \\; && find dist/registry -name '*.ts' -type f ! -name '*.d.ts' -delete",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",

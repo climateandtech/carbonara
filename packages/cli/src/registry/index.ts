@@ -59,6 +59,7 @@ export interface AnalysisTool {
     installCommand?: string;
     setupInstructions?: string;
   }>;
+  autoInstall?: boolean; // If true, prompt user to install when tool is not found
 }
 
 export interface ToolRegistry {
@@ -338,13 +339,24 @@ export class AnalysisToolRegistry {
           await execa('npm', npmArgs, { stdio: 'inherit' });
           break;
         case 'pip':
-          const pipArgs = ['install'];
-          if (tool.installation.global) {
+          // Use python3 -m pip for better compatibility across platforms
+          const pipArgs = ['-m', 'pip', 'install'];
+          if (tool.installation.global === false) {
+            // If global is explicitly false, don't add --user (install in current environment)
+            // This is the default behavior
+          } else if (tool.installation.global) {
+            // If global is true, use --user flag
             pipArgs.push('--user');
           }
           pipArgs.push(tool.installation.package);
           
-          await execa('pip', pipArgs, { stdio: 'inherit' });
+          // Try python3 first, fall back to python if needed
+          try {
+            await execa('python3', pipArgs, { stdio: 'inherit' });
+          } catch (error) {
+            // Fall back to python if python3 is not available
+            await execa('python', pipArgs, { stdio: 'inherit' });
+          }
           break;
         default:
           throw new Error(`Installation type ${tool.installation.type} not supported yet`);

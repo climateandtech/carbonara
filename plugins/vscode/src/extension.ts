@@ -31,6 +31,7 @@ import {
   scanAllFiles,
   clearSemgrepResults,
   setOnDatabaseUpdateCallback,
+  loadDiagnosticsForFile,
 } from "./semgrep-integration";
 import { DataService } from "@carbonara/core";
 
@@ -78,6 +79,10 @@ export async function activate(context: vscode.ExtensionContext) {
   welcomeTreeProvider = new WelcomeTreeProvider();
   assessmentTreeProvider = new AssessmentTreeProvider();
   dataTreeProvider = new DataTreeProvider();
+  // Register dispose for cleanup
+  context.subscriptions.push({
+    dispose: () => dataTreeProvider.dispose()
+  });
   console.log("🔧 Creating ToolsTreeProvider...");
   toolsTreeProvider = new ToolsTreeProvider();
   console.log("🔧 Creating DeploymentsTreeProvider...");
@@ -322,6 +327,15 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand("carbonara.runSemgrep", runSemgrepOnFile),
     vscode.commands.registerCommand("carbonara.scanAllFiles", scanAllFiles),
+    vscode.commands.registerCommand("carbonara.loadSemgrepDiagnostics", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        await loadDiagnosticsForFile(editor.document.uri.fsPath);
+        vscode.window.showInformationMessage("Diagnostics loaded from database");
+      } else {
+        vscode.window.showWarningMessage("No active editor to load diagnostics for");
+      }
+    }),
     vscode.commands.registerCommand(
       "carbonara.clearSemgrepResults",
       clearSemgrepResults
@@ -570,7 +584,7 @@ async function initProject() {
 
   // Ensure UI reflects the new project
   // Update context first to trigger view visibility changes
-  vscode.commands.executeCommand(
+  await vscode.commands.executeCommand(
     "setContext",
     "carbonara.notInitialized",
     false
