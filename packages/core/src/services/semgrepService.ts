@@ -1,19 +1,55 @@
 /**
  * Semgrep Service for Carbonara
- * Provides TypeScript interface to the Python Semgrep runner
+ * Provides TypeScript interface to run Semgrep CLI directly
+ * 
+ * MIGRATED: This service now calls semgrep CLI directly instead of using the Python runner.
+ * The Python runner (semgrep_runner.py) is kept for backward compatibility but is deprecated.
  */
 
-import { spawn, ChildProcess } from "child_process";
+import { execaCommand } from "execa";
 import * as path from "path";
 import * as fs from "fs";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
+import { spawn } from "child_process";
 
 const fsAccess = promisify(fs.access);
 
 // ESM-compliant __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Default exclusion patterns for Semgrep analysis
+ * These patterns exclude directories and file types that should not be analyzed
+ */
+const DEFAULT_SEMGREP_EXCLUSIONS = [
+  // Build and dependency directories
+  "node_modules",
+  "dist",
+  "build",
+  "vendor",
+  ".git",
+  // Python virtual environments
+  "__pycache__",
+  ".venv",
+  "venv",
+  // Project-specific
+  ".carbonara",
+  // Documentation and non-code files
+  "docs",
+  "*.html",
+  "*.md",
+  "*.txt",
+  // Config files (Semgrep can't parse these properly)
+  "*.json",
+  "*.yaml",
+  "*.yml",
+  "*.lock",
+  "*.log",
+  // Minified files
+  "*.min.js",
+];
 
 /**
  * Represents severity levels for Semgrep findings
@@ -69,60 +105,29 @@ export interface SemgrepServiceConfig {
 
 /**
  * Service for running Semgrep analysis
+ * Now uses semgrep CLI directly instead of Python runner
  */
 export class SemgrepService {
-  private pythonPath: string;
-  private runnerPath: string;
   private rulesDir: string;
-  private useBundledPython: boolean;
   private timeout: number;
+  // Keep useBundledPython for backward compatibility (ignored)
+  private useBundledPython: boolean;
 
   constructor(config: SemgrepServiceConfig = {}) {
-    this.pythonPath = config.pythonPath || "python3";
-    this.useBundledPython = config.useBundledPython ?? false;
+    this.useBundledPython = config.useBundledPython ?? false; // Kept for backward compatibility
     this.timeout = config.timeout || 60000; // Default 60 seconds
 
     // Resolve paths relative to the core package root
     const packageRoot = path.resolve(__dirname, "..", "..");
-    this.runnerPath = path.join(packageRoot, "python", "semgrep_runner.py");
     this.rulesDir =
       config.rulesDir || path.join(packageRoot, "semgrep", "rules");
-
-    // If using bundled Python, update the path
-    if (this.useBundledPython) {
-      const platform = process.platform;
-      if (platform === "win32") {
-        this.pythonPath = path.join(
-          packageRoot,
-          "python-dist",
-          "venv",
-          "Scripts",
-          "python.exe"
-        );
-      } else {
-        this.pythonPath = path.join(
-          packageRoot,
-          "python-dist",
-          "venv",
-          "bin",
-          "python"
-        );
-      }
-    }
   }
 
   /**
-   * Check if the Python environment and Semgrep are properly set up
+   * Check if Semgrep CLI and rules directory are properly set up
    */
   async checkSetup(): Promise<{ isValid: boolean; errors: string[] }> {
     const errors: string[] = [];
-
-    // Check if runner script exists
-    try {
-      await fsAccess(this.runnerPath, fs.constants.R_OK);
-    } catch {
-      errors.push(`Runner script not found at: ${this.runnerPath}`);
-    }
 
     // Check if rules directory exists
     try {
@@ -131,20 +136,20 @@ export class SemgrepService {
       errors.push(`Rules directory not found at: ${this.rulesDir}`);
     }
 
-    // Check if Python is available
-    const pythonCheck = await this.runCommand([this.pythonPath, "--version"]);
-    if (!pythonCheck.success) {
-      errors.push(`Python not available at: ${this.pythonPath}`);
-    }
+    // Check if Semgrep CLI is available
+    try {
+      const result = await execaCommand("semgrep --version", {
+        stdio: "pipe",
+        timeout: 5000,
+        reject: false,
+        shell: true,
+      });
 
-    // Check if Semgrep is installed
-    const semgrepCheck = await this.runCommand([
-      this.pythonPath,
-      this.runnerPath,
-      "--help",
-    ]);
-    if (!semgrepCheck.success) {
-      errors.push("Semgrep runner not working properly");
+      if (result.exitCode !== 0) {
+        errors.push("Semgrep CLI is not available. Please install it with: pip install semgrep");
+      }
+    } catch (error: any) {
+      errors.push("Semgrep CLI is not available. Please install it with: pip install semgrep");
     }
 
     return {
@@ -154,123 +159,40 @@ export class SemgrepService {
   }
 
   /**
-   * Install Semgrep in the Python environment
-   */
-  async installSemgrep(): Promise<boolean> {
-    const result = await this.runCommand([
-      this.pythonPath,
-      "-m",
-      "pip",
-      "install",
-      "semgrep",
-    ]);
-    return result.success;
-  }
-
-  /**
    * Run Semgrep analysis on a single file
    */
   async analyzeFile(filePath: string): Promise<SemgrepResult> {
-    const args = [this.runnerPath, filePath, "--json"];
-
-    args.push("--rules-dir", this.rulesDir);
-
-    const result = await this.runCommand([this.pythonPath, ...args]);
-
-    if (result.success && result.stdout) {
-      try {
-        return JSON.parse(result.stdout) as SemgrepResult;
-      } catch (e) {
-        return {
-          success: false,
-          matches: [],
-          errors: [`Failed to parse Semgrep output: ${e}`],
-          stats: {
-            total_matches: 0,
-            error_count: 0,
-            warning_count: 0,
-            info_count: 0,
-            files_scanned: 0,
-          },
-        };
-      }
-    }
-
-    return {
-      success: false,
-      matches: [],
-      errors: [result.stderr || "Unknown error running Semgrep"],
-      stats: {
-        total_matches: 0,
-        error_count: 0,
-        warning_count: 0,
-        info_count: 0,
-        files_scanned: 0,
-      },
-    };
+    return this.runSemgrepAnalysis([filePath]);
   }
 
   /**
    * Run Semgrep analysis on a directory
    */
   async analyzeDirectory(dirPath: string): Promise<SemgrepResult> {
-    const args = [this.runnerPath, dirPath, "--json"];
-
-    args.push("--rules-dir", this.rulesDir);
-
-    const result = await this.runCommand([this.pythonPath, ...args]);
-
-    if (result.success && result.stdout) {
-      try {
-        return JSON.parse(result.stdout) as SemgrepResult;
-      } catch (e) {
-        return {
-          success: false,
-          matches: [],
-          errors: [`Failed to parse Semgrep output: ${e}`],
-          stats: {
-            total_matches: 0,
-            error_count: 0,
-            warning_count: 0,
-            info_count: 0,
-            files_scanned: 0,
-          },
-        };
-      }
-    }
-
-    return {
-      success: false,
-      matches: [],
-      errors: [result.stderr || "Unknown error running Semgrep"],
-      stats: {
-        total_matches: 0,
-        error_count: 0,
-        warning_count: 0,
-        info_count: 0,
-        files_scanned: 0,
-      },
-    };
+    return this.runSemgrepAnalysis([dirPath]);
   }
 
   /**
    * Run Semgrep analysis on multiple targets
    */
   async analyze(targets: string[]): Promise<SemgrepResult> {
-    const args = [this.runnerPath, ...targets, "--json"];
+    return this.runSemgrepAnalysis(targets);
+  }
 
-    args.push("--rules-dir", this.rulesDir);
-
-    const result = await this.runCommand([this.pythonPath, ...args]);
-
-    if (result.success && result.stdout) {
+  /**
+   * Core method to run Semgrep CLI analysis
+   * Builds the command and parses JSON output
+   */
+  private async runSemgrepAnalysis(targets: string[]): Promise<SemgrepResult> {
+    // Validate targets exist
+    for (const target of targets) {
       try {
-        return JSON.parse(result.stdout) as SemgrepResult;
-      } catch (e) {
+        await fsAccess(target, fs.constants.R_OK);
+      } catch {
         return {
           success: false,
           matches: [],
-          errors: [`Failed to parse Semgrep output: ${e}`],
+          errors: [`Target path not found: ${target}`],
           stats: {
             total_matches: 0,
             error_count: 0,
@@ -282,17 +204,221 @@ export class SemgrepService {
       }
     }
 
+    // Build semgrep command
+    // Same structure as Python runner: semgrep --config <rulesDir> --json --metrics=off --exclude ... <targets>
+    const cmdParts = [
+      "semgrep",
+      "--config",
+      this.rulesDir,
+      "--json",
+      "--metrics=off",
+      ...DEFAULT_SEMGREP_EXCLUSIONS.flatMap((pattern) => ["--exclude", pattern]),
+      ...targets,
+    ];
+
+    const command = cmdParts.join(" ");
+
+    try {
+      // Use longer timeout for directory scans (5 minutes)
+      const timeout = targets.some((t) => {
+        try {
+          const stat = fs.statSync(t);
+          return stat.isDirectory();
+        } catch {
+          return false;
+        }
+      })
+        ? 300000
+        : 60000;
+
+      const result = await execaCommand(command, {
+        stdio: "pipe",
+        timeout,
+        reject: false,
+        shell: true,
+      });
+
+      // Semgrep exit codes: 0 = success, 1 = findings found (still success)
+      // Exit codes 2+ might indicate errors, but we should still try to parse JSON output
+      // as Semgrep may return valid results even with some parsing errors
+      if (result.stdout) {
+        try {
+          const data = JSON.parse(result.stdout);
+          const parsed = this.parseSemgrepOutput(data);
+          
+          // If we have matches, it's a success even if there were parsing errors
+          // Only fail if exit code is clearly an error AND we have no matches AND no critical errors
+          if (parsed.matches.length > 0) {
+            // We have results - treat as success even if exit code suggests errors
+            return {
+              ...parsed,
+              success: true,
+            };
+          }
+          
+          // No matches - check if exit code indicates success (0 or 1)
+          if (result.exitCode === 0 || result.exitCode === 1) {
+            return parsed;
+          }
+          
+          // Exit code suggests error, but check if errors are just parsing issues
+          const hasOnlyParsingErrors = parsed.errors.every((e) => 
+            e.includes("PartialParsing") || 
+            e.includes("Syntax error") ||
+            e.includes("Unknown language")
+          );
+          
+          if (hasOnlyParsingErrors) {
+            // Only parsing errors - treat as success (no code issues found)
+            return {
+              ...parsed,
+              success: true,
+            };
+          }
+          
+          // Real errors - return as failure
+          return parsed;
+        } catch (e) {
+          // Failed to parse JSON - this is a real error
+          return {
+            success: false,
+            matches: [],
+            errors: [`Failed to parse Semgrep output: ${e}`],
+            stats: {
+              total_matches: 0,
+              error_count: 0,
+              warning_count: 0,
+              info_count: 0,
+              files_scanned: 0,
+            },
+          };
+        }
+      } else {
+        // No output - check exit code
+        if (result.exitCode === 0 || result.exitCode === 1) {
+          // No output but exit code indicates success - no findings
+          return {
+            success: true,
+            matches: [],
+            errors: [],
+            stats: {
+              total_matches: 0,
+              error_count: 0,
+              warning_count: 0,
+              info_count: 0,
+              files_scanned: 0,
+            },
+          };
+        } else {
+          // Error exit code with no output - real error
+          const errorMsg =
+            result.stderr || "Unknown error running Semgrep";
+          return {
+            success: false,
+            matches: [],
+            errors: [errorMsg],
+            stats: {
+              total_matches: 0,
+              error_count: 0,
+              warning_count: 0,
+              info_count: 0,
+              files_scanned: 0,
+            },
+          };
+        }
+      }
+    } catch (error: any) {
+      if (error.isCanceled || error.timedOut) {
+        return {
+          success: false,
+          matches: [],
+          errors: [
+            `Semgrep execution timed out after ${this.timeout}ms`,
+          ],
+          stats: {
+            total_matches: 0,
+            error_count: 0,
+            warning_count: 0,
+            info_count: 0,
+            files_scanned: 0,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        matches: [],
+        errors: [`Unexpected error running Semgrep: ${error.message}`],
+        stats: {
+          total_matches: 0,
+          error_count: 0,
+          warning_count: 0,
+          info_count: 0,
+          files_scanned: 0,
+        },
+      };
+    }
+  }
+
+  /**
+   * Parse Semgrep JSON output into structured result
+   * Same structure as Python runner's _parse_semgrep_output()
+   */
+  private parseSemgrepOutput(data: any): SemgrepResult {
+    const matches: SemgrepMatch[] = [];
+    const errors: string[] = [];
+
+    // Extract results
+    for (const result of data.results || []) {
+      const match: SemgrepMatch = {
+        rule_id: result.check_id || "",
+        path: result.path || "",
+        start_line: result.start?.line || 0,
+        end_line: result.end?.line || 0,
+        start_column: result.start?.col || 0,
+        end_column: result.end?.col || 0,
+        message: result.extra?.message || "",
+        severity: result.extra?.severity || "WARNING",
+        code_snippet: result.extra?.lines || "",
+        fix: result.extra?.fix,
+        metadata: result.extra?.metadata || {},
+      };
+      matches.push(match);
+    }
+
+    // Extract errors if any
+    for (const error of data.errors || []) {
+      errors.push(
+        `${error.type || "Error"}: ${error.message || "Unknown error"}`
+      );
+    }
+
+    // Calculate statistics
+    const stats = {
+      total_matches: matches.length,
+      error_count: matches.filter((m) => m.severity === "ERROR").length,
+      warning_count: matches.filter((m) => m.severity === "WARNING").length,
+      info_count: matches.filter((m) => m.severity === "INFO").length,
+      files_scanned:
+        matches.length > 0
+          ? new Set(matches.map((m) => m.path)).size
+          : 0,
+    };
+
+    // Success if we have matches OR if there are no critical errors
+    // Partial parsing errors (like HTML files) are non-fatal - we still return results
+    // Only fail if there are no matches AND there are critical errors
+    const hasCriticalErrors = errors.some((e) => 
+      !e.includes("PartialParsing") && 
+      !e.includes("Syntax error")
+    );
+    const success = matches.length > 0 || !hasCriticalErrors;
+
     return {
-      success: false,
-      matches: [],
-      errors: [result.stderr || "Unknown error running Semgrep"],
-      stats: {
-        total_matches: 0,
-        error_count: 0,
-        warning_count: 0,
-        info_count: 0,
-        files_scanned: 0,
-      },
+      matches,
+      errors,
+      stats,
+      success,
     };
   }
 
@@ -353,47 +479,6 @@ export class SemgrepService {
     return lines.join("\n");
   }
 
-  /**
-   * Helper method to run a command with timeout
-   */
-  private runCommand(
-    args: string[]
-  ): Promise<{ success: boolean; stdout: string; stderr: string }> {
-    return new Promise((resolve) => {
-      const child = spawn(args[0], args.slice(1), {
-        timeout: this.timeout,
-        env: { ...process.env, PYTHONUNBUFFERED: "1" },
-      });
-
-      let stdout = "";
-      let stderr = "";
-
-      child.stdout?.on("data", (data) => {
-        stdout += data.toString();
-      });
-
-      child.stderr?.on("data", (data) => {
-        stderr += data.toString();
-      });
-
-      child.on("error", (error) => {
-        resolve({
-          success: false,
-          stdout,
-          stderr: stderr || error.message,
-        });
-      });
-
-      child.on("close", (code) => {
-        // Exit code 0 = success, 1 = findings exist (still success), other = error
-        resolve({
-          success: code === 0 || code === 1,
-          stdout,
-          stderr,
-        });
-      });
-    });
-  }
 }
 
 /**
@@ -420,6 +505,6 @@ export async function setupBundledEnvironment(): Promise<boolean> {
     });
 
     child.on("error", () => resolve(false));
-    child.on("close", (code) => resolve(code === 0));
+    child.on("close", (code: number | null) => resolve(code === 0));
   });
 }

@@ -35,6 +35,7 @@ export interface SemgrepResultRow {
   end_line: number;
   start_column: number;
   end_column: number;
+  message?: string; // Optional message from match data
   created_at: string;
 }
 
@@ -625,12 +626,12 @@ export class DataService {
 
   /**
    * Get semgrep results for a specific file from assessment_data
-   * Queries all runs and extracts matches for the specified file
+   * Returns only the newest entry (most recent run) for the specified file
    */
   async getSemgrepResultsByFile(filePath: string): Promise<SemgrepResultRow[]> {
     if (!this.db) throw new Error("Database not initialized");
 
-    // Query all semgrep runs from assessment_data
+    // Query all semgrep runs from assessment_data, ordered by timestamp DESC
     const result = this.db.exec(
       `SELECT * FROM assessment_data 
        WHERE tool_name = 'semgrep' AND data_type = 'code-analysis' 
@@ -644,10 +645,10 @@ export class DataService {
     const columns = result[0].columns;
     const rows = result[0].values;
 
-    // Flatten matches from all runs and filter by file path
+    // Find the newest run that contains this file
     const allMatches: SemgrepResultRow[] = [];
 
-    rows.forEach((values: any) => {
+    for (const values of rows) {
       const row: any = {};
       columns.forEach((col: string, idx: number) => {
         row[col] = values[idx];
@@ -656,37 +657,68 @@ export class DataService {
       // Parse JSON data
       const data = row.data ? JSON.parse(row.data) : {};
       const matches = data.matches || [];
+      const target = data.target || "";
 
-      // Filter matches for the requested file
-      matches.forEach((match: any) => {
-        const matchFilePath = match.file_path || match.path;
-        if (matchFilePath === filePath) {
-          allMatches.push({
-            id: row.id, // Use assessment_data id
-            rule_id: match.rule_id,
-            severity: match.severity,
-            file_path: matchFilePath,
-            start_line: match.start_line,
-            end_line: match.end_line,
-            start_column: match.start_column,
-            end_column: match.end_column,
-            created_at: row.timestamp,
-          });
-        }
-      });
-    });
+      // Normalize paths for comparison (handle different path formats)
+      const normalizePath = (p: string) => p.replace(/\\/g, "/").toLowerCase();
+      const normalizedTarget = normalizePath(target);
+      const normalizedFilePath = normalizePath(filePath);
+      const fileName = path.basename(filePath);
+      const targetFileName = path.basename(target);
+
+      // Check if this run is for the requested file
+      // Match by: exact path, normalized path, or just filename
+      const isMatch = 
+        target === filePath ||
+        normalizedTarget === normalizedFilePath ||
+        targetFileName === fileName ||
+        target.endsWith(filePath) ||
+        filePath.endsWith(target);
+
+      if (isMatch) {
+        // This is the newest run for this file (since we're iterating DESC)
+        // Extract all matches for this file
+        matches.forEach((match: any) => {
+          const matchFilePath = match.file_path || match.path || target;
+          const normalizedMatchPath = normalizePath(matchFilePath);
+          
+          // Match if paths are the same (exact or normalized) or if filenames match
+          const matchIsForFile = 
+            matchFilePath === filePath ||
+            normalizedMatchPath === normalizedFilePath ||
+            path.basename(matchFilePath) === fileName;
+            
+          if (matchIsForFile) {
+            allMatches.push({
+              id: row.id, // Use assessment_data id
+              rule_id: match.rule_id,
+              severity: match.severity,
+              file_path: matchFilePath,
+              start_line: match.start_line,
+              end_line: match.end_line,
+              start_column: match.start_column,
+              end_column: match.end_column,
+              message: match.message, // Include message if available
+              created_at: row.timestamp,
+            });
+          }
+        });
+        // Found the newest run for this file, stop searching
+        break;
+      }
+    }
 
     return allMatches;
   }
 
   /**
    * Get all semgrep results from assessment_data
-   * Flattens matches from all runs
+   * Returns only the newest entry per file (most recent run for each file)
    */
   async getAllSemgrepResults(): Promise<SemgrepResultRow[]> {
     if (!this.db) throw new Error("Database not initialized");
 
-    // Query all semgrep runs from assessment_data
+    // Query all semgrep runs from assessment_data, ordered by timestamp DESC
     const result = this.db.exec(
       `SELECT * FROM assessment_data 
        WHERE tool_name = 'semgrep' AND data_type = 'code-analysis' 
@@ -700,9 +732,11 @@ export class DataService {
     const columns = result[0].columns;
     const rows = result[0].values;
 
-    // Flatten matches from all runs
+    // Track which files we've already seen (to only keep newest entry per file)
+    const filesSeen = new Set<string>();
     const allMatches: SemgrepResultRow[] = [];
 
+    // Process rows in order (newest first)
     rows.forEach((values: any) => {
       const row: any = {};
       columns.forEach((col: string, idx: number) => {
@@ -712,21 +746,33 @@ export class DataService {
       // Parse JSON data
       const data = row.data ? JSON.parse(row.data) : {};
       const matches = data.matches || [];
+      const target = data.target || "";
 
-      // Add all matches with assessment_data metadata
-      matches.forEach((match: any) => {
-        allMatches.push({
-          id: row.id, // Use assessment_data id
-          rule_id: match.rule_id,
-          severity: match.severity,
-          file_path: match.file_path || match.path,
-          start_line: match.start_line,
-          end_line: match.end_line,
-          start_column: match.start_column,
-          end_column: match.end_column,
-          created_at: row.timestamp,
+      // Only process matches from this run if we haven't seen this file yet
+      // This ensures we only show the newest results for each file
+      if (target && !filesSeen.has(target)) {
+        filesSeen.add(target);
+        
+        // Add all matches from this (newest) run for this file
+        matches.forEach((match: any) => {
+          const matchFilePath = match.file_path || match.path || target;
+          // Only add matches that belong to this file's target
+          if (matchFilePath === target) {
+            allMatches.push({
+              id: row.id, // Use assessment_data id
+              rule_id: match.rule_id,
+              severity: match.severity,
+              file_path: matchFilePath,
+              start_line: match.start_line,
+              end_line: match.end_line,
+              start_column: match.start_column,
+              end_column: match.end_column,
+              message: match.message, // Include message if available
+              created_at: row.timestamp,
+            });
+          }
         });
-      });
+      }
     });
 
     return allMatches;

@@ -786,20 +786,31 @@
       "description": "Static code analysis for finding performance improvements",
       "vscodeCommand": "carbonara.runSemgrep",
       "command": {
-        "executable": "built-in",
+        "executable": "semgrep",
         "args": [],
         "outputFormat": "json"
       },
       "installation": {
-        "type": "built-in",
-        "package": "built-in",
+        "type": "pip",
+        "package": "semgrep",
         "global": false,
-        "instructions": "Built-in static analysis tool. Requires Python 3.7+ for full functionality. Run 'carbonara semgrep --setup' to configure bundled environment."
+        "instructions": "Requires Python 3.7+. Install with: pip install semgrep"
       },
+      "autoInstall": true,
       "detection": {
-        "method": "built-in",
-        "target": "always-available"
+        "method": "command",
+        "commands": ["semgrep --version"]
       },
+      "prerequisites": [
+        {
+          "type": "python",
+          "name": "Python 3.7+",
+          "checkCommand": "python3 --version",
+          "expectedOutput": "Python 3.",
+          "errorMessage": "Python 3.7+ is required but not available",
+          "setupInstructions": "Install Python 3.7+ from https://www.python.org/downloads/"
+        }
+      ],
       "display": {
         "category": "Code Analysis",
         "icon": "",
