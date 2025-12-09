@@ -805,86 +805,57 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
 
     try {
-      const cliPath = await this.findCarbonaraCLI();
-      if (!cliPath) {
-        vscode.window.showErrorMessage(UI_TEXT.NOTIFICATIONS.CLI_NOT_FOUND);
-        return;
-      }
-
       // Show progress notification
-        vscode.window.showInformationMessage(
+      vscode.window.showInformationMessage(
         `Installing ${tool.name}...`
       );
 
-      // Run CLI install command
-      const cliArgs = ["tools", "install", toolId];
-      console.log(`[ToolsTreeProvider] Running CLI install command: ${cliPath} ${cliArgs.join(' ')}`);
+      // Use shared installation function (same as CLI)
+      const { installToolWithLogging } = await import("@carbonara/cli/dist/utils/tool-installer.js");
+      const projectPath = this.workspaceFolder?.uri.fsPath;
       
-      const outputChannel = vscode.window.createOutputChannel('Carbonara CLI');
-      outputChannel.appendLine(`=== Installing ${tool.name} ===`);
-      
-      const result = await this.runCarbonaraCommand(cliPath, cliArgs);
-      
-      outputChannel.appendLine(result);
-      outputChannel.show();
-
-      // Check if CLI command reported success (even if detection fails)
-      const installationSuccess = result.includes("installed successfully") || result.includes("already installed");
-      
-      // Log installation attempt
-      if (this.workspaceFolder) {
-        try {
-          const { logToolAction } = await import("@carbonara/cli/dist/utils/tool-logger.js");
-          const installCommand = tool.installation?.type === 'npm' 
-            ? `npm install ${tool.installation.global ? '-g' : ''} ${tool.installation.package}`
-            : tool.installation?.instructions || 'Unknown';
-          
-          await logToolAction({
-            timestamp: new Date().toISOString(),
-            toolId,
-            action: installationSuccess ? 'install' : 'error',
-            command: installCommand,
-            output: result.substring(0, 2000), // Limit output length
-            exitCode: installationSuccess ? 0 : 1,
-            error: installationSuccess ? undefined : 'Installation failed',
-          }, this.workspaceFolder.uri.fsPath);
-        } catch (logError) {
-          // Silently fail - logging is optional
-          console.error(`[ToolsTreeProvider] Failed to log installation:`, logError);
+      const result = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Installing ${tool.name}`,
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ increment: 0, message: `Installing ${tool.name}...` });
+          const installResult = await installToolWithLogging(toolId, projectPath);
+          progress.report({ increment: 100, message: "Installation complete" });
+          return installResult;
         }
-      }
-      
-      // Mark as installed in config if CLI reported success
-      if (installationSuccess && this.workspaceFolder) {
-        try {
-          await markToolInstalled(toolId, this.workspaceFolder.uri.fsPath);
-        } catch (error) {
-          console.error(`[ToolsTreeProvider] Failed to mark tool as installed in config:`, error);
-        }
-      }
+      );
 
       // Check if installation was successful by refreshing and checking status
       await this.refreshAsync();
       
       // Re-check installation status
       const updatedTool = this.tools.find((t) => t.id === toolId);
-      if (updatedTool?.isInstalled && !updatedTool?.prerequisitesMissing) {
-        vscode.window.showInformationMessage(
-          `✅ ${tool.name} installed successfully!`
-        );
-      } else if (updatedTool?.isInstalled && updatedTool?.prerequisitesMissing) {
-        vscode.window.showWarningMessage(
-          `Installation completed, but prerequisites are still missing. Please check the output for details.`
-        );
-      } else if (installationSuccess) {
-        // Installation succeeded but detection failed - show success anyway since we marked it
-        vscode.window.showInformationMessage(
-          `✅ ${tool.name} installed successfully! (Detection may take a moment)`
-        );
+      if (result.success) {
+        if (updatedTool?.isInstalled && !updatedTool?.prerequisitesMissing) {
+          vscode.window.showInformationMessage(
+            `✅ ${tool.name} installed successfully!`
+          );
+        } else if (updatedTool?.isInstalled && updatedTool?.prerequisitesMissing) {
+          vscode.window.showWarningMessage(
+            `Installation completed, but prerequisites are still missing. Please check the output for details.`
+          );
+        } else {
+          // Installation succeeded but detection failed - show success anyway since we marked it
+          vscode.window.showInformationMessage(
+            `✅ ${tool.name} installed successfully! (Detection may take a moment)`
+          );
+        }
       } else {
-        vscode.window.showWarningMessage(
-          `Installation completed, but ${tool.name} may not be detected yet. Please check the output for details.`
+        vscode.window.showErrorMessage(
+          `Failed to install ${tool.name}${result.error ? `: ${result.error}` : ''}`
         );
+        
+        // Show installation instructions as fallback
+        const { showToolInstallationInstructions } = await import("./tool-installation-provider");
+        await showToolInstallationInstructions(toolId);
       }
     } catch (error: any) {
       console.error(`[ToolsTreeProvider] Installation failed:`, error);

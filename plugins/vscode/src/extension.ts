@@ -48,15 +48,31 @@ let currentProjectPath: string | null = null;
 // Diagnostics collection for Semgrep results
 let semgrepDiagnostics: vscode.DiagnosticCollection;
 
+// Track if extension is already activated to prevent duplicate registrations
+let isActivated = false;
+
 export async function activate(context: vscode.ExtensionContext) {
+  // Prevent duplicate activation (can happen in test environments)
+  if (isActivated) {
+    console.warn("Carbonara extension already activated, skipping duplicate activation");
+    return;
+  }
+  isActivated = true;
+  
   console.log("Carbonara extension is now active!");
 
   // Initialize context variable for Welcome view visibility
-  vscode.commands.executeCommand(
-    "setContext",
-    "carbonara.notInitialized",
-    true
-  );
+  // Use try-catch to handle cases where context is already set (e.g., in tests)
+  try {
+    await vscode.commands.executeCommand(
+      "setContext",
+      "carbonara.notInitialized",
+      true
+    );
+  } catch (error) {
+    // Context might already be set, ignore the error
+    console.log("Context variable already set or failed to set:", error);
+  }
 
   // Initialize Semgrep integration (now async)
   await initializeSemgrep(context);
@@ -439,6 +455,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  isActivated = false;
   if (carbonaraStatusBar) {
     carbonaraStatusBar.dispose();
   }

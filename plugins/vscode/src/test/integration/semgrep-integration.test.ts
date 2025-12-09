@@ -276,7 +276,7 @@ suite("Semgrep Integration Unit Tests", () => {
       assert.ok(true, "Tool helpers integration verified - functions are exported and module loads correctly");
     });
 
-    test("should verify tool-helpers integration doesn't break existing functionality", () => {
+    test("should verify tool-helpers integration doesn't break existing functionality", async () => {
       // This test ensures that the refactoring to use tool-helpers doesn't break
       // existing semgrep functionality. We verify:
       // 1. All exported functions still exist
@@ -293,7 +293,7 @@ suite("Semgrep Integration Unit Tests", () => {
       assert.ok(typeof semgrepIntegration.getSemgrepDataService === "function", "getSemgrepDataService should be exported");
       
       // Verify initialization still works
-      const diagnosticCollection = initializeSemgrep(mockContext);
+      const diagnosticCollection = await initializeSemgrep(mockContext);
       assert.ok(diagnosticCollection, "Diagnostic collection should be created");
       assert.strictEqual(diagnosticCollection.name, "semgrep", "Diagnostic collection should have correct name");
       
@@ -786,7 +786,6 @@ suite("Semgrep Integration Unit Tests", () => {
       const secondRun = storedRuns[1];
       assert.strictEqual(firstRun.matches[0].message, "First scan", "First run should be in database");
       assert.strictEqual(secondRun.matches[0].message, "Second scan", "Second run should be in database");
->>>>>>> f6972a8 (feat: improve Semgrep integration with database storage and diagnostics loading)
     });
   });
 });

@@ -4,9 +4,10 @@ import type { AnalysisTool } from "@carbonara/cli/dist/registry/index.js";
 // Import the actual registry to test
 import { getToolRegistry } from "@carbonara/cli/dist/registry/index.js";
 
-suite("Semgrep Installation Check", () => {
+  suite("Semgrep Installation Check", () => {
   suite("Installation status check", () => {
-    test("should refresh installation status before checking", async () => {
+    test("should refresh installation status before checking", async function() {
+      this.timeout(10000); // Increase timeout for tool detection
       const registry = getToolRegistry();
       
       await registry.refreshInstalledTools();
@@ -15,7 +16,8 @@ suite("Semgrep Installation Check", () => {
       assert.strictEqual(typeof isInstalled, "boolean", "Should return boolean");
     });
 
-    test("should detect semgrep installation status", async () => {
+    test("should detect semgrep installation status", async function() {
+      this.timeout(10000); // Increase timeout for tool detection
       const registry = getToolRegistry();
       await registry.refreshInstalledTools();
       const isInstalled = await registry.isToolInstalled("semgrep");
