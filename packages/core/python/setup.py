@@ -2,6 +2,13 @@
 """
 Setup script for Carbonara Semgrep integration.
 This script helps set up a bundled Python environment with Semgrep.
+
+NOTE: Bundled Python was never actually used in practice. The useBundledPython flag
+was always set to false, and the infrastructure was created but never activated.
+The original plan was to "switch to bundled later" but that migration never happened.
+
+This infrastructure is kept intact for potential future use, but the current
+implementation uses system Python (or direct semgrep CLI calls) instead.
 """
 
 import os

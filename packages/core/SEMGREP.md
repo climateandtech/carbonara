@@ -2,61 +2,74 @@
 
 This module provides Semgrep static analysis capabilities for the Carbonara project, used by both the CLI and VSCode extension.
 
+**Note**: The SemgrepService now calls the `semgrep` CLI directly instead of using the Python runner. The Python runner (`semgrep_runner.py`) is kept for backward compatibility but is deprecated.
+
 ## Directory Structure
 
 ```
 packages/core/
-├── python/                 # Python Semgrep runner
-│   ├── semgrep_runner.py  # Main Python script
+├── python/                 # Python Semgrep runner (DEPRECATED - kept for backward compatibility)
+│   ├── semgrep_runner.py  # Main Python script (deprecated)
 │   ├── requirements.txt   # Python dependencies
-│   └── setup.py           # Setup/bundling script
-├── python-dist/           # Bundled Python environment (generated)
+│   └── setup.py           # Setup/bundling script (bundled Python never used in practice)
+├── python-dist/           # Bundled Python environment (generated, never used)
 ├── semgrep/         # Custom Semgrep rules
 │   ├── no-console-log.yaml
 │   └── example-code.js
 └── src/services/
-    └── semgrepService.ts  # TypeScript interface
+    └── semgrepService.ts  # TypeScript interface (now uses semgrep CLI directly)
 ```
 
 ## Setup Instructions
 
-### 1. Initial Setup (Development)
+### 1. Install Semgrep CLI
+
+The SemgrepService now requires the `semgrep` CLI to be installed on your system:
 
 ```bash
-# Navigate to the core package
-cd packages/core
+# Install Semgrep via pip (requires Python 3.7+)
+pip install semgrep
 
-# Install Python dependencies (requires Python 3.7+)
+# Or using python3 -m pip
+python3 -m pip install semgrep
+
+# Verify installation
+semgrep --version
+```
+
+**Note**: The VSCode extension supports auto-installation. If Semgrep is not found when running analysis, you'll be prompted to install it automatically.
+
+### 2. Python Runner (Deprecated)
+
+The Python runner (`semgrep_runner.py`) is deprecated but kept for backward compatibility. It is no longer used by the SemgrepService, which now calls the `semgrep` CLI directly.
+
+If you need to use the Python runner directly (for testing or migration purposes):
+
+```bash
+# Install Python dependencies
 pip install -r python/requirements.txt
 
-# Or use the setup script
-python python/setup.py --all
+# Run directly
+python python/semgrep_runner.py path/to/file.js --json
 ```
 
-### 2. Create Bundled Environment (For Distribution)
-
-```bash
-# This creates a portable Python environment with Semgrep
-python python/setup.py --bundle
-
-# Verify the installation
-python python/setup.py --verify
-```
+**Note**: The bundled Python environment (`python-dist/`) was never actually used in practice. The `useBundledPython` flag was always set to `false` in the codebase.
 
 ### 3. Using in TypeScript/JavaScript
 
 ```typescript
 import { createSemgrepService } from "@carbonara/core";
 
-// Create service instance
+// Create service instance (useBundledPython is ignored, kept for backward compatibility)
 const semgrep = createSemgrepService({
-  useBundledPython: true, // Use bundled Python for distribution
+  timeout: 60000, // Optional: timeout in milliseconds
 });
 
-// Check setup
+// Check setup (verifies semgrep CLI is available)
 const setup = await semgrep.checkSetup();
 if (!setup.isValid) {
   console.error("Setup issues:", setup.errors);
+  // Install semgrep: pip install semgrep
 }
 
 // Analyze a file
@@ -69,20 +82,44 @@ const dirResult = await semgrep.analyzeDirectory("/path/to/src");
 
 ## Command Line Usage
 
-### Direct Python Script Usage
+### Using Carbonara CLI
+
+```bash
+# Run on a single file
+carbonara semgrep path/to/file.js
+
+# Run on a directory
+carbonara semgrep path/to/src/
+
+# Output as JSON
+carbonara semgrep path/to/file.js --output json
+
+# Filter by severity
+carbonara semgrep path/to/file.js --severity ERROR
+```
+
+### Direct Semgrep CLI Usage
+
+You can also use Semgrep directly:
+
+```bash
+# Run on a single file
+semgrep --config packages/core/semgrep path/to/file.js --json
+
+# Run on a directory
+semgrep --config packages/core/semgrep path/to/src/ --json
+```
+
+### Python Runner (Deprecated)
+
+The Python runner is deprecated but still available for backward compatibility:
 
 ```bash
 # Run on a single file
 python python/semgrep_runner.py path/to/file.js
 
-# Run on a directory
-python python/semgrep_runner.py path/to/src/
-
 # Output as JSON
 python python/semgrep_runner.py path/to/file.js --json
-
-# Use specific rule file
-python python/semgrep_runner.py path/to/file.js --rule-file no-console-log.yaml
 ```
 
 ## Custom Rules
@@ -107,7 +144,7 @@ The `semgrep/` directory contains custom rules:
 2. Follow Semgrep rule syntax: https://semgrep.dev/docs/writing-rules/
 3. Test your rule:
    ```bash
-   python python/semgrep_runner.py test-file.js --rule-file your-new-rule.yaml
+   semgrep --config packages/core/semgrep/your-new-rule.yaml test-file.js --json
    ```
 
 ## Integration with VSCode Extension
@@ -125,7 +162,7 @@ The VSCode extension can use this service by:
    const runSemgrep = vscode.commands.registerCommand(
      "carbonara.runSemgrep",
      async () => {
-       const semgrep = createSemgrepService({ useBundledPython: true });
+       const semgrep = createSemgrepService();
        const editor = vscode.window.activeTextEditor;
        if (editor) {
          const result = await semgrep.analyzeFile(editor.document.fileName);
@@ -134,6 +171,8 @@ The VSCode extension can use this service by:
      }
    );
    ```
+
+**Auto-Installation**: The VSCode extension supports auto-installation of Semgrep. If Semgrep is not found when running analysis, you'll be prompted to install it automatically.
 
 ## Integration with CLI
 
@@ -149,26 +188,11 @@ export async function analyzeCommand(filepath: string) {
 }
 ```
 
-## Bundling for Distribution
+## Distribution
 
-For distributing the VSCode extension or CLI with bundled Semgrep:
+The SemgrepService now requires users to have Semgrep installed on their system. The VSCode extension supports auto-installation, prompting users to install Semgrep when needed.
 
-1. **Create the bundle:**
-
-   ```bash
-   cd packages/core
-   python python/setup.py --bundle
-   ```
-
-2. **Include in package:**
-   The `python-dist/` directory should be included in your distribution.
-
-3. **Use bundled Python:**
-   ```typescript
-   const semgrep = createSemgrepService({
-     useBundledPython: true,
-   });
-   ```
+**Note**: Bundled Python was never actually used in practice. The `useBundledPython` flag was always set to `false` in the codebase, and the `python-dist/` directory was never created or distributed.
 
 ## Testing
 
@@ -192,10 +216,17 @@ node dist/test/test-semgrep.js
 ### Semgrep Not Installed
 
 ```bash
+# Install Semgrep
 pip install semgrep
-# or
-python python/setup.py --install
+
+# Or using python3
+python3 -m pip install semgrep
+
+# Verify installation
+semgrep --version
 ```
+
+**VSCode Extension**: If using the VSCode extension, you'll be prompted to install Semgrep automatically when running analysis.
 
 ### Rules Not Found
 

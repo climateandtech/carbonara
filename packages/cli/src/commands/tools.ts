@@ -125,58 +125,21 @@ async function installTool(toolId: string) {
   const spinner = ora(`Installing ${tool.name}...`).start();
   
   try {
-    const success = await registry.installTool(toolId);
+    const { installToolWithLogging } = await import('../utils/tool-installer.js');
+    const result = await installToolWithLogging(toolId);
     
-    // Log installation attempt
-    try {
-      const { logToolAction } = await import('../utils/tool-logger.js');
-      const installCommand = tool.installation?.type === 'npm' 
-        ? `npm install ${tool.installation.global ? '-g' : ''} ${tool.installation.package}`
-        : tool.installation?.instructions || 'Unknown';
-      
-      await logToolAction({
-        timestamp: new Date().toISOString(),
-        toolId,
-        action: success ? 'install' : 'error',
-        command: installCommand,
-        exitCode: success ? 0 : 1,
-        error: success ? undefined : 'Installation failed',
-      });
-    } catch (logError) {
-      // Silently fail - logging is optional
-    }
-    
-    if (success) {
-      spinner.succeed(`${tool.name} installed successfully!`);
+    if (result.success) {
+      spinner.succeed(`${result.tool.name} installed successfully!`);
       console.log(chalk.green(`\n✅ You can now use: carbonara analyze ${toolId} <url>`));
-      
-      // Mark as installed in config (even if detection fails later)
-      try {
-        const { markToolInstalled } = await import('../utils/config.js');
-        await markToolInstalled(toolId);
-      } catch (configError) {
-        // Silently fail - config recording is optional
-        console.error('Failed to mark tool as installed in config:', configError);
-      }
     } else {
-      spinner.fail(`Failed to install ${tool.name}`);
+      spinner.fail(`Failed to install ${result.tool.name}`);
+      if (result.error) {
+        console.log(chalk.red(`\n❌ Error: ${result.error}`));
+      }
       console.log(chalk.yellow('\n💡 Try installing manually:'));
-      console.log(chalk.white(tool.installation.instructions));
+      console.log(chalk.white(result.tool.installation.instructions));
     }
   } catch (error: any) {
-    // Log installation error
-    try {
-      const { logToolAction } = await import('../utils/tool-logger.js');
-      await logToolAction({
-        timestamp: new Date().toISOString(),
-        toolId,
-        action: 'error',
-        error: error.message,
-      });
-    } catch (logError) {
-      // Silently fail - logging is optional
-    }
-    
     spinner.fail(`Installation failed: ${error.message}`);
     console.log(chalk.yellow('\n💡 Try installing manually:'));
     console.log(chalk.white(tool.installation.instructions));

@@ -67,7 +67,7 @@ export async function semgrepCommand(
       });
       console.log(
         chalk.blue(
-          '\n💡 Run "carbonara semgrep --setup" to install dependencies'
+          '\n💡 Install Semgrep with: pip install semgrep'
         )
       );
       process.exit(1);
@@ -87,7 +87,31 @@ export async function semgrepCommand(
       result = await semgrep.analyzeFile(targetPath);
     }
 
-    spinner.succeed("Semgrep analysis completed!");
+    // Check if result has only parsing errors (non-fatal) vs real errors
+    const hasOnlyParsingErrors = result.errors.every((e) => 
+      e.includes("PartialParsing") || 
+      e.includes("Syntax error") ||
+      e.includes("Unknown language")
+    );
+
+    // If we have matches, treat parsing errors as warnings, not failures
+    if (result.matches.length > 0 && hasOnlyParsingErrors) {
+      spinner.succeed("Semgrep analysis completed!");
+      console.log(chalk.yellow("\n⚠️  Parsing warnings (non-fatal):"));
+      result.errors.forEach((error) => {
+        console.log(chalk.dim(`  • ${error}`));
+      });
+      console.log(chalk.green(`\n✓ Found ${result.stats.total_matches} issue(s) in code files.`));
+    } else if (!result.success) {
+      spinner.fail("Semgrep analysis failed");
+      console.error(chalk.red("\n❌ Analysis errors:"));
+      result.errors.forEach((error) => {
+        console.error(chalk.yellow(`  • ${error}`));
+      });
+      process.exit(1);
+    } else {
+      spinner.succeed("Semgrep analysis completed!");
+    }
 
     // Filter by severity if specified
     if (options?.severity && result.matches.length > 0) {
@@ -275,7 +299,14 @@ function displayResults(
     console.log(chalk.green("\n✅ No issues found!"));
   }
 
-  if (result.errors.length > 0) {
+  // Only show errors if they're not just parsing warnings (which are already shown above)
+  const hasOnlyParsingErrors = result.errors.every((e) => 
+    e.includes("PartialParsing") || 
+    e.includes("Syntax error") ||
+    e.includes("Unknown language")
+  );
+  
+  if (result.errors.length > 0 && !hasOnlyParsingErrors) {
     console.log(chalk.red("\n⚠️  Analysis errors:"));
     result.errors.forEach((error) => {
       console.log(chalk.yellow(`  • ${error}`));

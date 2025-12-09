@@ -1,7 +1,19 @@
 #!/usr/bin/env python3
 """
 Semgrep Runner for Carbonara
-Provides a Python interface to run Semgrep with custom rules and return structured results.
+
+DEPRECATED: This Python runner is deprecated in favor of direct CLI calls to semgrep.
+The SemgrepService now calls the semgrep CLI directly from TypeScript, which is simpler,
+more reliable, and avoids Python environment mismatches.
+
+This file is kept for:
+- Backward compatibility
+- Potential fallback scenarios
+- Reference implementation for JSON parsing
+
+Migration: The SemgrepService has been refactored to use execaCommand from the
+prerequisites system to find and execute semgrep directly, parsing JSON output
+in TypeScript instead of Python.
 """
 
 import json
@@ -9,6 +21,8 @@ import os
 import sys
 import subprocess
 import tempfile
+import shutil
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -50,6 +64,11 @@ class SemgrepResult:
 class SemgrepRunner:
     """Main class for running Semgrep analysis"""
     
+    # Class-level lock to prevent concurrent installation attempts
+    _installation_lock = threading.Lock()
+    _installation_in_progress = False
+    _installation_complete = False
+    
     def __init__(self, rules_dir: Optional[str] = None):
         """
         Initialize the Semgrep runner.
@@ -68,11 +87,72 @@ class SemgrepRunner:
         if not self.rules_dir.exists():
             raise ValueError(f"Rules directory does not exist: {self.rules_dir}")
     
-    def check_semgrep_installed(self) -> bool:
-        """Check if Semgrep is installed and available"""
+    def _find_semgrep_path(self) -> Optional[str]:
+        """
+        Find semgrep executable using the same logic as detection.
+        Aligns with tools.json detection.commands: ["semgrep --version"]
+        
+        Returns:
+            Full path to semgrep executable, or None if not found
+        """
+        # Use shutil.which to find semgrep in PATH (same as shell detection)
+        semgrep_path = shutil.which("semgrep")
+        if semgrep_path:
+            return semgrep_path
+        
+        # Try Python's bin directory (where pip installs scripts)
+        python_bin = Path(sys.executable).parent
+        semgrep_path = shutil.which("semgrep", path=str(python_bin))
+        if semgrep_path:
+            return semgrep_path
+        
+        # Try site-packages Scripts/bin directory (where pip installs on Windows/Unix)
+        # This is where pip installs scripts when using the same Python interpreter
         try:
+            import site
+            # Get site-packages directories
+            site_packages = site.getsitepackages()
+            if not site_packages:
+                # Fallback for virtual environments
+                site_packages = [str(Path(sys.executable).parent.parent / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages")]
+            
+            for site_pkg in site_packages:
+                scripts_dir = Path(site_pkg).parent / "Scripts"  # Windows
+                if scripts_dir.exists():
+                    semgrep_path = shutil.which("semgrep", path=str(scripts_dir))
+                    if semgrep_path:
+                        return semgrep_path
+                
+                scripts_dir = Path(site_pkg).parent / "bin"  # Unix
+                if scripts_dir.exists():
+                    semgrep_path = shutil.which("semgrep", path=str(scripts_dir))
+                    if semgrep_path:
+                        return semgrep_path
+        except Exception:
+            pass  # Fall through to next check
+        
+        # Try user's local bin (common for pip --user installs)
+        user_bin = Path.home() / ".local" / "bin"
+        if user_bin.exists():
+            semgrep_path = shutil.which("semgrep", path=str(user_bin))
+            if semgrep_path:
+                return semgrep_path
+        
+        return None
+    
+    def check_semgrep_installed(self) -> bool:
+        """
+        Check if Semgrep is installed and available.
+        Uses the same detection logic as the UI (semgrep --version command).
+        """
+        try:
+            semgrep_path = self._find_semgrep_path()
+            if not semgrep_path:
+                return False
+            
+            # Use the same detection command as tools.json: "semgrep --version"
             result = subprocess.run(
-                ["semgrep", "--version"],
+                [semgrep_path, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=5
@@ -82,17 +162,79 @@ class SemgrepRunner:
             return False
     
     def install_semgrep(self) -> bool:
-        """Attempt to install Semgrep using pip"""
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "semgrep"],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            return result.returncode == 0
-        except subprocess.SubprocessError:
-            return False
+        """
+        Attempt to install Semgrep using pip.
+        Thread-safe: uses a lock to prevent concurrent installation attempts.
+        
+        Returns:
+            True if installation succeeded, False otherwise
+        """
+        # Check if already installed (fast path)
+        if self.check_semgrep_installed():
+            return True
+        
+        # Use lock to prevent concurrent installation attempts
+        with SemgrepRunner._installation_lock:
+            # Double-check after acquiring lock (another thread might have installed it)
+            if self.check_semgrep_installed():
+                return True
+            
+            # Check if installation is already in progress
+            if SemgrepRunner._installation_in_progress:
+                # Wait for installation to complete
+                # Release lock and re-check periodically
+                import time
+                max_wait = 120  # 2 minutes max wait
+                wait_interval = 1  # Check every second
+                waited = 0
+                while SemgrepRunner._installation_in_progress and waited < max_wait:
+                    SemgrepRunner._installation_lock.release()
+                    time.sleep(wait_interval)
+                    waited += wait_interval
+                    SemgrepRunner._installation_lock.acquire()
+                
+                # Check if installation completed while we were waiting
+                if self.check_semgrep_installed():
+                    return True
+                if SemgrepRunner._installation_complete:
+                    # Installation completed but verification failed
+                    return False
+            
+            # Mark installation as in progress
+            SemgrepRunner._installation_in_progress = True
+            SemgrepRunner._installation_complete = False
+            
+            try:
+                # Install semgrep using pip (same as tools.json installation.instructions)
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "semgrep"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120  # 2 minutes for installation
+                )
+                
+                success = result.returncode == 0
+                SemgrepRunner._installation_complete = success
+                
+                # Verify installation succeeded
+                if success:
+                    # Give it time for installation to complete and PATH to update
+                    # Retry verification with increasing delays
+                    import time
+                    for attempt in range(5):
+                        wait_time = 0.5 * (attempt + 1)  # 0.5s, 1s, 1.5s, 2s, 2.5s
+                        time.sleep(wait_time)
+                        if self.check_semgrep_installed():
+                            return True
+                    # Final check after all retries
+                    success = self.check_semgrep_installed()
+                
+                return success
+            except subprocess.SubprocessError:
+                SemgrepRunner._installation_complete = False
+                return False
+            finally:
+                SemgrepRunner._installation_in_progress = False
     
     def run_on_file(self, file_path: str, rule_file: Optional[str] = None) -> SemgrepResult:
         """
@@ -132,12 +274,22 @@ class SemgrepRunner:
             SemgrepResult containing all matches and metadata
         """
         if not self.check_semgrep_installed():
-            return SemgrepResult(
-                matches=[],
-                errors=["Semgrep is not installed. Please install it using 'pip install semgrep'"],
-                stats={},
-                success=False
-            )
+            # Try to install semgrep automatically
+            if not self.install_semgrep():
+                return SemgrepResult(
+                    matches=[],
+                    errors=["Semgrep is not installed and automatic installation failed. Please install it manually using 'pip install semgrep'"],
+                    stats={},
+                    success=False
+                )
+            # Verify installation succeeded
+            if not self.check_semgrep_installed():
+                return SemgrepResult(
+                    matches=[],
+                    errors=["Semgrep installation completed but verification failed. Please try installing manually: 'pip install semgrep'"],
+                    stats={},
+                    success=False
+                )
         
         # Determine which rules to use
         if rule_file:
@@ -153,9 +305,19 @@ class SemgrepRunner:
             # Use all rules in the rules directory
             config_path = self.rules_dir
         
-        # Build Semgrep command
+        # Find semgrep executable using the same method as detection
+        semgrep_path = self._find_semgrep_path()
+        if not semgrep_path:
+            return SemgrepResult(
+                matches=[],
+                errors=["Semgrep is not installed. Please install it using 'pip install semgrep'"],
+                stats={},
+                success=False
+            )
+        
+        # Build Semgrep command using full path
         cmd = [
-            "semgrep",
+            semgrep_path,
             "--config", str(config_path),
             "--json",
             "--metrics=off",    # Disable metrics collection

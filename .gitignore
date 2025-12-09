@@ -222,4 +222,11 @@ carbonara-export-*.json
 plugins/vscode/src/test/e2e/fixtures/**/node_modules/
 plugins/vscode/src/test/e2e/fixtures/**/package-lock.json
 
+# Test venv - created dynamically during e2e tests
+plugins/vscode/src/test/e2e/fixtures/**/.test-venv/
+**/.test-venv/
+
+# Test results
+test-results/
+
 test/*.cursor/

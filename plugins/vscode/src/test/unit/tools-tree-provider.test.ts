@@ -181,7 +181,6 @@ suite('ToolsTreeProvider Unit Tests', () => {
                 assert.ok(child.tool.description, 'Tool should have a description');
                 assert.ok(child.tool.type === 'built-in' || child.tool.type === 'external', 'Tool should have valid type');
                 assert.ok(child.tool.command, 'Tool should have a command');
-            });
         });
 
         test('should load tools with parameterDefaults and parameterMappings from tools.json', async function() {
@@ -216,6 +215,22 @@ suite('ToolsTreeProvider Unit Tests', () => {
             }
         });
     });
+
+    suite('Tool Installation', () => {
+        // Note: These tests are skipped because they require mocking dynamic imports
+        // which is complex in the VSCode test environment. The installation logic
+        // is tested in packages/cli/test/tool-installer.test.ts
+        test.skip('should handle pip installation for semgrep', async function() {
+            // Installation logic is tested in CLI package tests
+            // This test would require complex mocking of dynamic imports
+        });
+
+        test.skip('should show error when installation fails', async function() {
+            // Installation error handling is tested in CLI package tests
+            // This test would require complex mocking of dynamic imports
+        });
+    });
+});
 
     suite('Tool Item Creation', () => {
         test('should create built-in tool items with correct properties', () => {

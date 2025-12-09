@@ -202,7 +202,19 @@ export class VSCodeLauncher {
           ),
           // Mock external tool commands to ensure predictable E2E test results
           // Override PATH to prevent actual tool detection, ensuring external tools show as "Not installed"
-          PATH: "/usr/bin:/bin:/usr/sbin:/sbin", // Basic system paths without npm global installs
+          // Unless CARBONARA_E2E_ALLOW_TOOLS is set (for tests that need real tools like semgrep)
+          // If test venv is set up, include it in PATH for semgrep tests
+          PATH: (() => {
+            if (process.env.CARBONARA_E2E_ALLOW_TOOLS === "true") {
+              const testVenvBin = process.env.CARBONARA_TEST_VENV_BIN;
+              if (testVenvBin) {
+                // Prepend test venv bin to PATH so semgrep from venv is found
+                return `${testVenvBin}:${process.env.PATH || "/usr/bin:/bin:/usr/sbin:/sbin"}`;
+              }
+              return process.env.PATH || "/usr/bin:/bin:/usr/sbin:/sbin";
+            }
+            return "/usr/bin:/bin:/usr/sbin:/sbin"; // Basic system paths without npm global installs
+          })(),
           // Disable npm global bin directory to prevent finding globally installed tools
           NPM_CONFIG_PREFIX: "/tmp/nonexistent-npm-prefix",
           // Set a flag that ToolsTreeProvider can check to force mock behavior

@@ -23,16 +23,9 @@ async function testSemgrepService() {
   } else {
     console.log("   ✗ Setup has issues:");
     setupCheck.errors.forEach((err) => console.log(`     - ${err}`));
-
-    // Try to install Semgrep
-    console.log("\n   Attempting to install Semgrep...");
-    const installed = await semgrep.installSemgrep();
-    if (installed) {
-      console.log("   ✓ Semgrep installed successfully");
-    } else {
-      console.log("   ✗ Failed to install Semgrep");
-      return;
-    }
+    console.log("\n   Please install Semgrep manually with: pip install semgrep");
+    console.log("   Or use the VSCode extension which supports auto-installation.");
+    return;
   }
 
   // 2. Get available rules

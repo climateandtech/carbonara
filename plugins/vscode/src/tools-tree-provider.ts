@@ -14,7 +14,7 @@ export interface AnalysisTool {
   command: string;
   vscodeCommand?: string;
   installation?: {
-    type: "npm" | "pip" | "binary";
+    type: "npm" | "pip" | "binary" | "built-in";
     package: string;
     command?: string; // Command to install the tool (for automated installation)
     instructions?: string; // Installation instructions (for documentation)
@@ -57,6 +57,7 @@ export interface AnalysisTool {
     timestamp: string;
   }; // Last error from execution (from config)
   hasCustomExecutionCommand?: boolean; // True if user has set a custom execution command
+  autoInstall?: boolean; // If true, prompt user to install when tool is not found
 }
 
 export class ToolItem extends vscode.TreeItem {
@@ -122,11 +123,13 @@ export class ToolItem extends vscode.TreeItem {
 
     // Set context value for different actions
     if (tool.type === "built-in") {
-      // Special context for semgrep to show custom buttons
-      this.contextValue = tool.id === "semgrep" ? "builtin-tool-semgrep" : "builtin-tool";
+      this.contextValue = "builtin-tool";
     } else if (tool.isInstalled || tool.hasCustomExecutionCommand) {
       // Tool is installed OR has custom execution command (can be run)
-      if (tool.lastError) {
+      // Special context for semgrep to show custom buttons even when installed as external tool
+      if (tool.id === "semgrep") {
+        this.contextValue = "builtin-tool-semgrep";
+      } else if (tool.lastError) {
         this.contextValue = "installed-tool-error";
       } else if (tool.prerequisitesMissing) {
         this.contextValue = "installed-tool-prerequisites-missing";
@@ -609,6 +612,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
             prerequisitesMissing,
             lastError,
             hasCustomExecutionCommand: hasCustomCommand,
+            autoInstall: tool.autoInstall,
           };
         }));
 
@@ -801,86 +805,57 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
 
     try {
-      const cliPath = await this.findCarbonaraCLI();
-      if (!cliPath) {
-        vscode.window.showErrorMessage(UI_TEXT.NOTIFICATIONS.CLI_NOT_FOUND);
-        return;
-      }
-
       // Show progress notification
-        vscode.window.showInformationMessage(
+      vscode.window.showInformationMessage(
         `Installing ${tool.name}...`
       );
 
-      // Run CLI install command
-      const cliArgs = ["tools", "install", toolId];
-      console.log(`[ToolsTreeProvider] Running CLI install command: ${cliPath} ${cliArgs.join(' ')}`);
+      // Use shared installation function (same as CLI)
+      const { installToolWithLogging } = await import("@carbonara/cli/dist/utils/tool-installer.js");
+      const projectPath = this.workspaceFolder?.uri.fsPath;
       
-      const outputChannel = vscode.window.createOutputChannel('Carbonara CLI');
-      outputChannel.appendLine(`=== Installing ${tool.name} ===`);
-      
-      const result = await this.runCarbonaraCommand(cliPath, cliArgs);
-      
-      outputChannel.appendLine(result);
-      outputChannel.show();
-
-      // Check if CLI command reported success (even if detection fails)
-      const installationSuccess = result.includes("installed successfully") || result.includes("already installed");
-      
-      // Log installation attempt
-      if (this.workspaceFolder) {
-        try {
-          const { logToolAction } = await import("@carbonara/cli/dist/utils/tool-logger.js");
-          const installCommand = tool.installation?.type === 'npm' 
-            ? `npm install ${tool.installation.global ? '-g' : ''} ${tool.installation.package}`
-            : tool.installation?.instructions || 'Unknown';
-          
-          await logToolAction({
-            timestamp: new Date().toISOString(),
-            toolId,
-            action: installationSuccess ? 'install' : 'error',
-            command: installCommand,
-            output: result.substring(0, 2000), // Limit output length
-            exitCode: installationSuccess ? 0 : 1,
-            error: installationSuccess ? undefined : 'Installation failed',
-          }, this.workspaceFolder.uri.fsPath);
-        } catch (logError) {
-          // Silently fail - logging is optional
-          console.error(`[ToolsTreeProvider] Failed to log installation:`, logError);
+      const result = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Installing ${tool.name}`,
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ increment: 0, message: `Installing ${tool.name}...` });
+          const installResult = await installToolWithLogging(toolId, projectPath);
+          progress.report({ increment: 100, message: "Installation complete" });
+          return installResult;
         }
-      }
-      
-      // Mark as installed in config if CLI reported success
-      if (installationSuccess && this.workspaceFolder) {
-        try {
-          await markToolInstalled(toolId, this.workspaceFolder.uri.fsPath);
-        } catch (error) {
-          console.error(`[ToolsTreeProvider] Failed to mark tool as installed in config:`, error);
-        }
-      }
+      );
 
       // Check if installation was successful by refreshing and checking status
       await this.refreshAsync();
       
       // Re-check installation status
       const updatedTool = this.tools.find((t) => t.id === toolId);
-      if (updatedTool?.isInstalled && !updatedTool?.prerequisitesMissing) {
-        vscode.window.showInformationMessage(
-          `✅ ${tool.name} installed successfully!`
-        );
-      } else if (updatedTool?.isInstalled && updatedTool?.prerequisitesMissing) {
-        vscode.window.showWarningMessage(
-          `Installation completed, but prerequisites are still missing. Please check the output for details.`
-        );
-      } else if (installationSuccess) {
-        // Installation succeeded but detection failed - show success anyway since we marked it
-        vscode.window.showInformationMessage(
-          `✅ ${tool.name} installed successfully! (Detection may take a moment)`
-        );
+      if (result.success) {
+        if (updatedTool?.isInstalled && !updatedTool?.prerequisitesMissing) {
+          vscode.window.showInformationMessage(
+            `✅ ${tool.name} installed successfully!`
+          );
+        } else if (updatedTool?.isInstalled && updatedTool?.prerequisitesMissing) {
+          vscode.window.showWarningMessage(
+            `Installation completed, but prerequisites are still missing. Please check the output for details.`
+          );
+        } else {
+          // Installation succeeded but detection failed - show success anyway since we marked it
+          vscode.window.showInformationMessage(
+            `✅ ${tool.name} installed successfully! (Detection may take a moment)`
+          );
+        }
       } else {
-        vscode.window.showWarningMessage(
-          `Installation completed, but ${tool.name} may not be detected yet. Please check the output for details.`
+        vscode.window.showErrorMessage(
+          `Failed to install ${tool.name}${result.error ? `: ${result.error}` : ''}`
         );
+        
+        // Show installation instructions as fallback
+        const { showToolInstallationInstructions } = await import("./tool-installation-provider");
+        await showToolInstallationInstructions(toolId);
       }
     } catch (error: any) {
       console.error(`[ToolsTreeProvider] Installation failed:`, error);
@@ -919,12 +894,80 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     }
     
     if (!canRun) {
-      vscode.window.showErrorMessage(
-        `${tool.name} is not installed. Please install it first or set a custom execution command.`
-      );
-      const { showToolInstallationInstructions } = await import("./tool-installation-provider");
-      await showToolInstallationInstructions(toolId);
-      return;
+      // Check if tool has autoInstall enabled
+      if (tool.autoInstall) {
+        const installChoice = await vscode.window.showWarningMessage(
+          `${tool.name} is not installed. Would you like to install it now?`,
+          "Install Now",
+          "Install Manually",
+          "Cancel"
+        );
+
+        if (installChoice === "Install Now") {
+          try {
+            const { getToolRegistry } = await import("@carbonara/cli/dist/registry/index.js");
+            const registry = getToolRegistry();
+            
+            const installSuccess = await vscode.window.withProgress(
+              {
+                location: vscode.ProgressLocation.Notification,
+                title: `Installing ${tool.name}`,
+                cancellable: false,
+              },
+              async (progress) => {
+                progress.report({ increment: 0, message: `Installing ${tool.name}...` });
+                const success = await registry.installTool(toolId);
+                progress.report({ increment: 100, message: "Installation complete" });
+                return success;
+              }
+            );
+
+            if (installSuccess) {
+              vscode.window.showInformationMessage(`✅ ${tool.name} installed successfully!`);
+              // Refresh tools to update installation status
+              await this.refreshAsync();
+              // Re-check if tool is now installed
+              const updatedTool = this.tools.find((t) => t.id === toolId);
+              if (updatedTool?.isInstalled) {
+                // Tool is now installed, proceed with analysis
+                canRun = true;
+              } else {
+                vscode.window.showWarningMessage(
+                  `${tool.name} installation completed, but it may not be detected yet. Please try again.`
+                );
+                return;
+              }
+            } else {
+              vscode.window.showErrorMessage(
+                `${tool.name} installation failed. Please install manually.`
+              );
+              const { showToolInstallationInstructions } = await import("./tool-installation-provider");
+              await showToolInstallationInstructions(toolId);
+              return;
+            }
+          } catch (error: any) {
+            vscode.window.showErrorMessage(
+              `Failed to install ${tool.name}: ${error.message}`
+            );
+            return;
+          }
+        } else if (installChoice === "Install Manually") {
+          const { showToolInstallationInstructions } = await import("./tool-installation-provider");
+          await showToolInstallationInstructions(toolId);
+          return;
+        } else {
+          // User cancelled
+          return;
+        }
+      } else {
+        // No autoInstall, show error and instructions
+        vscode.window.showErrorMessage(
+          `${tool.name} is not installed. Please install it first or set a custom execution command.`
+        );
+        const { showToolInstallationInstructions } = await import("./tool-installation-provider");
+        await showToolInstallationInstructions(toolId);
+        return;
+      }
     }
     
     // If detection failed but installation succeeded, show a warning
@@ -1402,6 +1445,7 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
     for (const command of commands) {
       try {
         const output = await this.runCommand("sh", ["-c", command]);
+        console.log(`[ToolsTreeProvider] Detection command "${command}" succeeded with output: ${output.substring(0, 100)}`);
         // Command succeeded - continue to next command
         // For npm list commands, also verify package is in output
         if (command.startsWith("npm list")) {
@@ -1428,11 +1472,13 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
           errorMessage.includes("uv_cwd");
 
         if (isCommandNotFound) {
+          console.log(`[ToolsTreeProvider] Detection command "${command}" failed: command not found (${errorMessage})`);
           failedCommands.push({
             command,
             error: errorMessage || "Command not found"
           });
         } else {
+          console.log(`[ToolsTreeProvider] Detection command "${command}" failed with non-command-not-found error: ${errorMessage}`);
           // For npm list commands, check if package is actually listed
           if (command.startsWith("npm list")) {
             // Extract package name from command (e.g., "npm list @tngtech/if-webpage-plugins")
