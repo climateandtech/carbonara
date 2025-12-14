@@ -10,7 +10,8 @@ import {
   clearCustomExecutionCommand,
   loadProjectConfig,
   recordToolError,
-  getToolLastError
+  getToolLastError,
+  isNotFoundError
 } from '../src/utils/config.js';
 import { execa, execaCommand } from 'execa';
 
@@ -194,6 +195,23 @@ describe('Custom Execution Command', () => {
     const config = await loadProjectConfig(testDir);
     expect(config?.tools?.greenframe?.installationStatus?.installed).toBe(true);
     expect(config?.tools?.['if-webpage-scan']?.installationStatus?.installed).toBe(true);
+  });
+
+  test('isNotFoundError should detect "not found" errors correctly', () => {
+    // Test various "not found" error patterns
+    expect(isNotFoundError(new Error('command not found'))).toBe(true);
+    expect(isNotFoundError(new Error('Command not found'))).toBe(true);
+    expect(isNotFoundError(new Error('cannot find'))).toBe(true);
+    expect(isNotFoundError(new Error('is not installed'))).toBe(true);
+    expect(isNotFoundError(new Error('no such file or directory'))).toBe(true);
+    expect(isNotFoundError(new Error('ENOENT'))).toBe(true);
+    expect(isNotFoundError('command not found')).toBe(true);
+    
+    // Test non-"not found" errors
+    expect(isNotFoundError(new Error('Runtime error'))).toBe(false);
+    expect(isNotFoundError(new Error('Validation failed'))).toBe(false);
+    expect(isNotFoundError(new Error('Timeout'))).toBe(false);
+    expect(isNotFoundError('Some other error')).toBe(false);
   });
 });
 

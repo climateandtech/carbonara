@@ -134,9 +134,38 @@ export class ToolInstallationProvider implements vscode.TextDocumentContentProvi
         } else if (tool.installation.type === "pip") {
           lines.push("This tool can be installed via pip:");
           lines.push("");
+          lines.push("### Automatic Installation");
+          lines.push("");
+          lines.push("The extension will automatically install this tool in a virtual environment at `.carbonara/venv/` in your project root.");
+          lines.push("");
+          lines.push("### Manual Installation");
+          lines.push("");
+          lines.push("You can also install it manually using one of these methods:");
+          lines.push("");
+          lines.push("#### Option 1: Using the project venv (recommended)");
+          lines.push("");
+          lines.push("If the extension has created a venv, you can activate it and install manually:");
+          lines.push("");
+          lines.push("```bash");
+          lines.push("# Activate the venv");
+          const isWindows = process.platform === "win32";
+          if (isWindows) {
+            lines.push(".carbonara\\venv\\Scripts\\activate");
+          } else {
+            lines.push("source .carbonara/venv/bin/activate");
+          }
+          lines.push("");
+          lines.push("# Install the tool");
+          lines.push(`pip install ${tool.installation.package}`);
+          lines.push("```");
+          lines.push("");
+          lines.push("#### Option 2: System-wide installation");
+          lines.push("");
           lines.push("```bash");
           lines.push(`pip install ${tool.installation.package}`);
           lines.push("```");
+          lines.push("");
+          lines.push("**Note:** If you install manually, you may need to set a custom execution command in the extension settings.");
           lines.push("");
         } else if (tool.installation.type === "built-in") {
           lines.push("This is a built-in tool and does not require installation.");
@@ -199,9 +228,48 @@ export class ToolInstallationProvider implements vscode.TextDocumentContentProvi
         lines.push("After installation, verify the tool is available:");
         lines.push("");
         lines.push("```bash");
-        lines.push(tool.detection.target);
+        
+        // Support both detection.target (backward compatible) and detection.commands (array)
+        const commands: string[] = (tool.detection as any).commands || 
+          (tool.detection.target ? [tool.detection.target] : []);
+        
+        if (commands.length > 0) {
+          // Show all detection commands
+          commands.forEach((cmd, index) => {
+            if (index > 0) {
+              lines.push("# Or try:");
+            }
+            lines.push(cmd);
+          });
+        } else if (tool.detection.target) {
+          // Fallback to target if commands array is empty
+          lines.push(tool.detection.target);
+        } else {
+          // No detection commands available
+          lines.push("# No verification command configured");
+        }
+        
         lines.push("```");
         lines.push("");
+        
+        // Add note about venv for pip tools
+        if (tool.installation?.type === "pip") {
+          lines.push("**Note:** If the tool was installed in the project venv, you may need to activate it first:");
+          lines.push("");
+          lines.push("```bash");
+          const isWindows = process.platform === "win32";
+          if (isWindows) {
+            lines.push(".carbonara\\venv\\Scripts\\activate");
+          } else {
+            lines.push("source .carbonara/venv/bin/activate");
+          }
+          lines.push("# Then run the verification command");
+          if (commands.length > 0) {
+            lines.push(commands[0]);
+          }
+          lines.push("```");
+          lines.push("");
+        }
       }
 
       // Next steps

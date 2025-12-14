@@ -1211,15 +1211,15 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         }
       }
       
+      // Check if tool has custom execution command - if so, always keep it marked as installed
+      const hasCustomCommand = await this.hasCustomExecutionCommand(toolId);
+      
       // Check if error suggests tool is not actually installed (false positive detection)
       const errorMessage = error.message || String(error);
-      const suggestsNotInstalled = 
-        errorMessage.includes('command not found') ||
-        errorMessage.includes('Command not found') ||
-        errorMessage.includes('ENOENT') ||
-        errorMessage.includes('not found') ||
-        errorMessage.includes('cannot find') ||
-        errorMessage.includes('is not installed');
+      
+      // Import isNotFoundError helper
+      const { isNotFoundError } = await import("@carbonara/cli/dist/utils/config.js");
+      const suggestsNotInstalled = isNotFoundError(error);
       
       // Check if error suggests missing plugin or configuration issue
       const suggestsPluginIssue = 
@@ -1229,10 +1229,11 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
         (errorMessage.includes('plugin') && errorMessage.includes('not found'));
       
       // If tool was detected as installed but run failed with "not found" error,
-      // flag that detection was incorrect
-      if (tool.isInstalled && suggestsNotInstalled && this.workspaceFolder) {
+      // flag that detection was incorrect (but only if no custom command is set)
+      // Tools with custom commands should always stay marked as installed
+      if (tool.isInstalled && suggestsNotInstalled && !hasCustomCommand && this.workspaceFolder) {
         try {
-          await flagDetectionFailed(toolId, this.workspaceFolder.uri.fsPath);
+          await flagDetectionFailed(toolId, this.workspaceFolder.uri.fsPath, error);
         } catch (configError) {
           console.error(`[ToolsTreeProvider] Failed to flag detection failure:`, configError);
         }
@@ -1399,6 +1400,26 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
       return false;
     }
 
+    // If tool has a custom execution command, always consider it installed
+    // (user manually configured it, so we trust their setup)
+    const hasCustomCommand = await this.hasCustomExecutionCommand(tool.id);
+    if (hasCustomCommand) {
+      return true;
+    }
+
+    // Also check if tool is marked as installed in config (even if detection fails)
+    if (this.workspaceFolder) {
+      try {
+        const { isToolMarkedInstalled } = await import("@carbonara/cli/dist/utils/config.js");
+        const isMarkedInstalled = await isToolMarkedInstalled(tool.id, this.workspaceFolder.uri.fsPath);
+        if (isMarkedInstalled) {
+          return true;
+        }
+      } catch (configError) {
+        // Silently fail - config check is optional
+      }
+    }
+
     // FIXME: We need to find a way to mock tools in E2E tests instead of skipping detection.
     // Currently, we skip detection for E2E tests to avoid timeouts and command execution issues,
     // but this means E2E tests can't verify tool installation status. A better approach would be
@@ -1428,6 +1449,51 @@ export class ToolsTreeProvider implements vscode.TreeDataProvider<ToolItem> {
 
     if (tool.detection.method !== "command") {
       return false;
+    }
+
+    // For pip tools, check venv first using tool's executable name
+    if (tool.installation?.type === "pip" && tool.command?.executable && this.workspaceFolder) {
+      try {
+        const { getVenvBinaryPath, isBinaryInVenv, getVenvInfo } = await import("@carbonara/cli/dist/utils/venv-manager.js");
+        const projectPath = this.workspaceFolder.uri.fsPath;
+        const executable = tool.command.executable;
+        
+        // Check if binary exists in venv
+        if (isBinaryInVenv(projectPath, executable)) {
+          const venvBinaryPath = getVenvBinaryPath(projectPath, executable);
+          const venvInfo = getVenvInfo(projectPath);
+          
+          // Get detection commands from tool config
+          const detection = tool.detection as any;
+          const commands: string[] = detection.commands || (detection.target ? [detection.target] : []);
+          
+          // Try each detection command with venv binary path
+          for (const command of commands) {
+            try {
+              // Replace executable name with venv path in command
+              const venvCommand = command.replace(new RegExp(`^${executable}\\b`), venvBinaryPath);
+              await this.runCommand("sh", ["-c", venvCommand]);
+              console.log(`[ToolsTreeProvider] Found ${executable} in venv at ${venvBinaryPath}`);
+              return true; // Found in venv!
+            } catch {
+              // Try python -m approach if binary path didn't work
+              try {
+                if (venvInfo.exists) {
+                  const pythonModuleCommand = command.replace(new RegExp(`^${executable}\\b`), `${venvInfo.pythonPath} -m ${executable}`);
+                  await this.runCommand("sh", ["-c", pythonModuleCommand]);
+                  console.log(`[ToolsTreeProvider] Found ${executable} as Python module in venv`);
+                  return true; // Found as Python module in venv!
+                }
+              } catch {
+                // Continue to next command or fall through
+              }
+            }
+          }
+        }
+      } catch (venvError) {
+        // Silently fail venv check and continue to regular detection
+        console.log(`[ToolsTreeProvider] Venv check failed, continuing with regular detection:`, venvError);
+      }
     }
 
     // Support both detection.target (backward compatible) and detection.commands (array)

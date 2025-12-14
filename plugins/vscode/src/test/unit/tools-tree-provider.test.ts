@@ -393,6 +393,69 @@ suite('ToolsTreeProvider Unit Tests', () => {
             assert.strictEqual(isInstalled2, false, 'Should default to not installed when detection method is not "command"');
         });
 
+        test('should return true when tool has custom execution command', async () => {
+            const mockTool = {
+                id: 'test-tool',
+                installation: { type: 'npm' },
+                detection: {
+                    method: 'command',
+                    target: 'test-tool --version'
+                }
+            };
+
+            // Mock hasCustomExecutionCommand to return true
+            const originalHasCustomCommand = (provider as any).hasCustomExecutionCommand;
+            (provider as any).hasCustomExecutionCommand = async () => true;
+
+            try {
+                const isInstalled = await (provider as any).detectToolInstallation(mockTool);
+                assert.strictEqual(isInstalled, true, 'Should return true when custom command is set');
+            } finally {
+                (provider as any).hasCustomExecutionCommand = originalHasCustomCommand;
+            }
+        });
+
+        test('should return true when tool is marked as installed in config', async () => {
+            const mockTool = {
+                id: 'test-tool',
+                installation: { type: 'npm' },
+                detection: {
+                    method: 'command',
+                    target: 'test-tool --version'
+                }
+            };
+
+            // Mock isToolMarkedInstalled to return true
+            const Module = require('module');
+            const originalRequire = Module.prototype.require;
+            let isToolMarkedInstalledCalled = false;
+
+            Module.prototype.require = function (id: string) {
+                if (id === '@carbonara/cli/dist/utils/config.js') {
+                    return {
+                        isToolMarkedInstalled: async () => {
+                            isToolMarkedInstalledCalled = true;
+                            return true;
+                        }
+                    };
+                }
+                return originalRequire.apply(this, arguments);
+            };
+
+            try {
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+                const { ToolsTreeProvider } = require('../../tools-tree-provider');
+                const testProvider = new ToolsTreeProvider();
+                
+                const isInstalled = await (testProvider as any).detectToolInstallation(mockTool);
+                assert.strictEqual(isInstalled, true, 'Should return true when tool is marked as installed');
+                assert.strictEqual(isToolMarkedInstalledCalled, true, 'Should check config for marked installation');
+            } finally {
+                Module.prototype.require = originalRequire;
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+            }
+        });
+
         test('should create correct tool items based on installation status', () => {
             const installedTool = {
                 id: 'installed-tool',
@@ -967,6 +1030,330 @@ suite('ToolsTreeProvider Unit Tests', () => {
                 assert.ok(true, 'Should handle null cliPath gracefully');
             } finally {
                 (vscode.window as any).showInputBox = originalShowInputBox;
+            }
+        });
+    });
+
+    suite('Error Handling UI Flow', () => {
+        let tempDir: string;
+        let flagDetectionFailedCalled: boolean;
+        let flagDetectionFailedArgs: any[];
+        let recordToolErrorCalled: boolean;
+        let recordToolErrorArgs: any[];
+        let showErrorMessageCalled: boolean;
+        let showErrorMessageArgs: any[];
+
+        beforeEach(() => {
+            flagDetectionFailedCalled = false;
+            flagDetectionFailedArgs = [];
+            recordToolErrorCalled = false;
+            recordToolErrorArgs = [];
+            showErrorMessageCalled = false;
+            showErrorMessageArgs = [];
+
+            // Create test workspace
+            tempDir = fs.mkdtempSync(path.join('/tmp', 'carbonara-error-test-'));
+            const carbonaraDir = path.join(tempDir, '.carbonara');
+            fs.mkdirSync(carbonaraDir, { recursive: true });
+            fs.writeFileSync(
+                path.join(carbonaraDir, 'carbonara.config.json'),
+                JSON.stringify({ 
+                    name: 'test', 
+                    projectId: 1, 
+                    database: { path: '.carbonara/carbonara.db' },
+                    tools: {}
+                }, null, 2)
+            );
+
+            Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+                value: [{
+                    uri: vscode.Uri.file(tempDir),
+                    name: 'test',
+                    index: 0
+                }],
+                configurable: true
+            });
+        });
+
+        afterEach(() => {
+            if (fs.existsSync(tempDir)) {
+                fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+        });
+
+        test('should preserve installation status on runtime errors (not "not found" errors)', async () => {
+            const mockTool = {
+                id: 'test-tool',
+                name: 'Test Tool',
+                type: 'external' as const,
+                isInstalled: true,
+                prerequisitesMissing: false,
+                installation: { type: 'npm' }
+            };
+
+            (provider as any).tools = [mockTool];
+
+            // Mock config functions
+            const Module = require('module');
+            const originalRequire = Module.prototype.require;
+
+            Module.prototype.require = function (id: string) {
+                if (id === '@carbonara/cli/dist/utils/config.js') {
+                    return {
+                        isNotFoundError: (error: Error | string) => {
+                            const msg = error instanceof Error ? error.message : String(error);
+                            return msg.includes('not found') || msg.includes('command not found');
+                        },
+                        flagDetectionFailed: async (toolId: string, projectPath: string, error?: Error | string) => {
+                            flagDetectionFailedCalled = true;
+                            flagDetectionFailedArgs = [toolId, projectPath, error];
+                        },
+                        recordToolError: async (toolId: string, error: Error | string, projectPath: string) => {
+                            recordToolErrorCalled = true;
+                            recordToolErrorArgs = [toolId, error, projectPath];
+                        },
+                        getCustomExecutionCommand: async () => null,
+                        isToolMarkedInstalled: async () => true
+                    };
+                }
+                return originalRequire.apply(this, arguments);
+            };
+
+            // Mock CLI execution to throw runtime error
+            (provider as any).findCarbonaraCLI = async () => '/path/to/cli';
+            (provider as any).runCommand = async () => {
+                throw new Error('Runtime error: Validation failed');
+            };
+
+            // Mock showErrorMessage
+            const originalShowErrorMessage = vscode.window.showErrorMessage;
+            (vscode.window as any).showErrorMessage = async (message: string, ...items: string[]) => {
+                showErrorMessageCalled = true;
+                showErrorMessageArgs = [message, ...items];
+                return undefined;
+            };
+
+            try {
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+                const { ToolsTreeProvider } = require('../../tools-tree-provider');
+                const testProvider = new ToolsTreeProvider();
+                (testProvider as any).tools = [mockTool];
+
+                await (testProvider as any).analyzeTool('test-tool');
+
+                // Should record error but NOT flag detection as failed (runtime error, not "not found")
+                assert.strictEqual(recordToolErrorCalled, true, 'Should record error');
+                assert.strictEqual(flagDetectionFailedCalled, false, 'Should NOT flag detection failed for runtime errors');
+                assert.strictEqual(showErrorMessageCalled, true, 'Should show error message');
+            } finally {
+                Module.prototype.require = originalRequire;
+                (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+            }
+        });
+
+        test('should flag detection failed only for "not found" errors', async () => {
+            const mockTool = {
+                id: 'test-tool',
+                name: 'Test Tool',
+                type: 'external' as const,
+                isInstalled: true,
+                prerequisitesMissing: false,
+                installation: { type: 'npm' }
+            };
+
+            (provider as any).tools = [mockTool];
+
+            // Mock config functions
+            const Module = require('module');
+            const originalRequire = Module.prototype.require;
+
+            Module.prototype.require = function (id: string) {
+                if (id === '@carbonara/cli/dist/utils/config.js') {
+                    return {
+                        isNotFoundError: (error: Error | string) => {
+                            const msg = error instanceof Error ? error.message : String(error);
+                            return msg.includes('not found') || msg.includes('command not found');
+                        },
+                        flagDetectionFailed: async (toolId: string, projectPath: string, error?: Error | string) => {
+                            flagDetectionFailedCalled = true;
+                            flagDetectionFailedArgs = [toolId, projectPath, error];
+                        },
+                        recordToolError: async (toolId: string, error: Error | string, projectPath: string) => {
+                            recordToolErrorCalled = true;
+                            recordToolErrorArgs = [toolId, error, projectPath];
+                        },
+                        getCustomExecutionCommand: async () => null,
+                        isToolMarkedInstalled: async () => true
+                    };
+                }
+                return originalRequire.apply(this, arguments);
+            };
+
+            // Mock CLI execution to throw "not found" error
+            (provider as any).findCarbonaraCLI = async () => '/path/to/cli';
+            (provider as any).runCommand = async () => {
+                throw new Error('command not found');
+            };
+
+            // Mock showErrorMessage
+            const originalShowErrorMessage = vscode.window.showErrorMessage;
+            (vscode.window as any).showErrorMessage = async (message: string, ...items: string[]) => {
+                showErrorMessageCalled = true;
+                showErrorMessageArgs = [message, ...items];
+                return undefined;
+            };
+
+            try {
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+                const { ToolsTreeProvider } = require('../../tools-tree-provider');
+                const testProvider = new ToolsTreeProvider();
+                (testProvider as any).tools = [mockTool];
+
+                await (testProvider as any).analyzeTool('test-tool');
+
+                // Should flag detection as failed for "not found" errors
+                assert.strictEqual(flagDetectionFailedCalled, true, 'Should flag detection failed for "not found" errors');
+                assert.strictEqual(flagDetectionFailedArgs[2]?.message || flagDetectionFailedArgs[2], 'command not found', 'Should pass error to flagDetectionFailed');
+            } finally {
+                Module.prototype.require = originalRequire;
+                (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+            }
+        });
+
+        test('should preserve installation status when custom command exists', async () => {
+            const mockTool = {
+                id: 'test-tool',
+                name: 'Test Tool',
+                type: 'external' as const,
+                isInstalled: true,
+                prerequisitesMissing: false,
+                installation: { type: 'npm' }
+            };
+
+            (provider as any).tools = [mockTool];
+
+            // Mock config functions
+            const Module = require('module');
+            const originalRequire = Module.prototype.require;
+
+            Module.prototype.require = function (id: string) {
+                if (id === '@carbonara/cli/dist/utils/config.js') {
+                    return {
+                        isNotFoundError: (error: Error | string) => {
+                            const msg = error instanceof Error ? error.message : String(error);
+                            return msg.includes('not found') || msg.includes('command not found');
+                        },
+                        flagDetectionFailed: async (toolId: string, projectPath: string, error?: Error | string) => {
+                            flagDetectionFailedCalled = true;
+                            flagDetectionFailedArgs = [toolId, projectPath, error];
+                        },
+                        recordToolError: async (toolId: string, error: Error | string, projectPath: string) => {
+                            recordToolErrorCalled = true;
+                            recordToolErrorArgs = [toolId, error, projectPath];
+                        },
+                        getCustomExecutionCommand: async () => 'custom-command',
+                        isToolMarkedInstalled: async () => true
+                    };
+                }
+                return originalRequire.apply(this, arguments);
+            };
+
+            // Mock CLI execution to throw "not found" error
+            (provider as any).findCarbonaraCLI = async () => '/path/to/cli';
+            (provider as any).runCommand = async () => {
+                throw new Error('command not found');
+            };
+
+            // Mock showErrorMessage
+            const originalShowErrorMessage = vscode.window.showErrorMessage;
+            (vscode.window as any).showErrorMessage = async (message: string, ...items: string[]) => {
+                showErrorMessageCalled = true;
+                showErrorMessageArgs = [message, ...items];
+                return undefined;
+            };
+
+            try {
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+                const { ToolsTreeProvider } = require('../../tools-tree-provider');
+                const testProvider = new ToolsTreeProvider();
+                (testProvider as any).tools = [mockTool];
+
+                await (testProvider as any).analyzeTool('test-tool');
+
+                // Should NOT flag detection as failed when custom command exists
+                assert.strictEqual(flagDetectionFailedCalled, false, 'Should NOT flag detection failed when custom command exists');
+                assert.strictEqual(recordToolErrorCalled, true, 'Should still record error');
+            } finally {
+                Module.prototype.require = originalRequire;
+                (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+            }
+        });
+
+        test('should display error message with correct format', async () => {
+            const mockTool = {
+                id: 'test-tool',
+                name: 'Test Tool',
+                type: 'external' as const,
+                isInstalled: true,
+                prerequisitesMissing: false,
+                installation: { type: 'npm' }
+            };
+
+            (provider as any).tools = [mockTool];
+
+            // Mock config functions
+            const Module = require('module');
+            const originalRequire = Module.prototype.require;
+
+            Module.prototype.require = function (id: string) {
+                if (id === '@carbonara/cli/dist/utils/config.js') {
+                    return {
+                        isNotFoundError: () => false,
+                        flagDetectionFailed: async () => {},
+                        recordToolError: async () => {},
+                        getCustomExecutionCommand: async () => null,
+                        isToolMarkedInstalled: async () => true
+                    };
+                }
+                return originalRequire.apply(this, arguments);
+            };
+
+            // Mock CLI execution to throw error
+            (provider as any).findCarbonaraCLI = async () => '/path/to/cli';
+            (provider as any).runCommand = async () => {
+                throw new Error('Runtime error occurred');
+            };
+
+            // Mock showErrorMessage
+            const originalShowErrorMessage = vscode.window.showErrorMessage;
+            let errorMessage: string = '';
+            (vscode.window as any).showErrorMessage = async (message: string, ...items: string[]) => {
+                errorMessage = message;
+                showErrorMessageCalled = true;
+                showErrorMessageArgs = [message, ...items];
+                return undefined;
+            };
+
+            try {
+                delete require.cache[require.resolve('../../tools-tree-provider')];
+                const { ToolsTreeProvider } = require('../../tools-tree-provider');
+                const testProvider = new ToolsTreeProvider();
+                (testProvider as any).tools = [mockTool];
+
+                await (testProvider as any).analyzeTool('test-tool');
+
+                // Should show error message with tool name and error
+                assert.ok(errorMessage.includes('Test Tool') || errorMessage.includes('test-tool'), 'Error message should include tool name');
+                assert.ok(errorMessage.includes('Runtime error occurred'), 'Error message should include error details');
+                assert.ok(showErrorMessageArgs[1] === 'View Installation Instructions', 'Should offer installation instructions');
+                assert.ok(showErrorMessageArgs[2] === 'View Logs', 'Should offer to view logs');
+            } finally {
+                Module.prototype.require = originalRequire;
+                (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+                delete require.cache[require.resolve('../../tools-tree-provider')];
             }
         });
     });

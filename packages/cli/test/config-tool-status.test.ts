@@ -11,7 +11,9 @@ import {
   isToolMarkedInstalled,
   getToolLastError,
   loadProjectConfig,
-  saveProjectConfig
+  saveProjectConfig,
+  setCustomExecutionCommand,
+  isNotFoundError
 } from '../src/utils/config.js';
 
 describe('Tool Status Config Functions', () => {
@@ -197,6 +199,62 @@ describe('Tool Status Config Functions', () => {
     // Should not throw, just do nothing
     const config = await loadProjectConfig(testDir);
     expect(config?.tools?.['nonexistent-tool']).toBeUndefined();
+  });
+
+  test('flagDetectionFailed should preserve installation status for runtime errors', async () => {
+    // Mark tool as installed
+    await markToolInstalled('test-tool', testDir);
+    
+    // Flag with a runtime error (not a "not found" error)
+    const runtimeError = new Error('Runtime error occurred');
+    await flagDetectionFailed('test-tool', testDir, runtimeError);
+    
+    const config = await loadProjectConfig(testDir);
+    // Installation status should be preserved for runtime errors
+    expect(config?.tools?.['test-tool']?.installationStatus?.installed).toBe(true);
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBe(true);
+  });
+
+  test('flagDetectionFailed should clear installation status for "not found" errors', async () => {
+    // Mark tool as installed
+    await markToolInstalled('test-tool', testDir);
+    
+    // Flag with a "not found" error
+    const notFoundError = new Error('command not found');
+    await flagDetectionFailed('test-tool', testDir, notFoundError);
+    
+    const config = await loadProjectConfig(testDir);
+    // Installation status should be cleared for "not found" errors
+    expect(config?.tools?.['test-tool']?.installationStatus).toBeUndefined();
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBe(true);
+  });
+
+  test('flagDetectionFailed should preserve installation status when custom command exists', async () => {
+    // Set custom execution command
+    await setCustomExecutionCommand('test-tool', 'custom-command', testDir);
+    
+    // Flag with a "not found" error
+    const notFoundError = new Error('command not found');
+    await flagDetectionFailed('test-tool', testDir, notFoundError);
+    
+    const config = await loadProjectConfig(testDir);
+    // Installation status should be preserved when custom command exists
+    expect(config?.tools?.['test-tool']?.installationStatus?.installed).toBe(true);
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBe(true);
+    expect(config?.tools?.['test-tool']?.customExecutionCommand).toBe('custom-command');
+  });
+
+  test('flagDetectionFailed should work without error parameter (backward compatibility)', async () => {
+    // Mark tool as installed
+    await markToolInstalled('test-tool', testDir);
+    
+    // Flag without error parameter (defaults to treating as "not found")
+    await flagDetectionFailed('test-tool', testDir);
+    
+    const config = await loadProjectConfig(testDir);
+    // Should clear installation status (backward compatible behavior)
+    expect(config?.tools?.['test-tool']?.installationStatus).toBeUndefined();
+    expect(config?.tools?.['test-tool']?.detectionFailed).toBe(true);
   });
 });
 
