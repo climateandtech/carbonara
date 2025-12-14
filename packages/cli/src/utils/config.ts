@@ -186,10 +186,35 @@ export async function getToolLastError(toolId: string, projectPath?: string): Pr
 }
 
 /**
+ * Check if an error message indicates "command not found" type error
+ * These are the only errors that should clear installation status
+ */
+export function isNotFoundError(error: Error | string): boolean {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const lowerMessage = errorMessage.toLowerCase();
+  
+  return (
+    lowerMessage.includes('not found') ||
+    lowerMessage.includes('cannot find') ||
+    lowerMessage.includes('is not installed') ||
+    lowerMessage.includes('command not found') ||
+    lowerMessage.includes('no such file or directory') ||
+    lowerMessage.includes('enoent')
+  );
+}
+
+/**
  * Flag that detection was incorrect - tool appeared installed but actually isn't
  * This happens when detection gives a false positive (e.g., npx downloads on-the-fly)
+ * 
+ * IMPORTANT: Only clears installation status for "not found" errors.
+ * Runtime errors should keep the tool marked as installed.
  */
-export async function flagDetectionFailed(toolId: string, projectPath?: string): Promise<void> {
+export async function flagDetectionFailed(
+  toolId: string, 
+  projectPath?: string,
+  error?: Error | string
+): Promise<void> {
   const config = await loadProjectConfig(projectPath);
   if (!config) {
     return;
@@ -203,14 +228,22 @@ export async function flagDetectionFailed(toolId: string, projectPath?: string):
     config.tools[toolId] = {};
   }
 
+  // Only clear installation status if:
+  // 1. Error is specifically a "not found" type error
+  // 2. Tool doesn't have a custom execution command (user manually configured it)
+  const hasCustomCommand = !!config.tools[toolId].customExecutionCommand;
+  const isNotFound = error ? isNotFoundError(error) : true; // Default to true if no error provided (backward compat)
+  
   // Mark that detection failed - tool appeared installed but isn't
   config.tools[toolId].detectionFailed = true;
   config.tools[toolId].detectionFailedAt = new Date().toISOString();
   
-  // Clear installation status if it was set (it was a false positive)
-  if (config.tools[toolId].installationStatus) {
+  // Only clear installation status if it's a "not found" error AND no custom command
+  // Tools with custom commands should always stay marked as installed
+  if (isNotFound && !hasCustomCommand && config.tools[toolId].installationStatus) {
     delete config.tools[toolId].installationStatus;
   }
+  // If it's not a "not found" error, keep installation status (it's a runtime error, not missing tool)
 
   saveProjectConfig(config, projectPath);
 }

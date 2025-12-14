@@ -71,6 +71,14 @@ export class AnalysisToolRegistry {
   private installedTools: Map<string, boolean> = new Map();
   private toolsRefreshed: boolean = false;
 
+  /**
+   * Get the project root directory (where .carbonara folder exists)
+   */
+  private async getProjectRoot(): Promise<string | null> {
+    const { getProjectRoot } = await import('../utils/config.js');
+    return getProjectRoot();
+  }
+
   constructor() {
     // Try multiple paths to find the registry file
     const possiblePaths = [
@@ -147,6 +155,52 @@ export class AnalysisToolRegistry {
         case 'built-in':
           return true; // Built-in tools are always available
         case 'command':
+          // For pip tools, check venv first using tool's executable name
+          if (tool.installation?.type === 'pip' && tool.command?.executable) {
+            const projectRoot = await this.getProjectRoot();
+            if (projectRoot) {
+              const { getVenvBinaryPath, isBinaryInVenv, getVenvInfo } = await import('../utils/venv-manager.js');
+              const executable = tool.command.executable;
+              
+              // Check if binary exists in venv
+              if (isBinaryInVenv(projectRoot, executable)) {
+                const venvBinaryPath = getVenvBinaryPath(projectRoot, executable);
+                const venvInfo = getVenvInfo(projectRoot);
+                
+                // Get detection commands from tool config
+                const detection = tool.detection as any;
+                const commands: string[] = detection.commands || (detection.target ? [detection.target] : []);
+                
+                // Try each detection command with venv binary path
+                for (const command of commands) {
+                  try {
+                    // Replace executable name with venv path in command
+                    const venvCommand = command.replace(new RegExp(`^${executable}\\b`), venvBinaryPath);
+                    await execaCommand(venvCommand, { 
+                      stdio: 'pipe', 
+                      timeout: 5000 
+                    });
+                    return true; // Found in venv!
+                  } catch {
+                    // Try python -m approach if binary path didn't work
+                    try {
+                      if (venvInfo.exists) {
+                        const pythonModuleCommand = command.replace(new RegExp(`^${executable}\\b`), `${venvInfo.pythonPath} -m ${executable}`);
+                        await execaCommand(pythonModuleCommand, { 
+                          stdio: 'pipe', 
+                          timeout: 5000 
+                        });
+                        return true; // Found as Python module in venv!
+                      }
+                    } catch {
+                      // Continue to next command or fall through
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
           // Check if tool has commands array (new approach) or target (old approach)
           const detection = tool.detection as any;
           if (detection.commands && Array.isArray(detection.commands)) {
@@ -339,23 +393,36 @@ export class AnalysisToolRegistry {
           await execa('npm', npmArgs, { stdio: 'inherit' });
           break;
         case 'pip':
-          // Use python3 -m pip for better compatibility across platforms
-          const pipArgs = ['-m', 'pip', 'install'];
-          if (tool.installation.global === false) {
-            // If global is explicitly false, don't add --user (install in current environment)
-            // This is the default behavior
-          } else if (tool.installation.global) {
-            // If global is true, use --user flag
-            pipArgs.push('--user');
-          }
-          pipArgs.push(tool.installation.package);
-          
-          // Try python3 first, fall back to python if needed
-          try {
-            await execa('python3', pipArgs, { stdio: 'inherit' });
-          } catch (error) {
-            // Fall back to python if python3 is not available
-            await execa('python', pipArgs, { stdio: 'inherit' });
+          // For pip tools, use project venv if we have a project path
+          // This ensures consistent installation location and avoids PATH issues
+          const projectRoot = await this.getProjectRoot();
+          if (projectRoot) {
+            // Use venv for installation
+            const { installInVenv } = await import('../utils/venv-manager.js');
+            const success = await installInVenv(projectRoot, tool.installation.package);
+            if (!success) {
+              throw new Error(`Failed to install ${tool.installation.package} in venv`);
+            }
+          } else {
+            // Fallback to system installation if no project root
+            // Use python3 -m pip for better compatibility across platforms
+            const pipArgs = ['-m', 'pip', 'install'];
+            if (tool.installation.global === false) {
+              // If global is explicitly false, don't add --user (install in current environment)
+              // This is the default behavior
+            } else if (tool.installation.global) {
+              // If global is true, use --user flag
+              pipArgs.push('--user');
+            }
+            pipArgs.push(tool.installation.package);
+            
+            // Try python3 first, fall back to python if needed
+            try {
+              await execa('python3', pipArgs, { stdio: 'inherit' });
+            } catch (error) {
+              // Fall back to python if python3 is not available
+              await execa('python', pipArgs, { stdio: 'inherit' });
+            }
           }
           break;
         default:

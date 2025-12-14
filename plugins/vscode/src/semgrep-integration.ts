@@ -756,11 +756,16 @@ async function runSemgrepAnalysis(
         );
         
         // If setup failed and detection passed, flag detection as failed
+        // Only if it's a "not found" type error (runtime errors should keep tool marked as installed)
         const workspacePath = getWorkspacePath();
         if (workspacePath) {
           try {
-            const { flagDetectionFailed } = await import("@carbonara/cli/dist/utils/config.js");
-            await flagDetectionFailed("semgrep", workspacePath);
+            const { flagDetectionFailed, isNotFoundError } = await import("@carbonara/cli/dist/utils/config.js");
+            const error = new Error(errorMessage);
+            // Only flag as detection failed if it's a "not found" error
+            if (isNotFoundError(error)) {
+              await flagDetectionFailed("semgrep", workspacePath, error);
+            }
           } catch (configError) {
             console.error(`Failed to flag detection failure:`, configError);
           }
@@ -816,20 +821,16 @@ async function runSemgrepAnalysis(
       );
       
       // Check if error suggests tool is not actually installed (false positive detection)
-      const suggestsNotInstalled = 
-        errorMessage.includes("Semgrep is not installed") ||
-        errorMessage.includes("not installed") ||
-        errorMessage.includes("command not found") ||
-        errorMessage.includes("Command not found") ||
-        errorMessage.includes("ENOENT");
-      
-      // If tool was detected as installed but run failed with "not installed" error,
-      // flag that detection was incorrect
       const workspacePath = getWorkspacePath();
-      if (workspacePath && suggestsNotInstalled) {
+      if (workspacePath) {
         try {
-          const { flagDetectionFailed } = await import("@carbonara/cli/dist/utils/config.js");
-          await flagDetectionFailed("semgrep", workspacePath);
+          const { flagDetectionFailed, isNotFoundError } = await import("@carbonara/cli/dist/utils/config.js");
+          const error = new Error(errorMessage);
+          // Only flag as detection failed if it's a "not found" error
+          // Runtime errors should keep tool marked as installed
+          if (isNotFoundError(error)) {
+            await flagDetectionFailed("semgrep", workspacePath, error);
+          }
         } catch (configError) {
           console.error(`Failed to flag detection failure:`, configError);
         }
@@ -1188,11 +1189,16 @@ export async function scanAllFiles() {
             );
             
             // If setup failed and detection passed, flag detection as failed
+            // Only if it's a "not found" type error (runtime errors should keep tool marked as installed)
             const workspacePath = getWorkspacePath();
             if (workspacePath) {
               try {
-                const { flagDetectionFailed } = await import("@carbonara/cli/dist/utils/config.js");
-                await flagDetectionFailed("semgrep", workspacePath);
+                const { flagDetectionFailed, isNotFoundError } = await import("@carbonara/cli/dist/utils/config.js");
+                const error = new Error(setupErrorMsg);
+                // Only flag as detection failed if it's a "not found" error
+                if (isNotFoundError(error)) {
+                  await flagDetectionFailed("semgrep", workspacePath, error);
+                }
               } catch (configError) {
                 console.error(`Failed to flag detection failure:`, configError);
               }
@@ -1238,20 +1244,16 @@ export async function scanAllFiles() {
           );
           
           // Check if error suggests tool is not actually installed (false positive detection)
-          const suggestsNotInstalled = 
-            errorMessage.includes("Semgrep is not installed") ||
-            errorMessage.includes("not installed") ||
-            errorMessage.includes("command not found") ||
-            errorMessage.includes("Command not found") ||
-            errorMessage.includes("ENOENT");
-          
-          // If tool was detected as installed but run failed with "not installed" error,
-          // flag that detection was incorrect
           const workspacePath = getWorkspacePath();
-          if (workspacePath && suggestsNotInstalled) {
+          if (workspacePath) {
             try {
-              const { flagDetectionFailed } = await import("@carbonara/cli/dist/utils/config.js");
-              await flagDetectionFailed("semgrep", workspacePath);
+              const { flagDetectionFailed, isNotFoundError } = await import("@carbonara/cli/dist/utils/config.js");
+              const error = new Error(errorMessage);
+              // Only flag as detection failed if it's a "not found" error
+              // Runtime errors should keep tool marked as installed
+              if (isNotFoundError(error)) {
+                await flagDetectionFailed("semgrep", workspacePath, error);
+              }
             } catch (configError) {
               console.error(`Failed to flag detection failure:`, configError);
             }
